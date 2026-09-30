@@ -1,0 +1,25 @@
+{
+  "name": "artifacts",
+  "version": "0.1.0",
+  "scripts": {
+    "generate-routes": "node scripts/run-generate-routes.mjs src/app/routes",
+    "dev": "yarn generate-routes && vite --host --port 3300",
+    "build": "yarn generate-routes && tsc --pretty false && vite build",
+    "preview": "vite preview --port 3300"
+  },
+  "devDependencies": {
+    "@supersoniks/concorde": "^4.9.3",
+    "@tailwindcss/container-queries": "^0.1.1",
+    "autoprefixer": "^10.4.16",
+    "dotenv": "^16.3.1",
+    "lit": "^3.1.3",
+    "postcss": "^8.4.14",
+    "prettier": "^3.0.3",
+    "rollup-plugin-postcss-lit": "^2.1.0",
+    "tailwindcss": "^3.3.3",
+    "typescript": "^5.2.2",
+    "vite": "^5.4.11"
+  },
+  "dependencies": {},
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+}

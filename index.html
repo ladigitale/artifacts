@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/src/css/tailwind.css" />
+    <link rel="stylesheet" href="/src/css/app.css" />
+    <link rel="stylesheet" href="/src/css/themes.css" />
+    <script>
+      try {
+        var t = localStorage.getItem("artifacts-theme");
+        if (t && t !== "default")
+          document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    </script>
+    <title>Artefacts</title>
+  </head>
+  <body class="m-0 p-0">
+    <sonic-theme background color font>
+      <app-router-host></app-router-host>
+    </sonic-theme>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

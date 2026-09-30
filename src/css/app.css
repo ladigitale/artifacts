@@ -1,0 +1,156 @@
+@import url("https://fonts.googleapis.com/css2?family=Bangers&family=Barlow:wght@400;500;600;700&family=Bebas+Neue&family=Cabin:wght@400;500;600;700&family=Chakra+Petch:wght@400;500;600;700&family=Comic+Neue:wght@400;700&family=DM+Sans:wght@400;500;600;700&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Josefin+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Mochiy+Pop+One&family=Monoton&family=Outfit:wght@400;500;600;700&family=Oxanium:wght@500;600;700&family=Poiret+One&family=Public+Sans:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=Rowdies:wght@400;700&family=Share+Tech+Mono&family=Sora:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Teko:wght@500;600;700&family=Unbounded:wght@500;600;700&family=VT323&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap");
+
+/*
+Fallback (= Tadaaa default). Autres thèmes : themes.css via html[data-theme].
+Runtime : GET /api/appearance?theme= (sync + fontsCssUrl).
+*/
+:root {
+  color-scheme: light;
+
+  --belts-content-max-width: 72rem; /* = Tailwind max-w-6xl */
+
+  --sc-base: #f4f2ff;
+  --sc-base-content: #14101f;
+  --sc-base-50: #e8e4f8;
+  --sc-base-100: #d4cef0;
+  --sc-base-200: #b8aee0;
+  --sc-base-300: #9488c4;
+  --sc-base-400: #6e64a0;
+  --sc-base-500: #524878;
+  --sc-base-600: #3a3258;
+  --sc-base-700: #282240;
+  --sc-base-800: #1a162c;
+  --sc-base-900: #100e1a;
+
+  --sc-primary: #4f1fff;
+  --sc-primary-content: #f8f6ff;
+  --sc-info: #00c8ff;
+  --sc-info-content: #002430;
+  --sc-success: #b8f000;
+  --sc-success-content: #1a2200;
+  --sc-warning: #ff6b1a;
+  --sc-warning-content: #fff5ee;
+  --sc-danger: #ff1a6a;
+  --sc-danger-content: #fff0f5;
+
+  --sc-rounded: 0.625rem;
+  --sc-btn-rounded: 9999px;
+  --sc-border-width: max(2px, 0.125rem);
+
+  --sc-font-family-base: "DM Sans", ui-sans-serif, sans-serif;
+  --sc-font-family-headings: "Space Grotesk", ui-sans-serif, sans-serif;
+  --sc-headings-font-family: var(--sc-font-family-headings);
+}
+
+:root {
+  background-color: var(--sc-base);
+  color: var(--sc-base-content);
+  font-family: var(--sc-font-family-base);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--sc-font-family-headings, var(--sc-headings-font-family));
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+/* Chaîne de hauteur jusqu’au layout (custom elements = inline par défaut).
+   sonic-router est dans <main> scrollable : pas de height:100% pour laisser
+   le contenu grandir et activer le scroll global. */
+sonic-theme,
+app-router-host,
+sonic-scope {
+  display: block;
+  height: 100%;
+  min-height: 0;
+}
+
+sonic-router {
+  display: block;
+}
+
+/* Scroll principal : overflow-x visible pour laisser peindre les tooltips
+   dans les gouttières ; le contenu reste borné (max-w-6xl) dans un enfant. */
+.app-shell-main {
+  overflow-x: visible;
+}
+.custom-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.custom-scroll:hover {
+  scrollbar-color: var(--sc-base-500) transparent;
+}
+
+.custom-scroll::-webkit-scrollbar {
+  width: 0.5rem;
+  height: 0.5rem;
+  border: solid 0.15rem transparent;
+  border-radius: var(--sc-rounded);
+  background: transparent;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+  transition: box-shadow 0.2s;
+  border: solid 0.15rem transparent;
+  border-radius: var(--sc-rounded);
+  box-shadow: inset 0 0 0 0 transparent;
+}
+
+.custom-scroll:hover::-webkit-scrollbar-thumb {
+  box-shadow: inset 0 0 2rem 2rem var(--sc-base-800);
+}
+
+@media print {
+  @page {
+    size: auto;
+    margin: 1cm;
+  }
+
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .app-shell {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .app-shell-chrome {
+    display: none !important;
+  }
+
+  .app-shell-main {
+    max-width: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  sonic-theme,
+  app-router-host,
+  sonic-scope,
+  sonic-router {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  * {
+    font-size: 60%;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+sonic-modal::part(modal) {
+  overflow-y: visible !important;
+}
