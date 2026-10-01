@@ -10,6 +10,7 @@ import {
 import {explainFetchError, loadApiBaseUrl} from "../cloud/api-base";
 import {guardDocument} from "../sdui-guard";
 import {applySafeTransforms} from "../jsonata-safe";
+import {loadScriptAssets} from "../script-loader";
 import {set} from "@supersoniks/concorde/utils";
 import tailwind from "../../css/tailwind";
 
@@ -26,6 +27,7 @@ export class ArtifactViewer extends LitElement {
   @state() private guardErrors: {path: string; message: string}[] = [];
   @state() private viewId = "";
   @state() private loading = true;
+  @state() private scriptsReady = false;
 
   connectedCallback() {
     super.connectedCallback();
@@ -55,12 +57,17 @@ export class ArtifactViewer extends LitElement {
 
   private async load() {
     this.loading = true;
+    this.scriptsReady = false;
     this.error = "";
     try {
       this.data = await fetchPublicArtifact(this.slug, this.linkToken());
       this.guardErrors = guardDocument(this.data.document);
       this.syncViewFromHash();
-      await this.applyDataProviders();
+      if (!this.guardErrors.length) {
+        await loadScriptAssets(this.data.scriptAssets);
+        this.scriptsReady = true;
+        await this.applyDataProviders();
+      }
     } catch (e) {
       this.error = explainFetchError(e, loadApiBaseUrl());
       this.data = null;
@@ -206,9 +213,9 @@ export class ArtifactViewer extends LitElement {
             `
           : nothing}
         <div class="artifact-sdui min-h-[12rem]">
-          ${root
+          ${root && this.scriptsReady
             ? html`<sonic-sdui .props=${root}></sonic-sdui>`
-            : html`<p class="opacity-70">Vue introuvable.</p>`}
+            : html`<p class="opacity-70">Préparation…</p>`}
         </div>
       </div>
     `;

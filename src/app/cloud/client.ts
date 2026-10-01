@@ -24,6 +24,13 @@ export type PublicArtifact = {
   title: string;
   description?: string | null;
   document: Record<string, unknown>;
+  scriptAssets?: {
+    id: string;
+    src: string;
+    integrity?: string;
+    css?: string[];
+    global?: string;
+  }[];
   concordeVersion: string;
   version: number;
   updatedAt: string;
