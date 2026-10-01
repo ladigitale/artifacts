@@ -1,4 +1,5 @@
 import "@supersoniks/concorde/button";
+import "@supersoniks/concorde/interactive";
 import "@supersoniks/concorde/sdui";
 import {html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
@@ -11,10 +12,11 @@ import {explainFetchError, loadApiBaseUrl} from "../cloud/api-base";
 import {guardDocument} from "../sdui-guard";
 import {applySafeTransforms} from "../jsonata-safe";
 import {loadScriptAssets} from "../script-loader";
-import {set} from "@supersoniks/concorde/utils";
+import {dp, set} from "@supersoniks/concorde/utils";
 import tailwind from "../../css/tailwind";
 
 type ViewDef = {id: string; title: string; root: Record<string, unknown>};
+type StoreDef = {initial?: unknown; reducer?: string; dataProvider?: string; history?: number};
 
 @customElement("artifact-viewer")
 export class ArtifactViewer extends LitElement {
@@ -28,6 +30,10 @@ export class ArtifactViewer extends LitElement {
   @state() private viewId = "";
   @state() private loading = true;
   @state() private scriptsReady = false;
+  @state() private docStores: Record<string, StoreDef> = {};
+
+  private sourceData: Record<string, unknown> = {};
+  private transformUnsubs: Array<() => void> = [];
 
   connectedCallback() {
     super.connectedCallback();
@@ -37,6 +43,7 @@ export class ArtifactViewer extends LitElement {
 
   disconnectedCallback() {
     window.removeEventListener("hashchange", this.onHash);
+    this.clearTransformWatchers();
     super.disconnectedCallback();
   }
 
@@ -46,6 +53,17 @@ export class ArtifactViewer extends LitElement {
 
   private linkToken(): string | null {
     return new URLSearchParams(location.search).get("k");
+  }
+
+  private clearTransformWatchers() {
+    for (const off of this.transformUnsubs) {
+      try {
+        off();
+      } catch {
+        /* ignore */
+      }
+    }
+    this.transformUnsubs = [];
   }
 
   private async load() {
@@ -58,10 +76,15 @@ export class ArtifactViewer extends LitElement {
     this.loading = true;
     this.scriptsReady = false;
     this.error = "";
+    this.clearTransformWatchers();
     try {
       this.data = await fetchPublicArtifact(this.slug, this.linkToken());
       this.guardErrors = guardDocument(this.data.document);
       this.syncViewFromHash();
+      const doc = this.data.document as {
+        data?: {stores?: Record<string, StoreDef>};
+      };
+      this.docStores = doc.data?.stores ?? {};
       if (!this.guardErrors.length) {
         await loadScriptAssets(this.data.scriptAssets);
         this.scriptsReady = true;
@@ -95,6 +118,43 @@ export class ArtifactViewer extends LitElement {
     this.viewId = match?.id ?? doc.defaultView ?? doc.views[0].id;
   }
 
+  private publishTransforms() {
+    if (!this.data) return;
+    const doc = this.data.document as {
+      data?: {transforms?: Record<string, {jsonata: string}>};
+    };
+    const transforms = applySafeTransforms(this.sourceData, doc.data?.transforms);
+    for (const [name, value] of Object.entries(transforms)) {
+      set(name, value);
+      set(`artifact:${this.slug}:transform:${name}`, value);
+    }
+  }
+
+  private watchSource(name: string) {
+    try {
+      const provider = dp(name) as {
+        onAssign?: (cb: (v: unknown) => void) => void;
+        offAssign?: (cb: (v: unknown) => void) => void;
+      };
+      const cb = (v: unknown) => {
+        const items =
+          v && typeof v === "object" && Array.isArray((v as {member?: unknown}).member)
+            ? (v as {member: unknown[]}).member
+            : Array.isArray(v)
+              ? v
+              : [];
+        this.sourceData[name] = items;
+        this.publishTransforms();
+      };
+      if (typeof provider.onAssign === "function") {
+        provider.onAssign(cb);
+        this.transformUnsubs.push(() => provider.offAssign?.(cb));
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
   private async applyDataProviders() {
     if (!this.data) return;
     const doc = this.data.document as {
@@ -104,10 +164,9 @@ export class ArtifactViewer extends LitElement {
       };
     };
     const sources = doc.data?.sources ?? {};
-    const sourceData: Record<string, unknown> = {};
+    this.sourceData = {};
     const k = this.linkToken();
 
-    // Always try to load collections referenced by sources (even if not in public list yet)
     for (const [name, src] of Object.entries(sources)) {
       const collection = src.collection;
       let member: unknown[] = [];
@@ -116,27 +175,21 @@ export class ArtifactViewer extends LitElement {
       } catch {
         member = [];
       }
-      // JSONata / $count attend un tableau d’items (records ou data)
       const items = member.map((row) => {
         if (row && typeof row === "object" && "data" in row) {
           return (row as {data: unknown}).data;
         }
         return row;
       });
-      sourceData[name] = items;
-      sourceData[collection] = items;
-      // DP court = attribut dataProvider des nœuds SDUI
+      this.sourceData[name] = items;
+      this.sourceData[collection] = items;
       set(name, {member: items});
       set(collection, {member: items});
       set(`artifact:${this.slug}:${name}`, {member: items});
+      this.watchSource(name);
     }
 
-    const transforms = applySafeTransforms(sourceData, doc.data?.transforms);
-    for (const [name, value] of Object.entries(transforms)) {
-      // sonic-value key=… lit le DataProvider nommé comme dataProvider=
-      set(name, value);
-      set(`artifact:${this.slug}:transform:${name}`, value);
-    }
+    this.publishTransforms();
   }
 
   private currentRoot(): Record<string, unknown> | null {
@@ -150,6 +203,30 @@ export class ArtifactViewer extends LitElement {
     const q = k ? `?k=${encodeURIComponent(k)}` : "";
     history.replaceState({}, "", `/${this.slug}/${q}#${id}`);
     this.viewId = id;
+  }
+
+  private renderDocStores() {
+    const entries = Object.entries(this.docStores);
+    if (!entries.length) return nothing;
+    return html`
+      <div class="sr-only" aria-hidden="true">
+        ${entries.map(([id, def]) => {
+          const initial =
+            def.initial == null
+              ? "{}"
+              : typeof def.initial === "string"
+                ? def.initial
+                : JSON.stringify(def.initial);
+          return html`<sonic-store
+            id=${id}
+            dataProvider=${def.dataProvider || id}
+            initial=${initial}
+            reducer=${def.reducer ?? ""}
+            history=${def.history ?? 0}
+          ></sonic-store>`;
+        })}
+      </div>
+    `;
   }
 
   render() {
@@ -179,9 +256,13 @@ export class ArtifactViewer extends LitElement {
     const views = doc.views ?? [];
     return html`
       <div class="artifact-bare flex flex-col min-h-full">
+        ${this.renderDocStores()}
         ${views.length > 1
           ? html`
-              <nav class="flex flex-wrap gap-2 p-3 print:hidden" aria-label="Vues">
+              <nav
+                class="artifact-nav flex flex-wrap gap-2 p-3 print:hidden"
+                aria-label="Vues"
+              >
                 ${views.map(
                   (v) => html`
                     <sonic-button

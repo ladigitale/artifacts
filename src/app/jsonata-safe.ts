@@ -1,14 +1,12 @@
 /**
  * Transforms d’enveloppe artefacts — JSONata réel (pas d’eval, CSP OK).
- * Remplace l’évaluateur maison limité à $count : même résultats pour les
- * expressions courantes (`$count(name)`, filtres, `$round`, objets),
- * et les apostrophes droites dans les littéraux ne sont plus cassées.
  */
 import {compileJsonata} from "@supersoniks/concorde/utils/jsonataRuntime";
 
 export type TransformMap = Record<string, {jsonata: string}>;
 
-const MAX_EXPR = 2048;
+/** Transforms d’enveloppe (pas les reducers de store). */
+const MAX_EXPR = 4096;
 
 export function applySafeTransforms(
   sources: Record<string, unknown>,
@@ -23,7 +21,7 @@ export function applySafeTransforms(
       const compiled = compileJsonata(expr);
       out[key] = compiled.evaluate(sources);
     } catch {
-      // Expression invalide / non supportée : ignorer (comportement précédent).
+      // Expression invalide / non supportée : ignorer.
     }
   }
   return out;
