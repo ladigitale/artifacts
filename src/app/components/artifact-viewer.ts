@@ -49,6 +49,12 @@ export class ArtifactViewer extends LitElement {
   }
 
   private async load() {
+    if (!this.slug?.trim()) {
+      this.loading = false;
+      this.error = "Slug manquant.";
+      this.data = null;
+      return;
+    }
     this.loading = true;
     this.scriptsReady = false;
     this.error = "";
@@ -62,7 +68,13 @@ export class ArtifactViewer extends LitElement {
         await this.applyDataProviders();
       }
     } catch (e) {
-      this.error = explainFetchError(e, loadApiBaseUrl());
+      const raw = e instanceof Error ? e.message : String(e);
+      try {
+        const j = JSON.parse(raw) as {detail?: string; title?: string};
+        this.error = j.detail || j.title || raw;
+      } catch {
+        this.error = explainFetchError(e, loadApiBaseUrl());
+      }
       this.data = null;
     } finally {
       this.loading = false;

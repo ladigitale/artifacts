@@ -3,7 +3,6 @@ import { html } from "lit";
 import "@supersoniks/concorde/core/components/functional/router/router";
 
 import layout from "./layout";
-import _slugPage from "./[slug]/page";
 import adminLayout from "./admin/layout";
 import admin_slugEditPage from "./admin/[slug]/edit/page";
 import admin_slugVersionsPage from "./admin/[slug]/versions/page";
@@ -11,11 +10,8 @@ import adminPage from "./admin/page";
 import cloudLayout from "./cloud/layout";
 import cloudPage from "./cloud/page";
 import page from "./page";
+import {renderPublicArtifactRoute} from "./public-artifact-route";
 export const router = (basePath?:string) => {
-const _slugDefaultLayoutRoutes = {
-    "/:slug": _slugPage
-}        
-
 const admin_slugEditDefaultLayoutRoutes = {
     "/admin/:slug/edit": admin_slugEditPage
 }        
@@ -42,6 +38,6 @@ const layoutRoutes = {
     "/$": page,
     "/admin\\b": (params?: Record<string, string>) => adminLayout(html`<sonic-router .basePath=${basePath} .routes=${adminLayoutRoutes}></sonic-router>`, params),
     "/cloud\\b": (params?: Record<string, string>) => cloudLayout(html`<sonic-router .basePath=${basePath} .routes=${cloudLayoutRoutes}></sonic-router>`, params),
-    "/:slug(/*)": () => html`<sonic-router .basePath=${basePath} .routes=${_slugDefaultLayoutRoutes}></sonic-router>`,
+    fallback: () => renderPublicArtifactRoute(),
 }        
 return layout(html`<sonic-router .basePath=${basePath} .routes=${layoutRoutes}></sonic-router>`)}
