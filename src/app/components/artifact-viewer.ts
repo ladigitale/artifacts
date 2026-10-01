@@ -48,13 +48,6 @@ export class ArtifactViewer extends LitElement {
     return new URLSearchParams(location.search).get("k");
   }
 
-  private withK(path: string): string {
-    const k = this.linkToken();
-    if (!k) return path;
-    const sep = path.includes("?") ? "&" : "?";
-    return `${path}${sep}k=${encodeURIComponent(k)}`;
-  }
-
   private async load() {
     this.loading = true;
     this.scriptsReady = false;
@@ -147,17 +140,12 @@ export class ArtifactViewer extends LitElement {
     this.viewId = id;
   }
 
-  private copyLink() {
-    void navigator.clipboard.writeText(location.href);
-  }
-
   render() {
     if (this.loading) return html`<p class="p-4">Chargement…</p>`;
     if (this.error) {
       return html`<div class="p-4 flex flex-col gap-2">
         <h1 class="text-xl m-0">Impossible d’afficher l’artefact</h1>
         <p class="text-red-600 m-0">${this.error}</p>
-        <a href="/" class="underline">Accueil</a>
       </div>`;
     }
     if (!this.data) return nothing;
@@ -170,7 +158,7 @@ export class ArtifactViewer extends LitElement {
           )}
         </ul>
         ${this.data.canWrite
-          ? html`<p class="text-sm opacity-70">Détail réservé aux writers — corrigez le document et republiez.</p>`
+          ? html`<p class="text-sm opacity-70">Corrigez le document et republiez.</p>`
           : nothing}
       </div>`;
     }
@@ -178,26 +166,10 @@ export class ArtifactViewer extends LitElement {
     const root = this.currentRoot();
     const views = doc.views ?? [];
     return html`
-      <div class="flex flex-col gap-3">
-        <header class="flex flex-wrap items-center justify-between gap-2 px-1">
-          <h1 class="text-xl m-0">${this.data.title}</h1>
-          <div class="flex gap-2 text-sm items-center">
-            ${this.data.canWrite
-              ? html`
-                  <a class="underline" href=${this.withK(`/${this.slug}/versions`)}
-                    >Versions</a
-                  >
-                  <sonic-button type="button" size="sm" variant="outline" @click=${() => this.copyLink()}
-                    >Copier le lien</sonic-button
-                  >
-                `
-              : nothing}
-            <a class="underline opacity-70" href="/">Accueil</a>
-          </div>
-        </header>
+      <div class="artifact-bare flex flex-col min-h-full">
         ${views.length > 1
           ? html`
-              <nav class="flex flex-wrap gap-2 px-1" aria-label="Vues">
+              <nav class="flex flex-wrap gap-2 p-3 print:hidden" aria-label="Vues">
                 ${views.map(
                   (v) => html`
                     <sonic-button
@@ -212,7 +184,7 @@ export class ArtifactViewer extends LitElement {
               </nav>
             `
           : nothing}
-        <div class="artifact-sdui min-h-[12rem]">
+        <div class="artifact-sdui flex-1 min-h-[12rem] p-3 sm:p-4">
           ${root && this.scriptsReady
             ? html`<sonic-sdui .props=${root}></sonic-sdui>`
             : html`<p class="opacity-70">Préparation…</p>`}

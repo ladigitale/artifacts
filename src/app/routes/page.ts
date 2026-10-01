@@ -1,6 +1,6 @@
 import {html} from "lit";
-import "../components/artifact-home";
+import "../components/artifact-landing";
 
 export default function HomePage() {
-  return html`<artifact-home></artifact-home>`;
+  return html`<artifact-landing></artifact-landing>`;
 }

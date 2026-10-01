@@ -2,7 +2,7 @@
   "name": "artifacts",
   "version": "0.1.0",
   "scripts": {
-    "generate-routes": "node scripts/run-generate-routes.mjs src/app/routes",
+    "generate-routes": "node scripts/run-generate-routes.mjs src/app/routes && node scripts/fix-router-order.mjs",
     "dev": "yarn generate-routes && vite --host --port 3300",
     "build": "yarn generate-routes && tsc --pretty false && vite build",
     "preview": "vite preview --port 3300"

@@ -50,10 +50,11 @@ export class CloudPageEl extends LitElement {
         const url = new URL(window.location.href);
         url.searchParams.delete("handoff");
         url.searchParams.delete("theme");
-        const next = sessionStorage.getItem("artifacts-return-after-login") || url.pathname;
+        const next =
+          sessionStorage.getItem("artifacts-return-after-login") || "/admin";
         sessionStorage.removeItem("artifacts-return-after-login");
-        history.replaceState({}, "", next);
-        if (next !== url.pathname) {
+        history.replaceState({}, "", "/cloud");
+        if (next !== "/cloud") {
           location.assign(next);
         }
       } catch (e) {
@@ -102,7 +103,7 @@ export class CloudPageEl extends LitElement {
           ? html`
               <p class="m-0">${this.account.user?.email ?? "Connecté"}</p>
               <sonic-button type="button" @click=${() => this.logout()}>Déconnexion</sonic-button>
-              <a class="underline text-sm" href="/">Mes artefacts</a>
+              <a class="underline text-sm" href="/admin">Bibliothèque</a>
             `
           : html`
               <sonic-button type="button" ?disabled=${this.busy} @click=${() => this.connectViaTadaaa()}>

@@ -11,11 +11,22 @@ export type ArtifactSummary = {
   id: string;
   slug: string;
   title: string;
+  description?: string | null;
   visibility: string;
   url: string;
   updatedAt: string;
+  createdAt?: string;
   datasetId: string;
   currentVersion: number;
+  hasLinkToken?: boolean;
+  linkToken?: string | null;
+};
+
+export type ArtifactPatch = {
+  title?: string;
+  description?: string | null;
+  slug?: string;
+  visibility?: string;
 };
 
 export type PublicArtifact = {
@@ -107,6 +118,44 @@ export function tadaaaLoginUrl(returnTo: string): string {
 export async function listMyArtifacts(): Promise<ArtifactSummary[]> {
   const data = await apiFetch<{member?: ArtifactSummary[]}>("/artifacts");
   return data.member ?? [];
+}
+
+export async function getArtifact(idOrSlug: string): Promise<ArtifactSummary & {document?: Record<string, unknown>}> {
+  return apiFetch(`/artifacts/${encodeURIComponent(idOrSlug)}`);
+}
+
+export async function patchArtifact(
+  idOrSlug: string,
+  patch: ArtifactPatch,
+): Promise<ArtifactSummary> {
+  return apiFetch(`/artifacts/${encodeURIComponent(idOrSlug)}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+}
+
+export async function deleteArtifact(idOrSlug: string): Promise<void> {
+  await apiFetch(`/artifacts/${encodeURIComponent(idOrSlug)}`, {method: "DELETE"});
+}
+
+export async function rotateLink(idOrSlug: string): Promise<ArtifactSummary> {
+  return apiFetch(`/artifacts/${encodeURIComponent(idOrSlug)}/rotate-link`, {
+    method: "POST",
+    body: "{}",
+  });
+}
+
+/** URL partageable locale (viewer) ; préfère `url` API si absolue du même host viewer. */
+export function artifactSharePath(a: Pick<ArtifactSummary, "slug" | "url" | "visibility">): string {
+  try {
+    const u = new URL(a.url, location.origin);
+    if (u.origin === location.origin) {
+      return `${u.pathname}${u.search}`;
+    }
+  } catch {
+    /* ignore */
+  }
+  return `/${a.slug}/`;
 }
 
 export async function fetchPublicArtifact(

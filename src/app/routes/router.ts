@@ -3,27 +3,45 @@ import { html } from "lit";
 import "@supersoniks/concorde/core/components/functional/router/router";
 
 import layout from "./layout";
-import _slugVersionsPage from "./[slug]/versions/page";
 import _slugPage from "./[slug]/page";
+import adminLayout from "./admin/layout";
+import admin_slugEditPage from "./admin/[slug]/edit/page";
+import admin_slugVersionsPage from "./admin/[slug]/versions/page";
+import adminPage from "./admin/page";
+import cloudLayout from "./cloud/layout";
 import cloudPage from "./cloud/page";
 import page from "./page";
 export const router = (basePath?:string) => {
-const _slugVersionsDefaultLayoutRoutes = {
-    "/:slug/versions": _slugVersionsPage
-}        
-
 const _slugDefaultLayoutRoutes = {
-    "/:slug/versions(/*)": () => html`<sonic-router .basePath=${basePath} .routes=${_slugVersionsDefaultLayoutRoutes}></sonic-router>`,
     "/:slug": _slugPage
 }        
 
-const cloudDefaultLayoutRoutes = {
+const admin_slugEditDefaultLayoutRoutes = {
+    "/admin/:slug/edit": admin_slugEditPage
+}        
+
+const admin_slugVersionsDefaultLayoutRoutes = {
+    "/admin/:slug/versions": admin_slugVersionsPage
+}        
+
+const admin_slugDefaultLayoutRoutes = {
+    "/admin/:slug/edit(/*)": () => html`<sonic-router .basePath=${basePath} .routes=${admin_slugEditDefaultLayoutRoutes}></sonic-router>`,
+    "/admin/:slug/versions(/*)": () => html`<sonic-router .basePath=${basePath} .routes=${admin_slugVersionsDefaultLayoutRoutes}></sonic-router>`
+}        
+
+const adminLayoutRoutes = {
+    "/admin/:slug(/*)": () => html`<sonic-router .basePath=${basePath} .routes=${admin_slugDefaultLayoutRoutes}></sonic-router>`,
+    "/admin$": adminPage
+}        
+
+const cloudLayoutRoutes = {
     "/cloud$": cloudPage
 }        
 
 const layoutRoutes = {
+    "/$": page,
+    "/admin\\b": (params?: Record<string, string>) => adminLayout(html`<sonic-router .basePath=${basePath} .routes=${adminLayoutRoutes}></sonic-router>`, params),
+    "/cloud\\b": (params?: Record<string, string>) => cloudLayout(html`<sonic-router .basePath=${basePath} .routes=${cloudLayoutRoutes}></sonic-router>`, params),
     "/:slug(/*)": () => html`<sonic-router .basePath=${basePath} .routes=${_slugDefaultLayoutRoutes}></sonic-router>`,
-    "/cloud\\b": () => html`<sonic-router .basePath=${basePath} .routes=${cloudDefaultLayoutRoutes}></sonic-router>`,
-    "/$": page
 }        
 return layout(html`<sonic-router .basePath=${basePath} .routes=${layoutRoutes}></sonic-router>`)}
