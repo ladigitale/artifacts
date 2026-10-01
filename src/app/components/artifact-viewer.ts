@@ -94,23 +94,37 @@ export class ArtifactViewer extends LitElement {
     const sources = doc.data?.sources ?? {};
     const sourceData: Record<string, unknown> = {};
     const k = this.linkToken();
+
+    // Always try to load collections referenced by sources (even if not in public list yet)
     for (const [name, src] of Object.entries(sources)) {
       const collection = src.collection;
       let member: unknown[] = [];
       try {
-        if (this.data.collections?.includes(collection)) {
-          member = await fetchPublicCollection(this.slug, collection, k);
-        }
+        member = await fetchPublicCollection(this.slug, collection, k);
       } catch {
         member = [];
       }
-      const payload = {member};
-      sourceData[name] = payload;
-      sourceData[collection] = payload;
-      set(`artifact:${this.slug}:${name}`, payload);
+      // JSONata / $count attend un tableau d’items (records ou data)
+      const items = member.map((row) => {
+        if (row && typeof row === "object" && "data" in row) {
+          return (row as {data: unknown}).data;
+        }
+        return row;
+      });
+      sourceData[name] = items;
+      sourceData[collection] = items;
+      // DP court = attribut dataProvider des nœuds SDUI
+      set(name, {member: items});
+      set(collection, {member: items});
+      set(`artifact:${this.slug}:${name}`, {member: items});
     }
+
     const transforms = applySafeTransforms(sourceData, doc.data?.transforms);
-    set(`artifact:${this.slug}:transforms`, transforms);
+    for (const [name, value] of Object.entries(transforms)) {
+      // sonic-value key=… lit le DataProvider nommé comme dataProvider=
+      set(name, value);
+      set(`artifact:${this.slug}:transform:${name}`, value);
+    }
   }
 
   private currentRoot(): Record<string, unknown> | null {
