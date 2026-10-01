@@ -1,3 +1,4 @@
+import "./app/router-location-fix";
 import "@supersoniks/concorde/theme";
 import "@supersoniks/concorde/router";
 import "./app/concorde-sdui-runtime";
