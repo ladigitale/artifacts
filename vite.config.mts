@@ -36,6 +36,20 @@ const config = {
   resolve: {
     alias: {
       "@tailwind": path.resolve(__dirname, "./src/css/tailwind.ts"),
+      // Branche locale feature/sonic-visual-stack (interactive + if/value SDUI attrs)
+      // jusqu’à publish npm de 5.0.4-visual-stack.x
+      "@supersoniks/concorde/interactive": path.resolve(
+        __dirname,
+        "../../concorde/src/core/components/functional/interactive/index.ts",
+      ),
+      "@supersoniks/concorde/if": path.resolve(
+        __dirname,
+        "../../concorde/src/core/components/functional/if/if.ts",
+      ),
+      "@supersoniks/concorde/value": path.resolve(
+        __dirname,
+        "../../concorde/src/core/components/functional/value/value.ts",
+      ),
     },
   },
 };

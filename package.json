@@ -8,7 +8,7 @@
     "preview": "vite preview --port 3300"
   },
   "devDependencies": {
-    "@supersoniks/concorde": "^4.9.3",
+    "@supersoniks/concorde": "4.9.98-visual-stack.1",
     "@tailwindcss/container-queries": "^0.1.1",
     "autoprefixer": "^10.4.16",
     "dotenv": "^16.3.1",

@@ -409,10 +409,10 @@
   resolved "https://registry.yarnpkg.com/@sinclair/typebox/-/typebox-0.34.52.tgz#62f8a686e4ab28a8944902e2ad2d648312ef11cb"
   integrity sha512-XiMQh7qqVlxZzcVD+kkGMNGMzcTrDMLWI7S4x7z1MkCkbDPrekpZXEUK0eZqZFMuHQg2a2DZOcDIh9o5v3Gonw==
 
-"@supersoniks/concorde@^4.9.3":
-  version "4.9.96"
-  resolved "https://registry.yarnpkg.com/@supersoniks/concorde/-/concorde-4.9.96.tgz#73508e2404ef5698d411edf4665bcbf2f296dbd4"
-  integrity sha512-rJdkSP/T0+a4LE0M6CIcfbsWKgLxf0DpqD44cSzXmjAgZY3xLMOvFiJYk1XCjGtCZKLZ1LituxbrnQvC1scc8Q==
+"@supersoniks/concorde@4.9.98-visual-stack.1":
+  version "4.9.98-visual-stack.1"
+  resolved "https://registry.yarnpkg.com/@supersoniks/concorde/-/concorde-4.9.98-visual-stack.1.tgz#e7e82836a1efa610905c25134379ce00b2b57223"
+  integrity sha512-QbkPfWWf2yAaWKDkz1ax7mWvtC8N0YKMRL6m1/O9woPhw8nK9G3kR8wqZ54dSfNENhbs3MzReNKSmnXPDgn0Gg==
   dependencies:
     "@lit-labs/motion" "^1.0.7"
     "@lit-labs/observers" "^2.0.2"
