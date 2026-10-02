@@ -1,10 +1,22 @@
 /**
- * Le router Concorde matche sur `pathname + hash`. Le viewer utilise le hash
- * pour les vues d'artefact (#formulaire) et le MCP renvoie des URL avec "/"
- * final : "/:slug" ne matchait plus et la page restait vide.
- * On fait matcher le router sur le pathname seul, sans "/" final.
+ * Normalize URL before sonic-router boots:
+ * - drop trailing "/" on pathname (MCP used to emit /slug/?k=…)
+ * - keep search + hash
+ * Also patch Concorde cleanLocation (pathname only, no trailing slash).
  */
 import "@supersoniks/concorde/router";
+
+(function normalizeArtifactPathname() {
+  try {
+    const {pathname, search, hash} = window.location;
+    if (pathname.length > 1 && pathname.endsWith("/")) {
+      const next = pathname.replace(/\/+$/, "") + search + hash;
+      window.history.replaceState(window.history.state, "", next);
+    }
+  } catch {
+    /* ignore */
+  }
+})();
 
 const Router = customElements.get("sonic-router");
 if (Router) {
