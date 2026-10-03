@@ -5,6 +5,7 @@ import {html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
 import {
   fetchPublicArtifact,
+  ApiError,
   fetchPublicCollection,
   type PublicArtifact,
 } from "../cloud/client";
@@ -12,10 +13,11 @@ import {explainFetchError, loadApiBaseUrl} from "../cloud/api-base";
 import {guardDocument} from "../sdui-guard";
 import {applySafeTransforms} from "../jsonata-safe";
 import {loadScriptAssets} from "../script-loader";
+import {startSinks, type SinkDef} from "../sinks";
 import {dp, set} from "@supersoniks/concorde/utils";
 import tailwind from "../../css/tailwind";
 
-type ViewDef = {id: string; title: string; root: Record<string, unknown>};
+type ViewDef = {id: string; title: string; root: Record<string, unknown>; hidden?: boolean};
 type StoreDef = {
   initial?: unknown;
   reducer?: string;
@@ -41,6 +43,8 @@ export class ArtifactViewer extends LitElement {
 
   private sourceData: Record<string, unknown> = {};
   private transformUnsubs: Array<() => void> = [];
+  private refreshTimers: number[] = [];
+  private stopSinks: (() => void) | null = null;
 
   connectedCallback() {
     super.connectedCallback();
@@ -51,6 +55,7 @@ export class ArtifactViewer extends LitElement {
   disconnectedCallback() {
     window.removeEventListener("hashchange", this.onHash);
     this.clearTransformWatchers();
+    this.clearLiveData();
     super.disconnectedCallback();
   }
 
@@ -60,6 +65,18 @@ export class ArtifactViewer extends LitElement {
 
   private linkToken(): string | null {
     return new URLSearchParams(location.search).get("k");
+  }
+
+  /** Lien secret de lecture (`rk`) pour les collections non publiques. */
+  private readKey(): string | null {
+    return new URLSearchParams(location.search).get("rk");
+  }
+
+  private clearLiveData() {
+    this.refreshTimers.forEach((t) => clearInterval(t));
+    this.refreshTimers = [];
+    this.stopSinks?.();
+    this.stopSinks = null;
   }
 
   private clearTransformWatchers() {
@@ -84,6 +101,7 @@ export class ArtifactViewer extends LitElement {
     this.scriptsReady = false;
     this.error = "";
     this.clearTransformWatchers();
+    this.clearLiveData();
     try {
       this.data = await fetchPublicArtifact(this.slug, this.linkToken());
       this.guardErrors = guardDocument(this.data.document);
@@ -96,6 +114,8 @@ export class ArtifactViewer extends LitElement {
         await loadScriptAssets(this.data.scriptAssets);
         this.scriptsReady = true;
         await this.applyDataProviders();
+        const sinks = (this.data.document as {data?: {sinks?: Record<string, SinkDef>}}).data?.sinks;
+        this.stopSinks = startSinks(this.slug, this.linkToken(), sinks);
       }
     } catch (e) {
       const raw = e instanceof Error ? e.message : String(e);
@@ -171,21 +191,24 @@ export class ArtifactViewer extends LitElement {
     if (!this.data) return;
     const doc = this.data.document as {
       data?: {
-        sources?: Record<string, {collection: string}>;
+        sources?: Record<string, {collection: string; refresh?: number}>;
         transforms?: Record<string, {jsonata: string}>;
       };
     };
     const sources = doc.data?.sources ?? {};
     this.sourceData = {};
     const k = this.linkToken();
+    const rk = this.readKey();
 
     for (const [name, src] of Object.entries(sources)) {
       const collection = src.collection;
       let member: unknown[] = [];
+      let denied = false;
       try {
-        member = await fetchPublicCollection(this.slug, collection, k);
-      } catch {
+        member = await fetchPublicCollection(this.slug, collection, k, rk);
+      } catch (e) {
         member = [];
+        denied = isDenied(e);
       }
       const items = member.map((row) => {
         if (row && typeof row === "object" && "data" in row) {
@@ -199,9 +222,37 @@ export class ArtifactViewer extends LitElement {
       set(collection, {member: items});
       set(`artifact:${this.slug}:${name}`, {member: items});
       this.watchSource(name);
+      const every = Number(src.refresh);
+      // Pas de relecture si l’accès est refusé (élève sans lien secret) : toute une classe
+      // derrière la même IP épuiserait la limite de requêtes.
+      if (!denied && Number.isFinite(every) && every >= 5) {
+        const timer = window.setInterval(async () => {
+          if (await this.refreshSource(name, collection)) return;
+          clearInterval(timer);
+        }, Math.min(every, 3600) * 1000);
+        this.refreshTimers.push(timer);
+      }
     }
 
     await this.publishTransforms();
+  }
+
+  /** Relecture périodique (`sources.<x>.refresh`, en secondes) — onglet visible seulement. */
+  private async refreshSource(name: string, collection: string): Promise<boolean> {
+    if (document.hidden) return true;
+    try {
+      const member = await fetchPublicCollection(this.slug, collection, this.linkToken(), this.readKey());
+      const items = member.map((row) =>
+        row && typeof row === "object" && "data" in row ? (row as {data: unknown}).data : row,
+      );
+      set(name, {member: items});
+      set(collection, {member: items});
+      set(`artifact:${this.slug}:${name}`, {member: items});
+      return true;
+    } catch (e) {
+      // Garde les dernières données ; arrête la relecture si l’accès est refusé.
+      return !isDenied(e);
+    }
   }
 
   private currentRoot(): Record<string, unknown> | null {
@@ -211,8 +262,12 @@ export class ArtifactViewer extends LitElement {
   }
 
   private goView(id: string) {
+    const params = new URLSearchParams();
     const k = this.linkToken();
-    const q = k ? `?k=${encodeURIComponent(k)}` : "";
+    const rk = this.readKey();
+    if (k) params.set("k", k);
+    if (rk) params.set("rk", rk);
+    const q = params.toString() ? `?${params}` : "";
     history.replaceState({}, "", `/${this.slug}/${q}#${id}`);
     this.viewId = id;
   }
@@ -267,7 +322,8 @@ export class ArtifactViewer extends LitElement {
     }
     const doc = this.data.document as {views?: ViewDef[]};
     const root = this.currentRoot();
-    const views = doc.views ?? [];
+    // Vues `hidden` : hors onglets, accessibles seulement par leur #id.
+    const views = (doc.views ?? []).filter((v) => v.hidden !== true);
     return html`
       <div class="artifact-bare flex flex-col min-h-full">
         ${this.renderDocStores()}
@@ -299,4 +355,8 @@ export class ArtifactViewer extends LitElement {
       </div>
     `;
   }
+}
+
+function isDenied(e: unknown): boolean {
+  return e instanceof ApiError && (e.status === 401 || e.status === 403 || e.status === 404);
 }
