@@ -16,7 +16,14 @@ import {dp, set} from "@supersoniks/concorde/utils";
 import tailwind from "../../css/tailwind";
 
 type ViewDef = {id: string; title: string; root: Record<string, unknown>};
-type StoreDef = {initial?: unknown; reducer?: string; dataProvider?: string; history?: number};
+type StoreDef = {
+  initial?: unknown;
+  reducer?: string;
+  dataProvider?: string;
+  history?: number;
+  budgetMs?: number;
+  bootAction?: string;
+};
 
 @customElement("artifact-viewer")
 export class ArtifactViewer extends LitElement {
@@ -118,12 +125,17 @@ export class ArtifactViewer extends LitElement {
     this.viewId = match?.id ?? doc.defaultView ?? doc.views[0].id;
   }
 
-  private publishTransforms() {
+  private transformRun = 0;
+
+  private async publishTransforms() {
     if (!this.data) return;
+    const run = ++this.transformRun;
     const doc = this.data.document as {
       data?: {transforms?: Record<string, {jsonata: string}>};
     };
-    const transforms = applySafeTransforms(this.sourceData, doc.data?.transforms);
+    const transforms = await applySafeTransforms(this.sourceData, doc.data?.transforms);
+    // Une source a pu changer pendant l’évaluation : seule la dernière publie.
+    if (run !== this.transformRun) return;
     for (const [name, value] of Object.entries(transforms)) {
       set(name, value);
       set(`artifact:${this.slug}:transform:${name}`, value);
@@ -144,7 +156,7 @@ export class ArtifactViewer extends LitElement {
               ? v
               : [];
         this.sourceData[name] = items;
-        this.publishTransforms();
+        void this.publishTransforms();
       };
       if (typeof provider.onAssign === "function") {
         provider.onAssign(cb);
@@ -189,7 +201,7 @@ export class ArtifactViewer extends LitElement {
       this.watchSource(name);
     }
 
-    this.publishTransforms();
+    await this.publishTransforms();
   }
 
   private currentRoot(): Record<string, unknown> | null {
@@ -223,6 +235,8 @@ export class ArtifactViewer extends LitElement {
             initial=${initial}
             reducer=${def.reducer ?? ""}
             history=${def.history ?? 0}
+            budget-ms=${def.budgetMs ?? 8}
+            boot-action=${def.bootAction ?? ""}
           ></sonic-store>`;
         })}
       </div>

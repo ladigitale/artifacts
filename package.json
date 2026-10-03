@@ -5,14 +5,16 @@
     "generate-routes": "node scripts/run-generate-routes.mjs src/app/routes && node scripts/fix-router-order.mjs",
     "dev": "yarn generate-routes && vite --host --port 3300",
     "build": "yarn generate-routes && tsc --pretty false && vite build",
-    "preview": "vite preview --port 3300"
+    "preview": "vite preview --port 3300",
+    "smoke": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-atelier.mjs"
   },
   "devDependencies": {
-    "@supersoniks/concorde": "4.9.98-visual-stack.3",
+    "@supersoniks/concorde": "file:../../concorde",
     "@tailwindcss/container-queries": "^0.1.1",
     "autoprefixer": "^10.4.16",
     "dotenv": "^16.3.1",
     "lit": "^3.1.3",
+    "playwright": "^1.55.0",
     "postcss": "^8.4.14",
     "prettier": "^3.0.3",
     "rollup-plugin-postcss-lit": "^2.1.0",

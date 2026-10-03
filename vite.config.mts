@@ -20,7 +20,7 @@ const currentConfig = packages[libName];
 const config = {
   build: {
     outDir: currentConfig.outDir,
-    emptyOutDir: false,
+    emptyOutDir: true,
     lib: currentConfig.lib,
   },
   server: {

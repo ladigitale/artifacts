@@ -409,10 +409,8 @@
   resolved "https://registry.yarnpkg.com/@sinclair/typebox/-/typebox-0.34.52.tgz#62f8a686e4ab28a8944902e2ad2d648312ef11cb"
   integrity sha512-XiMQh7qqVlxZzcVD+kkGMNGMzcTrDMLWI7S4x7z1MkCkbDPrekpZXEUK0eZqZFMuHQg2a2DZOcDIh9o5v3Gonw==
 
-"@supersoniks/concorde@4.9.98-visual-stack.3":
-  version "4.9.98-visual-stack.3"
-  resolved "https://registry.yarnpkg.com/@supersoniks/concorde/-/concorde-4.9.98-visual-stack.3.tgz#1ac862d7104512eedbfb3578ed79661573d54c3c"
-  integrity sha512-wOzfHzjO7hFn+GDT5WX9o467DcVJ4M+BzJ85773KcCDbpk2nvVip0WSkERVhMAM+d/RCmIqqoGsQvi+l2JWYEw==
+"@supersoniks/concorde@file:../../concorde":
+  version "4.9.98-visual-stack.4"
   dependencies:
     "@lit-labs/motion" "^1.0.7"
     "@lit-labs/observers" "^2.0.2"
@@ -1090,6 +1088,18 @@ pirates@^4.0.1:
   version "4.0.7"
   resolved "https://registry.yarnpkg.com/pirates/-/pirates-4.0.7.tgz#643b4a18c4257c8a65104b73f3049ce9a0a15e22"
   integrity sha512-TfySrs/5nm8fQJDcBDuUng3VOUKsd7S+zqvbOTiGXHfxX4wK31ard+hoNuvkicM/2YFzlpDgABOevKSsB4G/FA==
+
+playwright-core@1.63.0:
+  version "1.63.0"
+  resolved "https://registry.yarnpkg.com/playwright-core/-/playwright-core-1.63.0.tgz#e57665bc32846c213ac39a1e4d5bc6228e76b376"
+  integrity sha512-rYCsBF/M5HjUch52bbtVONEFjv6Xu8sm8h72dNlR5bzIE1fvC/bxgspzkjSfU+MweEMmPM8KJebG6nnyxo5mCg==
+
+playwright@^1.55.0:
+  version "1.63.0"
+  resolved "https://registry.yarnpkg.com/playwright/-/playwright-1.63.0.tgz#99b56f9f69b1b70c44f00bf84b2fe52348ae2511"
+  integrity sha512-+7ziBLidS4NaNCdt57SUDT+wYmmd5fmiQejUic/kb+YsYSCPyOOE9sebzMjNmQrsnNpDJqd4WHvV/8lfKfUDUg==
+  dependencies:
+    playwright-core "1.63.0"
 
 postcss-import@^15.1.0:
   version "15.1.0"
