@@ -50,6 +50,16 @@ export type PublicArtifact = {
   visibility: string;
 };
 
+/** Erreur HTTP de l’API (garde le statut pour distinguer 403 / 429 / 5xx). */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
 async function apiFetch<T>(
   path: string,
   init: RequestInit = {},
@@ -72,7 +82,7 @@ async function apiFetch<T>(
   }
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || `HTTP ${res.status}`);
+    throw new ApiError(text || `HTTP ${res.status}`, res.status);
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
@@ -170,12 +180,56 @@ export async function fetchPublicCollection(
   slug: string,
   collection: string,
   linkToken?: string | null,
+  readKey?: string | null,
 ): Promise<unknown[]> {
-  const q = linkToken ? `?k=${encodeURIComponent(linkToken)}` : "";
+  const params = new URLSearchParams();
+  if (linkToken) params.set("k", linkToken);
+  if (readKey) params.set("rk", readKey);
+  const q = params.toString() ? `?${params}` : "";
   const data = await apiFetch<{member?: unknown[]}>(
     `/public/artifacts/${encodeURIComponent(slug)}/collections/${encodeURIComponent(collection)}${q}`,
   );
   return data.member ?? [];
+}
+
+export class IntakeError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly retryAfter: number | null,
+  ) {
+    super(message);
+  }
+}
+
+/** Envoi anonyme vers une collection `intake` (collecte ouverte par l’éditeur). */
+export async function postIntakeRecord(
+  slug: string,
+  collection: string,
+  data: Record<string, unknown>,
+  code?: string | null,
+  linkToken?: string | null,
+): Promise<{id: string}> {
+  const q = linkToken ? `?k=${encodeURIComponent(linkToken)}` : "";
+  const base = `${normalizeApiBase(loadApiBaseUrl())}/api`;
+  const res = await fetch(
+    `${base}/public/artifacts/${encodeURIComponent(slug)}/collections/${encodeURIComponent(collection)}/records${q}`,
+    {
+      method: "POST",
+      headers: {Accept: "application/json", "Content-Type": "application/json"},
+      body: JSON.stringify(code ? {data, code} : {data}),
+    },
+  );
+  if (res.ok) return (await res.json()) as {id: string};
+  let message = `HTTP ${res.status}`;
+  try {
+    const j = (await res.json()) as {detail?: string; title?: string; error?: string};
+    message = j.detail || j.error || j.title || message;
+  } catch {
+    /* corps non JSON */
+  }
+  const ra = Number(res.headers.get("Retry-After"));
+  throw new IntakeError(message, res.status, Number.isFinite(ra) && ra > 0 ? ra : null);
 }
 
 export async function listVersions(idOrSlug: string): Promise<
