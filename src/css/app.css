@@ -154,3 +154,14 @@ sonic-router {
 sonic-modal::part(modal) {
   overflow-y: visible !important;
 }
+
+/* Viewer public (/<slug>) : pas de shell admin, donc pas de <main> scrollable.
+   html/body sont en overflow:hidden → le viewer porte son propre scroll. */
+artifact-viewer {
+  display: block;
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
