@@ -87,8 +87,8 @@ export class ArtifactLibraryPage extends LitElement {
 
   private filtered(): ArtifactSummary[] {
     const q = (this.filter?.q ?? "").trim().toLowerCase();
-    const vis = this.filter?.visibility ?? "all";
-    const sort = this.filter?.sort ?? "updatedAt";
+    const vis = this.filter?.visibility || "all";
+    const sort = this.filter?.sort || "updatedAt";
     let rows = [...this.items];
     if (vis !== "all") {
       rows = rows.filter((a) => a.visibility === vis);
@@ -207,8 +207,8 @@ export class ArtifactLibraryPage extends LitElement {
     return html`
       <div
         class="flex flex-col gap-4"
-        formDataProvider=${artifactListFilterKey}
-        dataFilterProvider=${artifactListFilterKey}
+        formDataProvider=${artifactListFilterKey.path}
+        dataFilterProvider=${artifactListFilterKey.path}
       >
         <div class="flex flex-wrap items-end justify-between gap-3">
           <div>

@@ -85,7 +85,7 @@ export class ArtifactEditPage extends LitElement {
     if (this.loading) return html`<p>Chargement…</p>`;
 
     return html`
-      <div class="flex flex-col gap-4 max-w-xl" formDataProvider=${artifactEditFormKey}>
+      <div class="flex flex-col gap-4 max-w-xl" formDataProvider=${artifactEditFormKey.path}>
         <div class="flex items-center gap-3">
           <sonic-button
             type="button"
