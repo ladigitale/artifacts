@@ -14,6 +14,7 @@ import {guardDocument} from "../sdui-guard";
 import {applySafeTransforms} from "../jsonata-safe";
 import {loadScriptAssets} from "../script-loader";
 import {startSinks, type SinkDef} from "../sinks";
+import {applyDocFonts} from "../doc-fonts";
 import {dp, set} from "@supersoniks/concorde/utils";
 import tailwind from "../../css/tailwind";
 
@@ -56,6 +57,7 @@ export class ArtifactViewer extends LitElement {
     window.removeEventListener("hashchange", this.onHash);
     this.clearTransformWatchers();
     this.clearLiveData();
+    applyDocFonts(null);
     super.disconnectedCallback();
   }
 
@@ -105,6 +107,7 @@ export class ArtifactViewer extends LitElement {
     try {
       this.data = await fetchPublicArtifact(this.slug, this.linkToken());
       this.guardErrors = guardDocument(this.data.document);
+      applyDocFonts(this.guardErrors.length ? null : (this.data.document as {fonts?: unknown}).fonts);
       this.syncViewFromHash();
       const doc = this.data.document as {
         data?: {stores?: Record<string, StoreDef>};
