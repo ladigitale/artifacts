@@ -9,7 +9,7 @@
     "smoke": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-atelier.mjs"
   },
   "devDependencies": {
-    "@supersoniks/concorde": "file:../../concorde",
+    "@supersoniks/concorde": "4.9.98-visual-stack.4",
     "@tailwindcss/container-queries": "^0.1.1",
     "autoprefixer": "^10.4.16",
     "dotenv": "^16.3.1",
