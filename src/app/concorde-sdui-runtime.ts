@@ -72,3 +72,5 @@ import "@supersoniks/concorde/jsonata";
 import "@supersoniks/concorde/mix";
 import "@supersoniks/concorde/shader";
 import "@supersoniks/concorde/webgpu";
+/* creative-stack : addons hors Concorde */
+import "@supersoniks/creative-stack/sound";

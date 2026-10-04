@@ -6,7 +6,8 @@
     "dev": "yarn generate-routes && vite --host --port 3300",
     "build": "yarn generate-routes && tsc --pretty false && vite build",
     "preview": "vite preview --port 3300",
-    "smoke": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-atelier.mjs"
+    "smoke": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-atelier.mjs",
+    "smoke:sound": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-sound.mjs"
   },
   "devDependencies": {
     "@supersoniks/concorde": "4.9.98-visual-stack.4",
@@ -23,6 +24,7 @@
     "vite": "^5.4.11"
   },
   "dependencies": {
+    "@supersoniks/creative-stack": "github:ladigitale/creative-stack#725bffdf3608cbf44a8e514e230a1d843b0fc209",
     "three": "0.180.0"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"

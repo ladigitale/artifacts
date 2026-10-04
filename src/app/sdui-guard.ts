@@ -7,10 +7,12 @@ const MAX_ATTR: Record<string, number> = {
   palette: 4 * 1024,
   image: 32 * 1024,
   shader: 32 * 1024,
+  bank: 64 * 1024,
 };
 
 const MAX_STORES = 8;
 const MAX_TICKERS = 8;
+const MAX_SOUNDS = 2;
 
 export type GuardError = {path: string; message: string};
 
@@ -31,6 +33,7 @@ export function guardDocument(doc: unknown): GuardError[] {
 
   let storeCount = 0;
   let tickerCount = 0;
+  let soundCount = 0;
 
   const data = d.data as {stores?: Record<string, unknown>} | undefined;
   if (data?.stores && typeof data.stores === "object") {
@@ -59,6 +62,7 @@ export function guardDocument(doc: unknown): GuardError[] {
     }
     if (tag === "sonic-store") storeCount += 1;
     if (tag === "sonic-ticker") tickerCount += 1;
+    if (tag === "sonic-sound") soundCount += 1;
     const attrs = n.attributes;
     if (attrs && typeof attrs === "object") {
       for (const [attr, val] of Object.entries(attrs as Record<string, unknown>)) {
@@ -93,6 +97,9 @@ export function guardDocument(doc: unknown): GuardError[] {
   }
   if (tickerCount > MAX_TICKERS) {
     errors.push({path: "/views", message: `Trop de sonic-ticker (max ${MAX_TICKERS}).`});
+  }
+  if (soundCount > MAX_SOUNDS) {
+    errors.push({path: "/views", message: `Trop de sonic-sound (max ${MAX_SOUNDS}).`});
   }
   return errors;
 }
