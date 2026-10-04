@@ -93,7 +93,7 @@ await page.waitForTimeout(600);
 const m1 = (await snapshot(page)).sound.music;
 await page.waitForTimeout(700);
 s = await snapshot(page);
-check("pause : position figée", s.sound.paused && !s.sound.music.playing && m1.bar === s.sound.music.bar && m1.beat === s.sound.music.beat);
+check("pause : position figée", s.sound.paused && !s.sound.music.playing && m1.bar === s.sound.music.bar && m1.beat === s.sound.music.beat, JSON.stringify({paused: s.sound.paused, m1, m2: s.sound.music}));
 await btn("pause");
 
 await btn("win");

@@ -8,11 +8,21 @@ const MAX_ATTR: Record<string, number> = {
   image: 32 * 1024,
   shader: 32 * 1024,
   bank: 64 * 1024,
+  pattern: 16 * 1024,
+  samples: 16 * 1024,
+  params: 4 * 1024,
 };
 
 const MAX_STORES = 8;
 const MAX_TICKERS = 8;
 const MAX_SOUNDS = 2;
+/** Instruments et horloges audio par document. */
+const MAX_AUDIO: Record<string, number> = {
+  "sonic-patch": 16,
+  "sonic-sampler": 8,
+  "sonic-sequencer": 4,
+  "sonic-audio-analyser": 4,
+};
 
 export type GuardError = {path: string; message: string};
 
@@ -34,6 +44,7 @@ export function guardDocument(doc: unknown): GuardError[] {
   let storeCount = 0;
   let tickerCount = 0;
   let soundCount = 0;
+  const audioCount: Record<string, number> = {};
 
   const data = d.data as {stores?: Record<string, unknown>} | undefined;
   if (data?.stores && typeof data.stores === "object") {
@@ -63,6 +74,7 @@ export function guardDocument(doc: unknown): GuardError[] {
     if (tag === "sonic-store") storeCount += 1;
     if (tag === "sonic-ticker") tickerCount += 1;
     if (tag === "sonic-sound") soundCount += 1;
+    if (tag in MAX_AUDIO) audioCount[tag] = (audioCount[tag] ?? 0) + 1;
     const attrs = n.attributes;
     if (attrs && typeof attrs === "object") {
       for (const [attr, val] of Object.entries(attrs as Record<string, unknown>)) {
@@ -100,6 +112,11 @@ export function guardDocument(doc: unknown): GuardError[] {
   }
   if (soundCount > MAX_SOUNDS) {
     errors.push({path: "/views", message: `Trop de sonic-sound (max ${MAX_SOUNDS}).`});
+  }
+  for (const [tag, max] of Object.entries(MAX_AUDIO)) {
+    if ((audioCount[tag] ?? 0) > max) {
+      errors.push({path: "/views", message: `Trop de ${tag} (max ${max}).`});
+    }
   }
   return errors;
 }
