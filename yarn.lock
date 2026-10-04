@@ -420,6 +420,12 @@
     jsonata "^2.2.2"
     url-pattern "^1.0.3"
 
+"@supersoniks/creative-stack@github:ladigitale/creative-stack#725bffdf3608cbf44a8e514e230a1d843b0fc209":
+  version "0.1.0"
+  resolved "https://codeload.github.com/ladigitale/creative-stack/tar.gz/725bffdf3608cbf44a8e514e230a1d843b0fc209"
+  dependencies:
+    jsonata "^2.2.2"
+
 "@tailwindcss/container-queries@^0.1.1":
   version "0.1.1"
   resolved "https://registry.yarnpkg.com/@tailwindcss/container-queries/-/container-queries-0.1.1.tgz#9a759ce2cb8736a4c6a0cb93aeb740573a731974"
