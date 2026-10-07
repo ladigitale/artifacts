@@ -10,7 +10,7 @@ import {
   type PublicArtifact,
 } from "../cloud/client";
 import {explainFetchError, loadApiBaseUrl} from "../cloud/api-base";
-import {guardDocument} from "../sdui-guard";
+import {docCapabilities, guardDocument} from "../sdui-guard";
 import {applySafeTransforms} from "../jsonata-safe";
 import {loadScriptAssets} from "../script-loader";
 import {startSinks, type SinkDef} from "../sinks";
@@ -301,6 +301,21 @@ export class ArtifactViewer extends LitElement {
     `;
   }
 
+  /** Bandeau : l'artefact peut demander caméra / micro (jamais sans un clic de l'utilisateur). */
+  private renderCapabilities() {
+    const caps = docCapabilities(this.data?.document);
+    if (!caps.length) return nothing;
+    const names = caps.map((c) => (c === "camera" ? "la caméra" : "le micro"));
+    const list = names.length > 1 ? `${names.slice(0, -1).join(", ")} et ${names[names.length - 1]}` : names[0];
+    return html`<p
+      class="artifact-capabilities m-0 mx-3 mt-3 sm:mx-4 px-3 py-2 rounded-md text-sm print:hidden"
+      style="background:rgba(127,127,127,.12)"
+      role="note"
+    >
+      Cet artefact peut demander l’accès à ${list}. Rien n’est activé sans votre clic, et vous pourrez refuser.
+    </p>`;
+  }
+
   render() {
     if (this.loading) return html`<p class="p-4">Chargement…</p>`;
     if (this.error) {
@@ -350,6 +365,7 @@ export class ArtifactViewer extends LitElement {
               </nav>
             `
           : nothing}
+        ${this.renderCapabilities()}
         <div class="artifact-sdui flex-1 min-h-[12rem] p-3 sm:p-4">
           ${root && this.scriptsReady
             ? html`<sonic-sdui .props=${root}></sonic-sdui>`

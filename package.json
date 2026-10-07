@@ -7,7 +7,9 @@
     "build": "yarn generate-routes && tsc --pretty false && vite build",
     "preview": "vite preview --port 3300",
     "smoke": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-atelier.mjs",
-    "smoke:sound": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-sound.mjs"
+    "smoke:sound": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-sound.mjs",
+    "smoke:audio": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-audio.mjs",
+    "smoke:media": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-media.mjs"
   },
   "devDependencies": {
     "@supersoniks/concorde": "4.9.98-visual-stack.4",
@@ -24,7 +26,7 @@
     "vite": "^5.4.11"
   },
   "dependencies": {
-    "@supersoniks/creative-stack": "github:ladigitale/creative-stack#725bffdf3608cbf44a8e514e230a1d843b0fc209",
+    "@supersoniks/creative-stack": "github:ladigitale/creative-stack#b90e7e1823151ba843b81cb31b76f425c24b0534",
     "three": "0.180.0"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
