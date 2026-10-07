@@ -75,3 +75,4 @@ import "@supersoniks/concorde/webgpu";
 /* creative-stack : addons hors Concorde */
 import "@supersoniks/creative-stack/sound";
 import "@supersoniks/creative-stack/audio";
+import "@supersoniks/creative-stack/media";

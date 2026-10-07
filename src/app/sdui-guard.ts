@@ -22,7 +22,25 @@ const MAX_AUDIO: Record<string, number> = {
   "sonic-sampler": 8,
   "sonic-sequencer": 4,
   "sonic-audio-analyser": 4,
+  "sonic-mic": 2,
+  "sonic-camera": 2,
+  "sonic-video": 6,
 };
+
+/** Accès sensibles : le composant n'est accepté que si le document les déclare dans `capabilities`. */
+export const CAPABILITY_TAGS: Record<string, "camera" | "microphone"> = {
+  "sonic-camera": "camera",
+  "sonic-mic": "microphone",
+};
+
+export const KNOWN_CAPABILITIES = ["camera", "microphone"] as const;
+
+/** Capacités déclarées par le document (inconnues ignorées). */
+export function docCapabilities(doc: unknown): string[] {
+  const caps = (doc as {capabilities?: unknown} | null)?.capabilities;
+  if (!Array.isArray(caps)) return [];
+  return caps.filter((c): c is string => typeof c === "string" && (KNOWN_CAPABILITIES as readonly string[]).includes(c));
+}
 
 export type GuardError = {path: string; message: string};
 
@@ -45,6 +63,10 @@ export function guardDocument(doc: unknown): GuardError[] {
   let tickerCount = 0;
   let soundCount = 0;
   const audioCount: Record<string, number> = {};
+  const declared = new Set(docCapabilities(d));
+  if (d.capabilities !== undefined && !Array.isArray(d.capabilities)) {
+    errors.push({path: "/capabilities", message: 'capabilities : tableau attendu (ex. ["camera"]).'});
+  }
 
   const data = d.data as {stores?: Record<string, unknown>} | undefined;
   if (data?.stores && typeof data.stores === "object") {
@@ -75,6 +97,10 @@ export function guardDocument(doc: unknown): GuardError[] {
     if (tag === "sonic-ticker") tickerCount += 1;
     if (tag === "sonic-sound") soundCount += 1;
     if (tag in MAX_AUDIO) audioCount[tag] = (audioCount[tag] ?? 0) + 1;
+    const cap = CAPABILITY_TAGS[tag];
+    if (cap && !declared.has(cap)) {
+      errors.push({path: `${path}/tagName`, message: `${tag} : déclarer "${cap}" dans capabilities.`});
+    }
     const attrs = n.attributes;
     if (attrs && typeof attrs === "object") {
       for (const [attr, val] of Object.entries(attrs as Record<string, unknown>)) {
