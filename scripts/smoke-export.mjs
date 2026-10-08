@@ -23,7 +23,7 @@ const fixtures = {
   "sampler-de-poche": fx("sampler-de-poche.json"),
 };
 const CSP = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:; img-src 'self' https: data: blob:; media-src 'self' https: blob: data:; connect-src 'self' https: blob:; worker-src 'self' blob: https://cdn.jsdelivr.net; child-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
-const PERMISSIONS = "camera=(self), microphone=(self), geolocation=(), payment=()";
+const PERMISSIONS = "camera=(self), microphone=(self), midi=(self), display-capture=(self), geolocation=(), payment=(), usb=(), browsing-topics=()";
 
 const server = http.createServer((q, r) => {
   const u = new URL(q.url, "http://x");

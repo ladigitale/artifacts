@@ -26,7 +26,7 @@
     "vite": "^5.4.11"
   },
   "dependencies": {
-    "@supersoniks/creative-stack": "github:ladigitale/creative-stack#f140c7c553c303ca5e9714b77053a164f1092869",
+    "@supersoniks/creative-stack": "github:ladigitale/creative-stack#d7b77fe605c3d7fb5aabc3fac99ddbb3550cf9a5",
     "three": "0.180.0"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
