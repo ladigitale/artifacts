@@ -29,7 +29,7 @@
     "vite": "^5.4.11"
   },
   "dependencies": {
-    "@ladigitale/agent-stack": "github:ladigitale/agent-stack#607f556f68812d734364a381c537aaa2226c0e8c",
+    "@ladigitale/agent-stack": "github:ladigitale/agent-stack#41079900498b107683f52678386ea24885a5a64b",
     "@supersoniks/creative-stack": "github:ladigitale/creative-stack#26207411c465a7f3b9b63e7177ff770a52bf6a88",
     "three": "0.180.0"
   },
