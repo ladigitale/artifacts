@@ -76,3 +76,5 @@ import "@supersoniks/concorde/webgpu";
 import "@supersoniks/creative-stack/sound";
 import "@supersoniks/creative-stack/audio";
 import "@supersoniks/creative-stack/media";
+import "@supersoniks/creative-stack/physics";
+import "@supersoniks/creative-stack/controller";
