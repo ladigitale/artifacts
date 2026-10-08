@@ -13,7 +13,22 @@ export function normalizeApiBase(url: string): string {
     .replace(/\/api$/, "");
 }
 
+/**
+ * Embed (`<script src=".../embed.js">`) : l'API est fixée par l'intégration, jamais lue
+ * dans le localStorage de la page hôte (autre origine, autres clés).
+ */
+let embedApiBase: string | null = null;
+
+export function setEmbedApiBase(url: string | null | undefined): void {
+  embedApiBase = url ? normalizeApiBase(url) : normalizeApiBase(DEFAULT_API_BASE);
+}
+
+export function isEmbedContext(): boolean {
+  return embedApiBase !== null;
+}
+
 export function loadApiBaseUrl(): string {
+  if (embedApiBase !== null) return embedApiBase;
   try {
     const stored = localStorage.getItem(API_BASE_KEY);
     if (stored?.trim()) return normalizeApiBase(stored);

@@ -1,5 +1,4 @@
 import "@supersoniks/concorde/button";
-import "@supersoniks/creative-stack/interactive";
 import "@supersoniks/concorde/sdui";
 import {html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
@@ -13,8 +12,11 @@ import {explainFetchError, loadApiBaseUrl} from "../cloud/api-base";
 import {docCapabilities, guardDocument} from "../sdui-guard";
 import {applySafeTransforms} from "../jsonata-safe";
 import {loadScriptAssets} from "../script-loader";
+import {ensureAddonsFor} from "../addons";
 import {startSinks, type SinkDef} from "../sinks";
 import {applyDocFonts} from "../doc-fonts";
+import {claimNamespace, transformDocument, type NamespaceClaim} from "../doc-transform";
+import {declaredNames, nsName, nsTree, nsValue} from "../dp-namespace";
 import {dp, set} from "@supersoniks/concorde/utils";
 import tailwind from "../../css/tailwind";
 
@@ -33,6 +35,17 @@ export class ArtifactViewer extends LitElement {
   static styles = [tailwind];
 
   @property({type: String}) slug = "";
+  /**
+   * Intégré dans une page tiers (embed.js) : jamais d'accès à l'URL de l'hôte
+   * (ni `?k=` / `?rk=`, ni `#vue`, ni `history`) ; les vues changent en interne.
+   */
+  @property({type: Boolean}) embedded = false;
+  /** Embed : jeton de lien (`k`) d'un artefact « lien ». */
+  @property({type: String, attribute: "link-key"}) linkKey = "";
+  /** Embed : lien secret de lecture (`rk`) des collections. */
+  @property({type: String, attribute: "read-key"}) readKeyValue = "";
+  /** Embed : vue affichée au démarrage (sinon `defaultView`). */
+  @property({type: String}) view = "";
 
   @state() private data: PublicArtifact | null = null;
   @state() private error = "";
@@ -46,17 +59,33 @@ export class ArtifactViewer extends LitElement {
   private transformUnsubs: Array<() => void> = [];
   private refreshTimers: number[] = [];
   private stopSinks: (() => void) | null = null;
+  /** Préfixe des DataProviders (vide sauf collision entre artefacts intégrés). */
+  private ns = "";
+  private nsNames = new Set<string>();
+  private nsClaim: NamespaceClaim | null = null;
+  private rootCache = new Map<string, Record<string, unknown>>();
+
+  /** Nom effectif d'un DataProvider / store du document. */
+  private n(name: string): string {
+    return nsName(this.ns, name);
+  }
 
   connectedCallback() {
     super.connectedCallback();
-    window.addEventListener("hashchange", this.onHash);
+    if (this.embedded) {
+      this.addEventListener("click", this.onEmbeddedClick);
+    } else {
+      window.addEventListener("hashchange", this.onHash);
+    }
     void this.load();
   }
 
   disconnectedCallback() {
     window.removeEventListener("hashchange", this.onHash);
+    this.removeEventListener("click", this.onEmbeddedClick);
     this.clearTransformWatchers();
     this.clearLiveData();
+    this.releaseNamespace();
     applyDocFonts(null);
     super.disconnectedCallback();
   }
@@ -65,12 +94,32 @@ export class ArtifactViewer extends LitElement {
     this.syncViewFromHash();
   };
 
+  /**
+   * Embed : un lien interne `#vue` change de vue sans toucher au hash de la page hôte.
+   * `composedPath` traverse les shadow roots (sonic-link, sonic-button…).
+   */
+  private onEmbeddedClick = (e: Event) => {
+    const views = (this.data?.document as {views?: ViewDef[]} | undefined)?.views ?? [];
+    for (const el of e.composedPath()) {
+      if (!(el instanceof Element)) continue;
+      const href = el.getAttribute("href");
+      if (!href?.startsWith("#")) continue;
+      const id = href.slice(1);
+      if (!views.some((v) => v.id === id)) return;
+      e.preventDefault();
+      this.goView(id);
+      return;
+    }
+  };
+
   private linkToken(): string | null {
+    if (this.embedded) return this.linkKey || null;
     return new URLSearchParams(location.search).get("k");
   }
 
   /** Lien secret de lecture (`rk`) pour les collections non publiques. */
   private readKey(): string | null {
+    if (this.embedded) return this.readKeyValue || null;
     return new URLSearchParams(location.search).get("rk");
   }
 
@@ -79,6 +128,14 @@ export class ArtifactViewer extends LitElement {
     this.refreshTimers = [];
     this.stopSinks?.();
     this.stopSinks = null;
+  }
+
+  private releaseNamespace() {
+    this.nsClaim?.release();
+    this.nsClaim = null;
+    this.ns = "";
+    this.nsNames = new Set();
+    this.rootCache.clear();
   }
 
   private clearTransformWatchers() {
@@ -105,7 +162,12 @@ export class ArtifactViewer extends LitElement {
     this.clearTransformWatchers();
     this.clearLiveData();
     try {
-      this.data = await fetchPublicArtifact(this.slug, this.linkToken());
+      const fetched = await fetchPublicArtifact(this.slug, this.linkToken());
+      this.data = {...fetched, document: transformDocument(fetched.document)};
+      this.releaseNamespace();
+      this.nsNames = declaredNames(this.data.document, this.slug);
+      this.nsClaim = claimNamespace(this.slug, this.nsNames);
+      this.ns = this.nsClaim.ns;
       this.guardErrors = guardDocument(this.data.document);
       applyDocFonts(this.guardErrors.length ? null : (this.data.document as {fonts?: unknown}).fonts);
       this.syncViewFromHash();
@@ -114,11 +176,11 @@ export class ArtifactViewer extends LitElement {
       };
       this.docStores = doc.data?.stores ?? {};
       if (!this.guardErrors.length) {
-        await loadScriptAssets(this.data.scriptAssets);
+        await Promise.all([loadScriptAssets(this.data.scriptAssets), ensureAddonsFor(this.data.document)]);
         this.scriptsReady = true;
         await this.applyDataProviders();
         const sinks = (this.data.document as {data?: {sinks?: Record<string, SinkDef>}}).data?.sinks;
-        this.stopSinks = startSinks(this.slug, this.linkToken(), sinks);
+        this.stopSinks = startSinks(this.slug, this.linkToken(), this.nsSinks(sinks));
       }
     } catch (e) {
       const raw = e instanceof Error ? e.message : String(e);
@@ -143,7 +205,7 @@ export class ArtifactViewer extends LitElement {
       this.viewId = "";
       return;
     }
-    const hash = location.hash.replace(/^#/, "");
+    const hash = this.embedded ? this.viewId || this.view : location.hash.replace(/^#/, "");
     const match = doc.views.find((v) => v.id === hash);
     this.viewId = match?.id ?? doc.defaultView ?? doc.views[0].id;
   }
@@ -160,14 +222,14 @@ export class ArtifactViewer extends LitElement {
     // Une source a pu changer pendant l’évaluation : seule la dernière publie.
     if (run !== this.transformRun) return;
     for (const [name, value] of Object.entries(transforms)) {
-      set(name, value);
-      set(`artifact:${this.slug}:transform:${name}`, value);
+      set(this.n(name), value);
+      set(this.n(`artifact:${this.slug}:transform:${name}`), value);
     }
   }
 
   private watchSource(name: string) {
     try {
-      const provider = dp(name) as {
+      const provider = dp(this.n(name)) as {
         onAssign?: (cb: (v: unknown) => void) => void;
         offAssign?: (cb: (v: unknown) => void) => void;
       };
@@ -221,9 +283,9 @@ export class ArtifactViewer extends LitElement {
       });
       this.sourceData[name] = items;
       this.sourceData[collection] = items;
-      set(name, {member: items});
-      set(collection, {member: items});
-      set(`artifact:${this.slug}:${name}`, {member: items});
+      set(this.n(name), {member: items});
+      set(this.n(collection), {member: items});
+      set(this.n(`artifact:${this.slug}:${name}`), {member: items});
       this.watchSource(name);
       const every = Number(src.refresh);
       // Pas de relecture si l’accès est refusé (élève sans lien secret) : toute une classe
@@ -248,9 +310,9 @@ export class ArtifactViewer extends LitElement {
       const items = member.map((row) =>
         row && typeof row === "object" && "data" in row ? (row as {data: unknown}).data : row,
       );
-      set(name, {member: items});
-      set(collection, {member: items});
-      set(`artifact:${this.slug}:${name}`, {member: items});
+      set(this.n(name), {member: items});
+      set(this.n(collection), {member: items});
+      set(this.n(`artifact:${this.slug}:${name}`), {member: items});
       return true;
     } catch (e) {
       // Garde les dernières données ; arrête la relecture si l’accès est refusé.
@@ -261,10 +323,42 @@ export class ArtifactViewer extends LitElement {
   private currentRoot(): Record<string, unknown> | null {
     const doc = this.data?.document as {views?: ViewDef[]} | undefined;
     const view = doc?.views?.find((v) => v.id === this.viewId);
-    return view?.root ?? null;
+    if (!view?.root) return null;
+    if (!this.ns) return view.root;
+    // Même objet d'un rendu à l'autre : sonic-sdui ne reconstruit pas la vue.
+    let root = this.rootCache.get(view.id);
+    if (!root) {
+      root = nsTree(this.ns, this.nsNames, view.root);
+      this.rootCache.set(view.id, root);
+    }
+    return root;
+  }
+
+  private nsSinks(sinks: Record<string, SinkDef> | undefined): Record<string, SinkDef> | undefined {
+    if (!sinks || !this.ns) return sinks;
+    const v = (x: string) => nsValue(this.ns, this.nsNames, x);
+    const out: Record<string, SinkDef> = {};
+    for (const [name, s] of Object.entries(sinks)) {
+      if (!s) continue;
+      out[name] = {
+        ...s,
+        from: typeof s.from === "string" ? v(s.from) : s.from,
+        code: typeof s.code === "string" ? v(s.code) : s.code,
+        ack: typeof s.ack === "string" ? v(s.ack) : s.ack,
+        merge: s.merge
+          ? Object.fromEntries(Object.entries(s.merge).map(([k, p]) => [k, typeof p === "string" ? v(p) : p]))
+          : s.merge,
+      };
+    }
+    return out;
   }
 
   private goView(id: string) {
+    if (this.embedded) {
+      this.viewId = id;
+      this.dispatchEvent(new CustomEvent("artifact-view", {detail: {view: id}, bubbles: true, composed: true}));
+      return;
+    }
     const params = new URLSearchParams();
     const k = this.linkToken();
     const rk = this.readKey();
@@ -288,8 +382,8 @@ export class ArtifactViewer extends LitElement {
                 ? def.initial
                 : JSON.stringify(def.initial);
           return html`<sonic-store
-            id=${id}
-            dataProvider=${def.dataProvider || id}
+            id=${this.n(id)}
+            dataProvider=${this.n(def.dataProvider || id)}
             initial=${initial}
             reducer=${def.reducer ?? ""}
             history=${def.history ?? 0}

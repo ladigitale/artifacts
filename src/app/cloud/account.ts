@@ -1,3 +1,5 @@
+import {isEmbedContext} from "./api-base";
+
 export type ArtifactsAccount = {
   apiBaseUrl: string;
   token: string;
@@ -12,6 +14,8 @@ export type ArtifactsAccount = {
 const STORAGE_KEY = "artifacts-account";
 
 export function loadArtifactsAccount(): ArtifactsAccount | null {
+  // Embarqué sur un site tiers : lecture publique uniquement, jamais de jeton.
+  if (isEmbedContext()) return null;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;

@@ -66,15 +66,6 @@ import "@supersoniks/concorde/translation";
 import "@supersoniks/concorde/value";
 import "@supersoniks/concorde/jsonata";
 import "@supersoniks/concorde/mix";
-/* creative-stack : addons hors Concorde (Concorde classique 5.x).
- * `interactive` complète aussi sonic-if (mode attributs) et sonic-value (format). */
-import "@supersoniks/creative-stack/3d";
-import "@supersoniks/creative-stack/hugging-face-infer";
-import "@supersoniks/creative-stack/interactive";
-import "@supersoniks/creative-stack/shader";
-import "@supersoniks/creative-stack/webgpu";
-import "@supersoniks/creative-stack/sound";
-import "@supersoniks/creative-stack/audio";
-import "@supersoniks/creative-stack/media";
-import "@supersoniks/creative-stack/physics";
-import "@supersoniks/creative-stack/controller";
+/* creative-stack : `interactive` (socle, complète aussi sonic-if / sonic-value) est importé
+ * par ./addons ; les autres addons sont chargés à la demande selon le document. */
+import "./addons";
