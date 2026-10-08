@@ -76,11 +76,8 @@ sonic-router {
   display: block;
 }
 
-/* Scroll principal : overflow-x visible pour laisser peindre les tooltips
-   dans les gouttières ; le contenu reste borné (max-w-6xl) dans un enfant. */
-.app-shell-main {
-  overflow-x: visible;
-}
+/* Scroll principal porté par <main> (voir admin-shell) ; le contenu reste
+   borné (max-w-6xl) dans .shell-content, les gouttières sont dans <main>. */
 .custom-scroll {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
@@ -130,7 +127,8 @@ sonic-router {
     display: none !important;
   }
 
-  .app-shell-main {
+  .app-shell-main,
+  .shell-content {
     max-width: none !important;
     overflow: visible !important;
     padding: 0 !important;

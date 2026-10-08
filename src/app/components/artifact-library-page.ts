@@ -2,6 +2,11 @@ import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/icon";
 import "@supersoniks/concorde/badge";
 import "@supersoniks/concorde/checkbox";
+import "@supersoniks/concorde/pop";
+import "@supersoniks/concorde/menu";
+import "@supersoniks/concorde/menu-item";
+import "@supersoniks/concorde/divider";
+import "@supersoniks/concorde/tooltip";
 import {html, LitElement, nothing} from "lit";
 import {customElement, state} from "lit/decorators.js";
 import {subscribe} from "@supersoniks/concorde/decorators";
@@ -51,6 +56,7 @@ export class ArtifactLibraryPage extends LitElement {
   @state() private loading = true;
   @state() private selected = new Set<string>();
   @state() private busy = false;
+  @state() private copiedId = "";
 
   connectedCallback() {
     super.connectedCallback();
@@ -117,7 +123,68 @@ export class ArtifactLibraryPage extends LitElement {
   private async copyLink(a: ArtifactSummary) {
     const path = artifactSharePath(a);
     const url = new URL(path, location.origin).href;
-    await navigator.clipboard.writeText(url);
+    try {
+      await navigator.clipboard.writeText(url);
+      this.copiedId = a.id;
+      window.setTimeout(() => {
+        if (this.copiedId === a.id) this.copiedId = "";
+      }, 2000);
+    } catch {
+      prompt("Copiez le lien :", url);
+    }
+  }
+
+  private menuIcon(name: string) {
+    return html`<sonic-icon slot="prefix" library="custom" name=${name} size="sm"></sonic-icon>`;
+  }
+
+  private renderActions(a: ArtifactSummary) {
+    const copied = this.copiedId === a.id;
+    return html`
+      <sonic-pop class="inline-block" placement="bottom-end" shadow="sm">
+        <sonic-tooltip label="Actions" placement="left">
+          <sonic-button
+            type="button"
+            shape="circle"
+            size="sm"
+            variant="ghost"
+            ?disabled=${this.busy}
+            data-aria-label=${`Actions pour ${a.title}`}
+          >
+            <sonic-icon library="custom" name="more-vert" size="lg"></sonic-icon>
+          </sonic-button>
+        </sonic-tooltip>
+        <sonic-menu
+          slot="content"
+          direction="column"
+          align="left"
+          size="sm"
+          minWidth="13rem"
+        >
+          <sonic-menu-item @click=${() => this.openArtifact(a)}>
+            ${this.menuIcon("open-new-window")} Ouvrir l’artefact
+          </sonic-menu-item>
+          <sonic-menu-item @click=${() => this.copyLink(a)}>
+            ${this.menuIcon(copied ? "check" : "copy")}
+            ${copied ? "Lien copié" : "Copier le lien"}
+          </sonic-menu-item>
+          <sonic-menu-item @click=${() => navigate(`/admin/${a.slug}/edit`)}>
+            ${this.menuIcon("edit-pencil")} Modifier
+          </sonic-menu-item>
+          <sonic-menu-item @click=${() => navigate(`/admin/${a.slug}/versions`)}>
+            ${this.menuIcon("clock")} Historique des versions
+          </sonic-menu-item>
+          <sonic-divider size="xs"></sonic-divider>
+          <sonic-menu-item
+            type="danger"
+            ?disabled=${this.busy}
+            @click=${() => this.removeOne(a)}
+          >
+            ${this.menuIcon("trash")} Supprimer
+          </sonic-menu-item>
+        </sonic-menu>
+      </sonic-pop>
+    `;
   }
 
   private async removeOne(a: ArtifactSummary) {
@@ -277,9 +344,9 @@ export class ArtifactLibraryPage extends LitElement {
                       </th>
                       <th class="p-2">Titre</th>
                       <th class="p-2">Visibilité</th>
-                      <th class="p-2">Version</th>
-                      <th class="p-2">Modifié</th>
-                      <th class="p-2 text-right">Actions</th>
+                      <th class="p-2 hidden sm:table-cell">Version</th>
+                      <th class="p-2 hidden md:table-cell">Modifié</th>
+                      <th class="p-2 text-right"><span class="sr-only">Actions</span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -296,65 +363,26 @@ export class ArtifactLibraryPage extends LitElement {
                             />
                           </td>
                           <td class="p-2">
-                            <div class="font-medium">${a.title}</div>
-                            <div class="opacity-60 text-xs">${a.slug}</div>
+                            <a
+                              class="font-medium text-inherit no-underline hover:underline cursor-pointer"
+                              href=${`/admin/${a.slug}/edit`}
+                              @click=${(e: Event) => {
+                                e.preventDefault();
+                                navigate(`/admin/${a.slug}/edit`);
+                              }}
+                              >${a.title}</a
+                            >
+                            <div class="opacity-60 text-xs break-all">${a.slug}</div>
                           </td>
                           <td class="p-2">
                             <sonic-badge variant="outline" size="sm">${a.visibility}</sonic-badge>
                           </td>
-                          <td class="p-2">v${a.currentVersion}</td>
-                          <td class="p-2 opacity-70 whitespace-nowrap">
+                          <td class="p-2 hidden sm:table-cell">v${a.currentVersion}</td>
+                          <td class="p-2 opacity-70 whitespace-nowrap hidden md:table-cell">
                             ${a.updatedAt?.slice?.(0, 16)?.replace("T", " ") ?? a.updatedAt}
                           </td>
-                          <td class="p-2">
-                            <div class="flex flex-wrap justify-end gap-1">
-                              <sonic-button
-                                type="button"
-                                size="xs"
-                                variant="ghost"
-                                title="Ouvrir"
-                                @click=${() => this.openArtifact(a)}
-                              >
-                                <sonic-icon library="custom" name="open-new-window" size="sm"></sonic-icon>
-                              </sonic-button>
-                              <sonic-button
-                                type="button"
-                                size="xs"
-                                variant="ghost"
-                                title="Copier le lien"
-                                @click=${() => this.copyLink(a)}
-                              >
-                                <sonic-icon library="custom" name="copy" size="sm"></sonic-icon>
-                              </sonic-button>
-                              <sonic-button
-                                type="button"
-                                size="xs"
-                                variant="ghost"
-                                title="Éditer"
-                                @click=${() => navigate(`/admin/${a.slug}/edit`)}
-                              >
-                                <sonic-icon library="custom" name="edit-pencil" size="sm"></sonic-icon>
-                              </sonic-button>
-                              <sonic-button
-                                type="button"
-                                size="xs"
-                                variant="ghost"
-                                title="Versions"
-                                @click=${() => navigate(`/admin/${a.slug}/versions`)}
-                              >
-                                <sonic-icon library="custom" name="clock" size="sm"></sonic-icon>
-                              </sonic-button>
-                              <sonic-button
-                                type="button"
-                                size="xs"
-                                variant="ghost"
-                                title="Supprimer"
-                                ?disabled=${this.busy}
-                                @click=${() => this.removeOne(a)}
-                              >
-                                <sonic-icon library="custom" name="trash" size="sm"></sonic-icon>
-                              </sonic-button>
-                            </div>
+                          <td class="p-1 text-right w-12">
+                            ${this.renderActions(a)}
                           </td>
                         </tr>
                       `,
