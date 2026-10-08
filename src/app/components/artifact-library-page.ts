@@ -171,6 +171,9 @@ export class ArtifactLibraryPage extends LitElement {
           <sonic-menu-item @click=${() => navigate(`/admin/${a.slug}/edit`)}>
             ${this.menuIcon("edit-pencil")} Modifier
           </sonic-menu-item>
+          <sonic-menu-item @click=${() => navigate(`/admin/${a.slug}/atelier`)}>
+            ${this.menuIcon("chat-bubble")} Modifier avec l’atelier
+          </sonic-menu-item>
           <sonic-menu-item @click=${() => navigate(`/admin/${a.slug}/versions`)}>
             ${this.menuIcon("clock")} Historique des versions
           </sonic-menu-item>
@@ -284,10 +287,15 @@ export class ArtifactLibraryPage extends LitElement {
               ${this.loading ? "Chargement…" : `${rows.length} artefact(s)`}
             </p>
           </div>
-          <sonic-button type="button" size="sm" variant="outline" @click=${() => this.refresh()}>
-            <sonic-icon slot="prefix" library="custom" name="refresh" size="sm"></sonic-icon>
-            Actualiser
-          </sonic-button>
+          <div class="flex flex-wrap gap-2">
+            <sonic-button type="button" size="sm" @click=${() => navigate("/admin/atelier")}>
+              Créer avec l’atelier
+            </sonic-button>
+            <sonic-button type="button" size="sm" variant="outline" @click=${() => this.refresh()}>
+              <sonic-icon slot="prefix" library="custom" name="refresh" size="sm"></sonic-icon>
+              Actualiser
+            </sonic-button>
+          </div>
         </div>
 
         <artifact-filter-bar

@@ -4,14 +4,20 @@ import "@supersoniks/concorde/core/components/functional/router/router";
 
 import layout from "./layout";
 import adminLayout from "./admin/layout";
+import admin_slugAtelierPage from "./admin/[slug]/atelier/page";
 import admin_slugEditPage from "./admin/[slug]/edit/page";
 import admin_slugVersionsPage from "./admin/[slug]/versions/page";
+import adminAtelierPage from "./admin/atelier/page";
 import adminPage from "./admin/page";
 import cloudLayout from "./cloud/layout";
 import cloudPage from "./cloud/page";
 import page from "./page";
 import {renderPublicArtifactRoute} from "./public-artifact-route";
 export const router = (basePath?:string) => {
+const admin_slugAtelierDefaultLayoutRoutes = {
+    "/admin/:slug/atelier": admin_slugAtelierPage
+}        
+
 const admin_slugEditDefaultLayoutRoutes = {
     "/admin/:slug/edit": admin_slugEditPage
 }        
@@ -21,12 +27,18 @@ const admin_slugVersionsDefaultLayoutRoutes = {
 }        
 
 const admin_slugDefaultLayoutRoutes = {
+    "/admin/:slug/atelier(/*)": () => html`<sonic-router .basePath=${basePath} .routes=${admin_slugAtelierDefaultLayoutRoutes}></sonic-router>`,
     "/admin/:slug/edit(/*)": () => html`<sonic-router .basePath=${basePath} .routes=${admin_slugEditDefaultLayoutRoutes}></sonic-router>`,
     "/admin/:slug/versions(/*)": () => html`<sonic-router .basePath=${basePath} .routes=${admin_slugVersionsDefaultLayoutRoutes}></sonic-router>`
 }        
 
+const adminAtelierDefaultLayoutRoutes = {
+    "/admin/atelier$": adminAtelierPage
+}        
+
 const adminLayoutRoutes = {
     "/admin/:slug(/*)": () => html`<sonic-router .basePath=${basePath} .routes=${admin_slugDefaultLayoutRoutes}></sonic-router>`,
+    "/admin/atelier\\b": () => html`<sonic-router .basePath=${basePath} .routes=${adminAtelierDefaultLayoutRoutes}></sonic-router>`,
     "/admin$": adminPage
 }        
 
