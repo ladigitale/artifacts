@@ -74,10 +74,14 @@ for (const id of ["title", "when", "qty", "book", "row", "col"]) {
 }
 const field = await q(page, '[data-sdui-node-id="qty"]');
 check("champ lié → sonic-input", field[0]?.tag === "sonic-input");
+const count0 = await q(page, '[data-sdui-node-id="count"]');
+check("état initial du store visible", count0[0]?.text === "0", JSON.stringify(count0));
 
 await clickDeep(page, '[data-sdui-node-id="book"]');
 await page.waitForTimeout(500);
 const st = await storeState(page);
+const count = await q(page, '[data-sdui-node-id="count"]');
+check("état du store recopié dans la surface (a2uiBindings)", count[0]?.text === "1", JSON.stringify(count));
 check("action → store booking", st?.count === 1 && st?.last?.show === "Orchestre d'harmonie" && String(st?.last?.qty) === "2" && st?.last?.surfaceId === "booking", JSON.stringify(st));
 
 await page.goto(`http://localhost:${PORT}/a2ui-reservation?k=tok#confirmer`);

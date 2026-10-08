@@ -15,6 +15,7 @@ const MAX_ATTR: Record<string, number> = {
 
 const MAX_STORES = 8;
 const MAX_A2UI_MESSAGES = 200;
+const MAX_A2UI_BINDINGS = 8;
 const MAX_TICKERS = 8;
 const MAX_SOUNDS = 2;
 /** Instruments et horloges audio par document. */
@@ -136,7 +137,7 @@ export function guardDocument(doc: unknown): GuardError[] {
   const storeIds = new Set(Object.keys(data?.stores ?? {}));
   views.forEach((v, i) => {
     if (!v || typeof v !== "object") return;
-    const view = v as {root?: unknown; a2ui?: unknown; actionStore?: unknown};
+    const view = v as {root?: unknown; a2ui?: unknown; actionStore?: unknown; a2uiBindings?: unknown};
     if (view.root && view.a2ui !== undefined) {
       errors.push({path: `/views/${i}`, message: "root et a2ui sont exclusifs."});
     }
@@ -148,6 +149,18 @@ export function guardDocument(doc: unknown): GuardError[] {
         errors.push({path: `/views/${i}/a2ui`, message: "a2ui : tableau de messages attendu."});
       } else if (view.a2ui.length > MAX_A2UI_MESSAGES) {
         errors.push({path: `/views/${i}/a2ui`, message: `Trop de messages A2UI (max ${MAX_A2UI_MESSAGES}).`});
+      }
+    }
+    if (view.a2uiBindings !== undefined) {
+      const b = view.a2uiBindings;
+      if (!b || typeof b !== "object" || Array.isArray(b) || Object.keys(b).length > MAX_A2UI_BINDINGS) {
+        errors.push({path: `/views/${i}/a2uiBindings`, message: `a2uiBindings : objet {"/chemin": "store"} (max ${MAX_A2UI_BINDINGS}).`});
+      } else {
+        for (const [pointer, store] of Object.entries(b)) {
+          if (!/^(\/[^/.]+)+$/.test(pointer) || typeof store !== "string" || !storeIds.has(store)) {
+            errors.push({path: `/views/${i}/a2uiBindings`, message: `"${pointer}" : chemin absolu sans "." vers un store de data.stores attendu.`});
+          }
+        }
       }
     }
     if (view.actionStore !== undefined && (typeof view.actionStore !== "string" || !storeIds.has(view.actionStore))) {

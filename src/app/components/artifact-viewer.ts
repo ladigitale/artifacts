@@ -31,6 +31,8 @@ type ViewDef = {
   a2ui?: A2uiServerMessage[];
   /** Store du document qui reçoit les actions A2UI. */
   actionStore?: string;
+  /** Chemin A2UI → store dont l'état est recopié dans le data model des surfaces. */
+  a2uiBindings?: Record<string, string>;
   hidden?: boolean;
 };
 
@@ -200,6 +202,7 @@ export class ArtifactViewer extends LitElement {
     try {
       const fetched = await fetchPublicArtifact(this.slug, this.linkToken());
       this.data = {...fetched, document: transformDocument(withAgentLibraries(fetched.document))};
+      this.bindingCache.clear();
       this.releaseNamespace();
       this.nsNames = declaredNames(this.data.document, this.slug);
       this.nsClaim = claimNamespace(this.slug, this.nsNames);
@@ -462,6 +465,20 @@ export class ArtifactViewer extends LitElement {
     return doc?.views?.find((v) => v.id === this.viewId);
   }
 
+  /** `a2uiBindings` résolus vers le DataProvider (préfixé) de chaque store. Mis en cache par vue. */
+  private bindingCache = new Map<string, Record<string, string>>();
+  private a2uiBindings(view: ViewDef): Record<string, string> {
+    const cached = this.bindingCache.get(view.id);
+    if (cached) return cached;
+    const out: Record<string, string> = {};
+    for (const [pointer, storeId] of Object.entries(view.a2uiBindings ?? {})) {
+      const def = this.docStores[storeId];
+      if (def) out[pointer] = this.n(def.dataProvider || storeId);
+    }
+    this.bindingCache.set(view.id, out);
+    return out;
+  }
+
   private renderBody(root: Record<string, unknown> | null) {
     if (!this.scriptsReady) return html`<p class="opacity-70">Préparation…</p>`;
     const view = this.currentView();
@@ -469,6 +486,7 @@ export class ArtifactViewer extends LitElement {
       return html`<artifact-a2ui-view
         .messages=${view.a2ui}
         .store=${view.actionStore ? this.n(view.actionStore) : ""}
+        .bindings=${this.a2uiBindings(view)}
         .prefix=${this.n(`a2ui_${this.slug}_`).replace(/[^\w-]/g, "_")}
       ></artifact-a2ui-view>`;
     }
