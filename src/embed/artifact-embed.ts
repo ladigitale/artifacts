@@ -18,6 +18,7 @@
  * aucun accès à l'URL de la page hôte (vues internes, `k` / `rk` passés en attributs),
  * jamais de jeton de compte (lecture publique uniquement).
  */
+import "./define-guard";
 import "../app/concorde-sdui-runtime";
 import "@supersoniks/concorde/sonic-scope";
 import "@supersoniks/concorde/theme";
@@ -30,7 +31,8 @@ import themesCss from "../css/themes.css?inline";
 import fontsCss from "../css/fonts.css?inline";
 import {ICONOIR_CDN} from "../app/icons";
 import {setEmbedApiBase} from "../app/cloud/api-base";
-import {setDocumentTransform} from "../app/doc-transform";
+import {setDocumentTransform, setNamespaceResolver, type NamespaceClaim} from "../app/doc-transform";
+import {isAddonTag} from "../app/addons";
 
 /**
  * Noms effectifs après préfixage : ces littéraux sont réécrits par le plugin Concorde
@@ -53,8 +55,9 @@ function remapTag(tag: unknown): unknown {
   if (!lower.startsWith(SOURCE_PREFIX)) return tag;
   const scoped = SCOPED_PREFIX + lower.slice(SOURCE_PREFIX.length);
   // Seuls les composants préfixés à la compilation sont réécrits ; les autres
-  // (sonic-store, sonic-patch… de la creative-stack) gardent leur nom.
-  return customElements.get(scoped) ? scoped : tag;
+  // (sonic-store, sonic-patch… de la creative-stack) gardent leur nom. Les addons à la
+  // demande ne sont pas encore définis : leur manifeste (préfixé lui aussi) fait foi.
+  return customElements.get(scoped) || isAddonTag(scoped) ? scoped : tag;
 }
 
 function remapNode(value: unknown, depth = 0): unknown {
@@ -96,10 +99,33 @@ const scopedThemes = unsafeCSS(scopeThemeCss(defaultThemeCss) + "\n" + scopeThem
 
 type ThemeClass = {instance?: Element};
 
+/* --- DataProviders : un préfixe par artefact en cas de collision -------------------- */
+
+const claimed = new Map<string, number>();
+let instanceCounter = 0;
+
+function claim(slug: string, names: Set<string>): NamespaceClaim {
+  const collides = [...names].some((n) => claimed.has(n));
+  const ns = collides ? `${slug}~${++instanceCounter}:` : "";
+  const keys = [...names].map((n) => ns + n);
+  for (const k of keys) claimed.set(k, (claimed.get(k) ?? 0) + 1);
+  return {
+    ns,
+    release: () => {
+      for (const k of keys) {
+        const c = (claimed.get(k) ?? 1) - 1;
+        if (c > 0) claimed.set(k, c);
+        else claimed.delete(k);
+      }
+    },
+  };
+}
+
 /* Avant la définition du composant : des <artifact-embed> déjà présents sont mis à niveau
  * dès `customElements.define`. `__artifactsApiBase` (posé par embed.js via `data-api`)
  * sert au développement ; sinon l'API de la compilation (VITE_API_BASE_URL). */
 setDocumentTransform(remapDocumentTags);
+setNamespaceResolver(claim);
 setEmbedApiBase((window as {__artifactsApiBase?: string}).__artifactsApiBase);
 
 /* --- Composant ------------------------------------------------------------------- */

@@ -1,5 +1,4 @@
 import "@supersoniks/concorde/button";
-import "@supersoniks/creative-stack/interactive";
 import "@supersoniks/concorde/sdui";
 import {html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
@@ -13,9 +12,11 @@ import {explainFetchError, loadApiBaseUrl} from "../cloud/api-base";
 import {docCapabilities, guardDocument} from "../sdui-guard";
 import {applySafeTransforms} from "../jsonata-safe";
 import {loadScriptAssets} from "../script-loader";
+import {ensureAddonsFor} from "../addons";
 import {startSinks, type SinkDef} from "../sinks";
 import {applyDocFonts} from "../doc-fonts";
-import {transformDocument} from "../doc-transform";
+import {claimNamespace, transformDocument, type NamespaceClaim} from "../doc-transform";
+import {declaredNames, nsName, nsTree, nsValue} from "../dp-namespace";
 import {dp, set} from "@supersoniks/concorde/utils";
 import tailwind from "../../css/tailwind";
 
@@ -58,6 +59,16 @@ export class ArtifactViewer extends LitElement {
   private transformUnsubs: Array<() => void> = [];
   private refreshTimers: number[] = [];
   private stopSinks: (() => void) | null = null;
+  /** Préfixe des DataProviders (vide sauf collision entre artefacts intégrés). */
+  private ns = "";
+  private nsNames = new Set<string>();
+  private nsClaim: NamespaceClaim | null = null;
+  private rootCache = new Map<string, Record<string, unknown>>();
+
+  /** Nom effectif d'un DataProvider / store du document. */
+  private n(name: string): string {
+    return nsName(this.ns, name);
+  }
 
   connectedCallback() {
     super.connectedCallback();
@@ -74,6 +85,7 @@ export class ArtifactViewer extends LitElement {
     this.removeEventListener("click", this.onEmbeddedClick);
     this.clearTransformWatchers();
     this.clearLiveData();
+    this.releaseNamespace();
     applyDocFonts(null);
     super.disconnectedCallback();
   }
@@ -118,6 +130,14 @@ export class ArtifactViewer extends LitElement {
     this.stopSinks = null;
   }
 
+  private releaseNamespace() {
+    this.nsClaim?.release();
+    this.nsClaim = null;
+    this.ns = "";
+    this.nsNames = new Set();
+    this.rootCache.clear();
+  }
+
   private clearTransformWatchers() {
     for (const off of this.transformUnsubs) {
       try {
@@ -144,6 +164,10 @@ export class ArtifactViewer extends LitElement {
     try {
       const fetched = await fetchPublicArtifact(this.slug, this.linkToken());
       this.data = {...fetched, document: transformDocument(fetched.document)};
+      this.releaseNamespace();
+      this.nsNames = declaredNames(this.data.document, this.slug);
+      this.nsClaim = claimNamespace(this.slug, this.nsNames);
+      this.ns = this.nsClaim.ns;
       this.guardErrors = guardDocument(this.data.document);
       applyDocFonts(this.guardErrors.length ? null : (this.data.document as {fonts?: unknown}).fonts);
       this.syncViewFromHash();
@@ -152,11 +176,11 @@ export class ArtifactViewer extends LitElement {
       };
       this.docStores = doc.data?.stores ?? {};
       if (!this.guardErrors.length) {
-        await loadScriptAssets(this.data.scriptAssets);
+        await Promise.all([loadScriptAssets(this.data.scriptAssets), ensureAddonsFor(this.data.document)]);
         this.scriptsReady = true;
         await this.applyDataProviders();
         const sinks = (this.data.document as {data?: {sinks?: Record<string, SinkDef>}}).data?.sinks;
-        this.stopSinks = startSinks(this.slug, this.linkToken(), sinks);
+        this.stopSinks = startSinks(this.slug, this.linkToken(), this.nsSinks(sinks));
       }
     } catch (e) {
       const raw = e instanceof Error ? e.message : String(e);
@@ -198,14 +222,14 @@ export class ArtifactViewer extends LitElement {
     // Une source a pu changer pendant l’évaluation : seule la dernière publie.
     if (run !== this.transformRun) return;
     for (const [name, value] of Object.entries(transforms)) {
-      set(name, value);
-      set(`artifact:${this.slug}:transform:${name}`, value);
+      set(this.n(name), value);
+      set(this.n(`artifact:${this.slug}:transform:${name}`), value);
     }
   }
 
   private watchSource(name: string) {
     try {
-      const provider = dp(name) as {
+      const provider = dp(this.n(name)) as {
         onAssign?: (cb: (v: unknown) => void) => void;
         offAssign?: (cb: (v: unknown) => void) => void;
       };
@@ -259,9 +283,9 @@ export class ArtifactViewer extends LitElement {
       });
       this.sourceData[name] = items;
       this.sourceData[collection] = items;
-      set(name, {member: items});
-      set(collection, {member: items});
-      set(`artifact:${this.slug}:${name}`, {member: items});
+      set(this.n(name), {member: items});
+      set(this.n(collection), {member: items});
+      set(this.n(`artifact:${this.slug}:${name}`), {member: items});
       this.watchSource(name);
       const every = Number(src.refresh);
       // Pas de relecture si l’accès est refusé (élève sans lien secret) : toute une classe
@@ -286,9 +310,9 @@ export class ArtifactViewer extends LitElement {
       const items = member.map((row) =>
         row && typeof row === "object" && "data" in row ? (row as {data: unknown}).data : row,
       );
-      set(name, {member: items});
-      set(collection, {member: items});
-      set(`artifact:${this.slug}:${name}`, {member: items});
+      set(this.n(name), {member: items});
+      set(this.n(collection), {member: items});
+      set(this.n(`artifact:${this.slug}:${name}`), {member: items});
       return true;
     } catch (e) {
       // Garde les dernières données ; arrête la relecture si l’accès est refusé.
@@ -299,7 +323,34 @@ export class ArtifactViewer extends LitElement {
   private currentRoot(): Record<string, unknown> | null {
     const doc = this.data?.document as {views?: ViewDef[]} | undefined;
     const view = doc?.views?.find((v) => v.id === this.viewId);
-    return view?.root ?? null;
+    if (!view?.root) return null;
+    if (!this.ns) return view.root;
+    // Même objet d'un rendu à l'autre : sonic-sdui ne reconstruit pas la vue.
+    let root = this.rootCache.get(view.id);
+    if (!root) {
+      root = nsTree(this.ns, this.nsNames, view.root);
+      this.rootCache.set(view.id, root);
+    }
+    return root;
+  }
+
+  private nsSinks(sinks: Record<string, SinkDef> | undefined): Record<string, SinkDef> | undefined {
+    if (!sinks || !this.ns) return sinks;
+    const v = (x: string) => nsValue(this.ns, this.nsNames, x);
+    const out: Record<string, SinkDef> = {};
+    for (const [name, s] of Object.entries(sinks)) {
+      if (!s) continue;
+      out[name] = {
+        ...s,
+        from: typeof s.from === "string" ? v(s.from) : s.from,
+        code: typeof s.code === "string" ? v(s.code) : s.code,
+        ack: typeof s.ack === "string" ? v(s.ack) : s.ack,
+        merge: s.merge
+          ? Object.fromEntries(Object.entries(s.merge).map(([k, p]) => [k, typeof p === "string" ? v(p) : p]))
+          : s.merge,
+      };
+    }
+    return out;
   }
 
   private goView(id: string) {
@@ -331,8 +382,8 @@ export class ArtifactViewer extends LitElement {
                 ? def.initial
                 : JSON.stringify(def.initial);
           return html`<sonic-store
-            id=${id}
-            dataProvider=${def.dataProvider || id}
+            id=${this.n(id)}
+            dataProvider=${this.n(def.dataProvider || id)}
             initial=${initial}
             reducer=${def.reducer ?? ""}
             history=${def.history ?? 0}

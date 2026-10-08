@@ -9,3 +9,4 @@ SPA Lit + Concorde (modèle Ceintures / belts).
 - API : Tadaaa `/api/artifacts` + `/api/public/artifacts/{slug}`
 - Concorde **classique** (5.x). Tout le créatif/interactif (3d, shader, webgpu, hugging-face-infer, interactive, audio, media…) vient de `@supersoniks/creative-stack`, y compris les compléments de `sonic-if` / `sonic-value` et les fonctions JSONata (`$cosine`, `$rankBySimilarity`, `$mediaUrl` via l'alias `jsonata` de `vite.config.mts`). Pas de branche visual-stack.
 - Smoke tests : `CHROME_PATH=…/chrome node scripts/smoke-<nom>.mjs` après `VITE_API_BASE_URL=http://localhost:4455 yarn build`.
+- Embed : `public/embed.js` + `src/embed/` (build `LIB_NAME=embed`, préfixe `afx`). Ne jamais lire `location` / `history` en mode `embedded` du viewer. Addons creative-stack : à la demande via `src/app/addons.ts` (pas d'import statique hors `interactive`).

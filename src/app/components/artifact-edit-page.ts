@@ -26,6 +26,9 @@ export class ArtifactEditPage extends LitElement {
   @state() private loading = true;
   @state() private saving = false;
   @state() private artifactId = "";
+  @state() private visibility = "private";
+  @state() private linkToken: string | null = null;
+  @state() private copied = false;
 
   connectedCallback() {
     super.connectedCallback();
@@ -45,6 +48,8 @@ export class ArtifactEditPage extends LitElement {
     try {
       const a = await getArtifact(this.slug);
       this.artifactId = a.id;
+      this.visibility = a.visibility ?? "private";
+      this.linkToken = a.linkToken ?? null;
       set(artifactEditFormKey, {
         title: a.title ?? "",
         description: a.description ?? "",
@@ -79,6 +84,45 @@ export class ArtifactEditPage extends LitElement {
     } finally {
       this.saving = false;
     }
+  }
+
+  /** Balise d'intégration (embed.js) ; un artefact « lien » embarque son jeton. */
+  private embedSnippet(): string {
+    const src = new URL("/embed.js", location.origin).href;
+    const key = this.visibility === "link" && this.linkToken ? ` data-key="${this.linkToken}"` : "";
+    return `<script src="${src}" data-artifact="${this.slug}"${key} async></script>`;
+  }
+
+  private async copySnippet() {
+    try {
+      await navigator.clipboard.writeText(this.embedSnippet());
+      this.copied = true;
+      setTimeout(() => (this.copied = false), 1500);
+    } catch {
+      /* presse-papiers refusé : le texte reste sélectionnable */
+    }
+  }
+
+  private renderEmbed() {
+    if (this.visibility === "private") {
+      return html`<p class="text-sm opacity-70 m-0">
+        Passez l’artefact en « public » ou « link » pour l’intégrer sur un autre site.
+      </p>`;
+    }
+    return html`
+      <pre class="m-0 p-3 rounded-md text-xs overflow-x-auto whitespace-pre-wrap break-all"
+        style="background:rgba(127,127,127,.12)"><code>${this.embedSnippet()}</code></pre>
+      <p class="text-sm opacity-70 m-0">
+        Options : <code>data-theme</code>, <code>data-view</code>, <code>data-height</code>,
+        <code>data-target</code>, <code>data-transparent</code>, <code>data-open-link="false"</code>.
+        ${this.visibility === "link" ? "Le jeton de lien est visible dans la page hôte." : ""}
+      </p>
+      <div>
+        <sonic-button type="button" size="sm" variant="outline" @click=${() => this.copySnippet()}>
+          ${this.copied ? "Copié" : "Copier la balise"}
+        </sonic-button>
+      </div>
+    `;
   }
 
   render() {
@@ -140,6 +184,11 @@ export class ArtifactEditPage extends LitElement {
             </sonic-button>
           </div>
         </form>
+
+        <section class="flex flex-col gap-2">
+          <h2 class="text-lg font-semibold m-0">Intégrer sur un site</h2>
+          ${this.renderEmbed()}
+        </section>
       </div>
     `;
   }
