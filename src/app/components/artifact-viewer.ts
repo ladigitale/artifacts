@@ -1,5 +1,8 @@
 import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/sdui";
+import "./artifact-a2ui-view";
+import {agentStackLibrary, injectAgentStackStyles} from "@ladigitale/agent-stack/libraries";
+import type {A2uiServerMessage} from "@ladigitale/agent-stack/a2ui";
 import {html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
 import {
@@ -20,7 +23,42 @@ import {declaredNames, nsName, nsTree, nsValue} from "../dp-namespace";
 import {dp, set} from "@supersoniks/concorde/utils";
 import tailwind from "../../css/tailwind";
 
-type ViewDef = {id: string; title: string; root: Record<string, unknown>; hidden?: boolean};
+/** Une vue porte soit `root` (descripteur SDUI), soit `a2ui` (messages A2UI v0.9). */
+type ViewDef = {
+  id: string;
+  title: string;
+  root?: Record<string, unknown>;
+  a2ui?: A2uiServerMessage[];
+  /** Store du document qui reçoit les actions A2UI. */
+  actionStore?: string;
+  /** Chemin A2UI → store dont l'état est recopié dans le data model des surfaces. */
+  a2uiBindings?: Record<string, string>;
+  hidden?: boolean;
+};
+
+/**
+ * Libraries agent-stack (`a2ui:*`, `chat:*`) disponibles dans toutes les vues SDUI.
+ * Ajoutées avant `transformDocument` pour que l'embed réécrive aussi leurs tagNames ;
+ * une entrée du document du même nom l'emporte.
+ */
+function withAgentLibraries(doc: Record<string, unknown>): Record<string, unknown> {
+  const views = (doc as {views?: ViewDef[]}).views;
+  if (!Array.isArray(views)) return doc;
+  return {
+    ...doc,
+    views: views.map((v) =>
+      v?.root && typeof v.root === "object"
+        ? {
+            ...v,
+            root: {
+              ...v.root,
+              library: {...agentStackLibrary, ...((v.root as {library?: object}).library ?? {})},
+            },
+          }
+        : v,
+    ),
+  };
+}
 type StoreDef = {
   initial?: unknown;
   reducer?: string;
@@ -46,6 +84,11 @@ export class ArtifactViewer extends LitElement {
   @property({type: String, attribute: "read-key"}) readKeyValue = "";
   /** Embed : vue affichée au démarrage (sinon `defaultView`). */
   @property({type: String}) view = "";
+  /**
+   * Aperçu (atelier) : document à afficher tel quel, sans appel à l'API. Les collections
+   * sont vides et rien n'est envoyé (pas de sinks) ; à utiliser avec `embedded`.
+   */
+  @property({attribute: false}) previewDocument: Record<string, unknown> | null = null;
 
   @state() private data: PublicArtifact | null = null;
   @state() private error = "";
@@ -149,8 +192,12 @@ export class ArtifactViewer extends LitElement {
     this.transformUnsubs = [];
   }
 
+  protected updated(changed: Map<PropertyKey, unknown>) {
+    if (changed.has("previewDocument") && changed.get("previewDocument") !== undefined) void this.load();
+  }
+
   private async load() {
-    if (!this.slug?.trim()) {
+    if (!this.slug?.trim() && !this.previewDocument) {
       this.loading = false;
       this.error = "Slug manquant.";
       this.data = null;
@@ -162,8 +209,11 @@ export class ArtifactViewer extends LitElement {
     this.clearTransformWatchers();
     this.clearLiveData();
     try {
-      const fetched = await fetchPublicArtifact(this.slug, this.linkToken());
-      this.data = {...fetched, document: transformDocument(fetched.document)};
+      const fetched = this.previewDocument
+        ? previewArtifact(this.slug, this.previewDocument)
+        : await fetchPublicArtifact(this.slug, this.linkToken());
+      this.data = {...fetched, document: transformDocument(withAgentLibraries(fetched.document))};
+      this.bindingCache.clear();
       this.releaseNamespace();
       this.nsNames = declaredNames(this.data.document, this.slug);
       this.nsClaim = claimNamespace(this.slug, this.nsNames);
@@ -180,7 +230,7 @@ export class ArtifactViewer extends LitElement {
         this.scriptsReady = true;
         await this.applyDataProviders();
         const sinks = (this.data.document as {data?: {sinks?: Record<string, SinkDef>}}).data?.sinks;
-        this.stopSinks = startSinks(this.slug, this.linkToken(), this.nsSinks(sinks));
+        if (!this.previewDocument) this.stopSinks = startSinks(this.slug, this.linkToken(), this.nsSinks(sinks));
       }
     } catch (e) {
       const raw = e instanceof Error ? e.message : String(e);
@@ -270,7 +320,7 @@ export class ArtifactViewer extends LitElement {
       let member: unknown[] = [];
       let denied = false;
       try {
-        member = await fetchPublicCollection(this.slug, collection, k, rk);
+        member = this.previewDocument ? [] : await fetchPublicCollection(this.slug, collection, k, rk);
       } catch (e) {
         member = [];
         denied = isDenied(e);
@@ -290,7 +340,7 @@ export class ArtifactViewer extends LitElement {
       const every = Number(src.refresh);
       // Pas de relecture si l’accès est refusé (élève sans lien secret) : toute une classe
       // derrière la même IP épuiserait la limite de requêtes.
-      if (!denied && Number.isFinite(every) && every >= 5) {
+      if (!this.previewDocument && !denied && Number.isFinite(every) && every >= 5) {
         const timer = window.setInterval(async () => {
           if (await this.refreshSource(name, collection)) return;
           clearInterval(timer);
@@ -416,6 +466,44 @@ export class ArtifactViewer extends LitElement {
     </p>`;
   }
 
+  protected firstUpdated() {
+    // CSS des libraries agent-stack : les styles du document ne traversent pas le shadow root.
+    if (this.renderRoot instanceof ShadowRoot) injectAgentStackStyles(this.renderRoot);
+  }
+
+  private currentView(): ViewDef | undefined {
+    const doc = this.data?.document as {views?: ViewDef[]} | undefined;
+    return doc?.views?.find((v) => v.id === this.viewId);
+  }
+
+  /** `a2uiBindings` résolus vers le DataProvider (préfixé) de chaque store. Mis en cache par vue. */
+  private bindingCache = new Map<string, Record<string, string>>();
+  private a2uiBindings(view: ViewDef): Record<string, string> {
+    const cached = this.bindingCache.get(view.id);
+    if (cached) return cached;
+    const out: Record<string, string> = {};
+    for (const [pointer, storeId] of Object.entries(view.a2uiBindings ?? {})) {
+      const def = this.docStores[storeId];
+      if (def) out[pointer] = this.n(def.dataProvider || storeId);
+    }
+    this.bindingCache.set(view.id, out);
+    return out;
+  }
+
+  private renderBody(root: Record<string, unknown> | null) {
+    if (!this.scriptsReady) return html`<p class="opacity-70">Préparation…</p>`;
+    const view = this.currentView();
+    if (view && Array.isArray(view.a2ui)) {
+      return html`<artifact-a2ui-view
+        .messages=${view.a2ui}
+        .store=${view.actionStore ? this.n(view.actionStore) : ""}
+        .bindings=${this.a2uiBindings(view)}
+        .prefix=${this.n(`a2ui_${this.slug}_`).replace(/[^\w-]/g, "_")}
+      ></artifact-a2ui-view>`;
+    }
+    return root ? html`<sonic-sdui .props=${root}></sonic-sdui>` : html`<p class="opacity-70">Préparation…</p>`;
+  }
+
   render() {
     if (this.loading) return html`<p class="p-4">Chargement…</p>`;
     if (this.error) {
@@ -467,13 +555,28 @@ export class ArtifactViewer extends LitElement {
           : nothing}
         ${this.renderCapabilities()}
         <div class="artifact-sdui flex-1 min-h-[12rem] p-3 sm:p-4">
-          ${root && this.scriptsReady
-            ? html`<sonic-sdui .props=${root}></sonic-sdui>`
-            : html`<p class="opacity-70">Préparation…</p>`}
+          ${this.renderBody(root)}
         </div>
       </div>
     `;
   }
+}
+
+/** Enveloppe locale d'un document en aperçu (pas de scripts résolus, pas de collections). */
+function previewArtifact(slug: string, document: Record<string, unknown>): PublicArtifact {
+  return {
+    id: "preview",
+    slug: slug || "preview",
+    title: String(document.title ?? "Aperçu"),
+    document,
+    scriptAssets: [],
+    concordeVersion: "",
+    version: 0,
+    updatedAt: new Date().toISOString(),
+    collections: [],
+    canWrite: false,
+    visibility: "private",
+  };
 }
 
 function isDenied(e: unknown): boolean {

@@ -14,6 +14,8 @@ const MAX_ATTR: Record<string, number> = {
 };
 
 const MAX_STORES = 8;
+const MAX_A2UI_MESSAGES = 200;
+const MAX_A2UI_BINDINGS = 8;
 const MAX_TICKERS = 8;
 const MAX_SOUNDS = 2;
 /** Instruments et horloges audio par document. */
@@ -132,9 +134,37 @@ export function guardDocument(doc: unknown): GuardError[] {
     }
     if (Array.isArray(n.nodes)) n.nodes.forEach((c, i) => walk(c, `${path}/nodes/${i}`));
   };
+  const storeIds = new Set(Object.keys(data?.stores ?? {}));
   views.forEach((v, i) => {
-    if (v && typeof v === "object" && (v as {root?: unknown}).root) {
-      walk((v as {root: unknown}).root, `/views/${i}/root`);
+    if (!v || typeof v !== "object") return;
+    const view = v as {root?: unknown; a2ui?: unknown; actionStore?: unknown; a2uiBindings?: unknown};
+    if (view.root && view.a2ui !== undefined) {
+      errors.push({path: `/views/${i}`, message: "root et a2ui sont exclusifs."});
+    }
+    if (view.root) walk(view.root, `/views/${i}/root`);
+    if (view.a2ui !== undefined) {
+      // Le rendu A2UI (agent-stack) est sûr par construction : profil safe, texte brut,
+      // composants du catalogue de base uniquement. On borne seulement le volume.
+      if (!Array.isArray(view.a2ui)) {
+        errors.push({path: `/views/${i}/a2ui`, message: "a2ui : tableau de messages attendu."});
+      } else if (view.a2ui.length > MAX_A2UI_MESSAGES) {
+        errors.push({path: `/views/${i}/a2ui`, message: `Trop de messages A2UI (max ${MAX_A2UI_MESSAGES}).`});
+      }
+    }
+    if (view.a2uiBindings !== undefined) {
+      const b = view.a2uiBindings;
+      if (!b || typeof b !== "object" || Array.isArray(b) || Object.keys(b).length > MAX_A2UI_BINDINGS) {
+        errors.push({path: `/views/${i}/a2uiBindings`, message: `a2uiBindings : objet {"/chemin": "store"} (max ${MAX_A2UI_BINDINGS}).`});
+      } else {
+        for (const [pointer, store] of Object.entries(b)) {
+          if (!/^(\/[^/.]+)+$/.test(pointer) || typeof store !== "string" || !storeIds.has(store)) {
+            errors.push({path: `/views/${i}/a2uiBindings`, message: `"${pointer}" : chemin absolu sans "." vers un store de data.stores attendu.`});
+          }
+        }
+      }
+    }
+    if (view.actionStore !== undefined && (typeof view.actionStore !== "string" || !storeIds.has(view.actionStore))) {
+      errors.push({path: `/views/${i}/actionStore`, message: "actionStore doit nommer un store de data.stores."});
     }
   });
 
