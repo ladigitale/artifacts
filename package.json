@@ -4,12 +4,14 @@
   "scripts": {
     "generate-routes": "node scripts/run-generate-routes.mjs src/app/routes && node scripts/fix-router-order.mjs",
     "dev": "yarn generate-routes && vite --host --port 3300",
-    "build": "yarn generate-routes && tsc --pretty false && vite build",
+    "build": "yarn generate-routes && tsc --pretty false && vite build && yarn build:embed",
+    "build:embed": "LIB_NAME=embed vite build",
     "preview": "vite preview --port 3300",
     "smoke": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-atelier.mjs",
     "smoke:sound": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-sound.mjs",
     "smoke:audio": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-audio.mjs",
-    "smoke:media": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-media.mjs"
+    "smoke:media": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-media.mjs",
+    "smoke:embed": "VITE_API_BASE_URL=http://localhost:4455 vite build && VITE_API_BASE_URL=http://localhost:4455 yarn build:embed && node scripts/smoke-embed.mjs"
   },
   "devDependencies": {
     "@supersoniks/concorde": "5.0.5",

@@ -1,0 +1,38 @@
+/* Thème par défaut (= Tadaaa default). Viewer : :root ; embed : réécrit en :host. */
+:root {
+  color-scheme: light;
+
+  --belts-content-max-width: 72rem; /* = Tailwind max-w-6xl */
+
+  --sc-base: #f4f2ff;
+  --sc-base-content: #14101f;
+  --sc-base-50: #e8e4f8;
+  --sc-base-100: #d4cef0;
+  --sc-base-200: #b8aee0;
+  --sc-base-300: #9488c4;
+  --sc-base-400: #6e64a0;
+  --sc-base-500: #524878;
+  --sc-base-600: #3a3258;
+  --sc-base-700: #282240;
+  --sc-base-800: #1a162c;
+  --sc-base-900: #100e1a;
+
+  --sc-primary: #4f1fff;
+  --sc-primary-content: #f8f6ff;
+  --sc-info: #00c8ff;
+  --sc-info-content: #002430;
+  --sc-success: #b8f000;
+  --sc-success-content: #1a2200;
+  --sc-warning: #ff6b1a;
+  --sc-warning-content: #fff5ee;
+  --sc-danger: #ff1a6a;
+  --sc-danger-content: #fff0f5;
+
+  --sc-rounded: 0.625rem;
+  --sc-btn-rounded: 9999px;
+  --sc-border-width: max(2px, 0.125rem);
+
+  --sc-font-family-base: "DM Sans", ui-sans-serif, sans-serif;
+  --sc-font-family-headings: "Space Grotesk", ui-sans-serif, sans-serif;
+  --sc-headings-font-family: var(--sc-font-family-headings);
+}

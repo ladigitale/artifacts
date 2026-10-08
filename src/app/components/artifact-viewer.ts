@@ -15,6 +15,7 @@ import {applySafeTransforms} from "../jsonata-safe";
 import {loadScriptAssets} from "../script-loader";
 import {startSinks, type SinkDef} from "../sinks";
 import {applyDocFonts} from "../doc-fonts";
+import {transformDocument} from "../doc-transform";
 import {dp, set} from "@supersoniks/concorde/utils";
 import tailwind from "../../css/tailwind";
 
@@ -33,6 +34,17 @@ export class ArtifactViewer extends LitElement {
   static styles = [tailwind];
 
   @property({type: String}) slug = "";
+  /**
+   * Intégré dans une page tiers (embed.js) : jamais d'accès à l'URL de l'hôte
+   * (ni `?k=` / `?rk=`, ni `#vue`, ni `history`) ; les vues changent en interne.
+   */
+  @property({type: Boolean}) embedded = false;
+  /** Embed : jeton de lien (`k`) d'un artefact « lien ». */
+  @property({type: String, attribute: "link-key"}) linkKey = "";
+  /** Embed : lien secret de lecture (`rk`) des collections. */
+  @property({type: String, attribute: "read-key"}) readKeyValue = "";
+  /** Embed : vue affichée au démarrage (sinon `defaultView`). */
+  @property({type: String}) view = "";
 
   @state() private data: PublicArtifact | null = null;
   @state() private error = "";
@@ -49,12 +61,17 @@ export class ArtifactViewer extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    window.addEventListener("hashchange", this.onHash);
+    if (this.embedded) {
+      this.addEventListener("click", this.onEmbeddedClick);
+    } else {
+      window.addEventListener("hashchange", this.onHash);
+    }
     void this.load();
   }
 
   disconnectedCallback() {
     window.removeEventListener("hashchange", this.onHash);
+    this.removeEventListener("click", this.onEmbeddedClick);
     this.clearTransformWatchers();
     this.clearLiveData();
     applyDocFonts(null);
@@ -65,12 +82,32 @@ export class ArtifactViewer extends LitElement {
     this.syncViewFromHash();
   };
 
+  /**
+   * Embed : un lien interne `#vue` change de vue sans toucher au hash de la page hôte.
+   * `composedPath` traverse les shadow roots (sonic-link, sonic-button…).
+   */
+  private onEmbeddedClick = (e: Event) => {
+    const views = (this.data?.document as {views?: ViewDef[]} | undefined)?.views ?? [];
+    for (const el of e.composedPath()) {
+      if (!(el instanceof Element)) continue;
+      const href = el.getAttribute("href");
+      if (!href?.startsWith("#")) continue;
+      const id = href.slice(1);
+      if (!views.some((v) => v.id === id)) return;
+      e.preventDefault();
+      this.goView(id);
+      return;
+    }
+  };
+
   private linkToken(): string | null {
+    if (this.embedded) return this.linkKey || null;
     return new URLSearchParams(location.search).get("k");
   }
 
   /** Lien secret de lecture (`rk`) pour les collections non publiques. */
   private readKey(): string | null {
+    if (this.embedded) return this.readKeyValue || null;
     return new URLSearchParams(location.search).get("rk");
   }
 
@@ -105,7 +142,8 @@ export class ArtifactViewer extends LitElement {
     this.clearTransformWatchers();
     this.clearLiveData();
     try {
-      this.data = await fetchPublicArtifact(this.slug, this.linkToken());
+      const fetched = await fetchPublicArtifact(this.slug, this.linkToken());
+      this.data = {...fetched, document: transformDocument(fetched.document)};
       this.guardErrors = guardDocument(this.data.document);
       applyDocFonts(this.guardErrors.length ? null : (this.data.document as {fonts?: unknown}).fonts);
       this.syncViewFromHash();
@@ -143,7 +181,7 @@ export class ArtifactViewer extends LitElement {
       this.viewId = "";
       return;
     }
-    const hash = location.hash.replace(/^#/, "");
+    const hash = this.embedded ? this.viewId || this.view : location.hash.replace(/^#/, "");
     const match = doc.views.find((v) => v.id === hash);
     this.viewId = match?.id ?? doc.defaultView ?? doc.views[0].id;
   }
@@ -265,6 +303,11 @@ export class ArtifactViewer extends LitElement {
   }
 
   private goView(id: string) {
+    if (this.embedded) {
+      this.viewId = id;
+      this.dispatchEvent(new CustomEvent("artifact-view", {detail: {view: id}, bubbles: true, composed: true}));
+      return;
+    }
     const params = new URLSearchParams();
     const k = this.linkToken();
     const rk = this.readKey();
