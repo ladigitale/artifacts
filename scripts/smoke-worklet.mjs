@@ -1,14 +1,14 @@
 /**
- * Smoke test de la phase 4 de creative-stack (enregistrement, export, téléchargement) dans le viewer.
+ * Smoke test de la phase 6 de creative-stack (modules AudioWorklet, granulaire) dans le viewer.
  *
  * Prérequis : VITE_API_BASE_URL=http://localhost:4455 yarn build
  * Lancer   : node scripts/smoke-media.mjs
  *
  * Sert dist/ avec la CSP et la Permissions-Policy de prod + une fausse API publique
- * (tests/fixtures/sampler-de-poche.json). Chromium avec micro factice. Vérifie : micro au
- * clic, patch d'effets sur le micro (sonic-audio-input), prises sur deux pads, sampler qui
- * les rejoue (main + séquenceur), export vidéo du shader avec le son, téléchargement du
- * fichier (WebM avec durée), aucune erreur JS / CSP.
+ * (tests/fixtures/nuage.json ; le clip d'exemple jsDelivr est servi par Playwright).
+ * Vérifie : processeurs AudioWorklet chargés depuis le viewer lui-même (script-src 'self'),
+ * grains sur le clip puis sur une prise micro, fold / ladder pilotés par le store,
+ * basse synth/acid au séquenceur, aucune erreur JS / CSP.
  */
 import http from "node:http";
 import fs from "node:fs";
@@ -20,8 +20,9 @@ const DIST = path.join(ROOT, "dist");
 const PORT = 4455;
 const fx = (f) => JSON.parse(fs.readFileSync(path.join(ROOT, "tests/fixtures", f), "utf8"));
 const fixtures = {
-  "sampler-de-poche": fx("sampler-de-poche.json"),
+  nuage: fx("nuage.json"),
 };
+const CLIP = path.join(ROOT, "tests/fixtures/clip.webm");
 const CSP = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:; img-src 'self' https: data: blob:; media-src 'self' https: blob: data:; connect-src 'self' https: blob:; worker-src 'self' blob: https://cdn.jsdelivr.net; child-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
 const PERMISSIONS = "camera=(self), microphone=(self), midi=(self), display-capture=(self), geolocation=(), payment=(), usb=(), browsing-topics=()";
 
@@ -54,62 +55,46 @@ const storeState = (p, id) => p.evaluate((id) => {
   const el = deep(document, `sonic-store#${id}`)[0];
   return el?.state ? JSON.parse(JSON.stringify(el.state)) : null;
 }, id);
+const level = async (p, id, ms = 800) => {
+  let m = 0;
+  for (let t = 0; t < ms; t += 50) { m = Math.max(m, (await state(p, id))?.rms ?? 0); await p.waitForTimeout(50); }
+  return m;
+};
 
 const browser = await chromium.launch({executablePath: process.env.CHROME_PATH, args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream", "--use-gl=swiftshader", "--enable-unsafe-swiftshader"]});
-const ctx = await browser.newContext({acceptDownloads: true});
-const page = await ctx.newPage();
+const page = await (await browser.newContext()).newPage();
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));
-page.on("console", (m) => { if (m.type() === "error" && /Content Security Policy|Refused|Permissions policy|sonic-/i.test(m.text())) errors.push(m.text()); });
-let gum = 0;
-await page.exposeFunction("__gum", () => gum++);
-await page.addInitScript(() => {
-  const md = navigator.mediaDevices;
-  if (md) { const orig = md.getUserMedia.bind(md); md.getUserMedia = (c) => { window.__gum(); return orig(c); }; }
-});
-await page.goto(`http://localhost:${PORT}/sampler-de-poche?k=tok`);
+page.on("console", (m) => { if (m.type() === "error" && /Content Security Policy|Refused|Permissions policy|sonic-|worklet/i.test(m.text())) errors.push(m.text()); });
+await page.route("https://cdn.jsdelivr.net/**/clip.webm", (route) => route.fulfill({status: 200, body: fs.readFileSync(CLIP), headers: {"Content-Type": "video/webm", "Access-Control-Allow-Origin": "*"}}));
+await page.goto(`http://localhost:${PORT}/nuage?k=tok`);
 await page.waitForTimeout(2500);
 const btn = (a) => page.locator(`sonic-button[data-action="${a}"]`).click({timeout: 3000});
 
-check("aucune demande d'accès au chargement", gum === 0);
-check("enregistreur en attente du micro", (await state(page, "rec"))?.status === "waiting-source", JSON.stringify(await state(page, "rec")));
-await page.locator("sonic-audio-unlock").locator("button").click({timeout: 3000});
+await page.locator("sonic-audio-unlock").locator("button").click({timeout: 3000}).catch(() => {});
+await page.waitForTimeout(2000);
+const grains = await state(page, "grains");
+const ws = await page.evaluate(() => window.__creativeStackAudioEngine?.workletState);
+check("processeurs AudioWorklet chargés depuis le viewer (script-src 'self')", ws === "ready", String(ws));
+check("patch granulaire prêt, sans repli ni erreur de chargement", grains?.status === "ready" && grains.warnings.length === 0, JSON.stringify(grains?.warnings));
+await btn("note-chord");
+const lv1 = await level(page, "spectre");
+check("grains sur le clip d'exemple", lv1 > 0.005 && (await state(page, "grains")).voices >= 3, `rms ${lv1}`);
+for (const a of ["fold-plus", "fold-plus", "cut-minus", "dens-plus"]) await btn(a);
+const st = await storeState(page, "nuage");
+check("pli et filtre pilotés par le store", st.fold === 2 && st.cut < 2600 && st.dens === 36, JSON.stringify({fold: st.fold, cut: st.cut, dens: st.dens}));
+await btn("rec"); await page.waitForTimeout(1500); await btn("rec"); await page.waitForTimeout(1000);
+const take = await state(page, "rec");
+check("prise micro (4 s max) → source « voix »", take?.takes === 1 && (await storeState(page, "nuage")).src === "voix", JSON.stringify(take?.last));
+await page.waitForTimeout(600);
+await btn("note-c4");
+const lv2 = await level(page, "spectre");
+// le micro factice ne bipe que par intermittence : on vérifie juste que la prise est jouée
+check("grains sur la voix enregistrée", lv2 > 0.0002 && (await state(page, "grains")).voices >= 1, `rms ${lv2}`);
+await btn("bass");
 await page.waitForTimeout(1500);
-const mic = await state(page, "mic");
-const clean = await state(page, "clean");
-check("micro et son activés au clic", mic?.status === "ready" && gum >= 1, JSON.stringify(mic?.status));
-check("patch d'effets branché sur le micro (sonic-audio-input)", clean?.status === "ready" && clean.inputs?.voix === true, JSON.stringify(clean));
-
-for (const k of ["A", "B"]) {
-  await btn(`arm-${k}`); await page.waitForTimeout(150);
-  await btn("rec"); await page.waitForTimeout(1100); await btn("rec");
-  await page.waitForTimeout(700);
-}
-const rec = await state(page, "rec");
-check("deux prises enregistrées", rec?.takes === 2 && rec.last?.url?.startsWith("blob:") && rec.last.durS > 0.8, JSON.stringify(rec?.last));
-await page.waitForTimeout(400);
-let pads = await state(page, "pads");
-check("sampler : 2 pads chargés, 2 vides, prêt", pads?.loaded === 2 && pads.empty.join() === "C,D" && pads.status === "ready", JSON.stringify(pads));
-await btn("hit-A"); await page.waitForTimeout(200);
-await btn("play"); await page.waitForTimeout(1200);
-pads = await state(page, "pads");
-check("pads joués à la main et par le séquenceur", pads.played >= 3, `played=${pads.played}`);
-
-await btn("export"); await page.waitForTimeout(2500); await btn("export");
-await page.waitForTimeout(1200);
-const ex = await state(page, "export");
-check("export vidéo (shader + son)", ex?.takes === 1 && /^video\//.test(ex.last?.mime) && Math.abs(ex.last.durS - 2.5) < 0.4 && ex.last.width > 0, JSON.stringify(ex?.last));
-const [dl] = await Promise.all([
-  page.waitForEvent("download", {timeout: 5000}),
-  page.locator('sonic-media-download[filename="sampler-de-poche"]').locator("a").click({timeout: 3000}),
-]);
-const file = await dl.path();
-const bytes = fs.readFileSync(file);
-const hasDuration = bytes.subarray(0, 4096).includes(Buffer.from([0x44, 0x89, 0x88]));
-check("téléchargement du fichier", /^sampler-de-poche\.(webm|mp4)$/.test(dl.suggestedFilename()) && bytes.length === ex.last.size, `${dl.suggestedFilename()} ${bytes.length} o`);
-check("WebM avec durée", !dl.suggestedFilename().endsWith(".webm") || hasDuration);
-check("store cohérent", (await storeState(page, "poche"))?.armed === "B");
-
+const acid = await state(page, "acid");
+check("basse synth/acid (ladder AudioWorklet) au séquenceur", acid?.played >= 3 && acid.warnings.length === 0, JSON.stringify({played: acid?.played, warnings: acid?.warnings}));
 check("aucune erreur JS / CSP", errors.length === 0, errors.join(" | ").slice(0, 300));
 await browser.close();
 server.close();

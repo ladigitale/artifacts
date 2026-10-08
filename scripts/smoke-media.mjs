@@ -30,7 +30,7 @@ const fixtures = {
 };
 const CLIP = path.join(ROOT, "tests/fixtures/clip.webm");
 const CSP = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:; img-src 'self' https: data: blob:; media-src 'self' https: blob: data:; connect-src 'self' https: blob:; worker-src 'self' blob: https://cdn.jsdelivr.net; child-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
-const PERMISSIONS = "camera=(self), microphone=(self), geolocation=(), payment=()";
+const PERMISSIONS = "camera=(self), microphone=(self), midi=(self), display-capture=(self), geolocation=(), payment=(), usb=(), browsing-topics=()";
 
 const server = http.createServer((q, r) => {
   const u = new URL(q.url, "http://x");
@@ -122,8 +122,11 @@ console.log("\n== miroir");
   check("sonic-shader de Concorde abonné à #cam", (await consumers(page, "cam")) === 1);
   await page.locator('sonic-button[data-action="fx-2"]').click();
   await page.locator('sonic-button[data-action="snap"]').click();
-  await page.waitForTimeout(800);
-  cam = await state(page, "cam");
+  // l'encodage JPEG peut prendre plus d'une demi-seconde sous SwiftShader
+  for (let i = 0; i < 30 && !(cam?.snapshots >= 1); i++) {
+    await page.waitForTimeout(100);
+    cam = await state(page, "cam");
+  }
   const miroir = await storeState(page, "miroir");
   check("effet choisi par le store", miroir?.param0 === 2 && miroir.fxName === "Thermique");
   check("photo par compteur", cam?.snapshots === 1 && /^blob:/.test(cam.snapshot?.url ?? ""), JSON.stringify(cam?.snapshot)?.slice(0, 80));
