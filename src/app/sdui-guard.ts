@@ -29,6 +29,8 @@ const MAX_AUDIO: Record<string, number> = {
   "sonic-media-recorder": 2,
   "sonic-midi": 2,
   "sonic-screen": 1,
+  "sonic-physics": 4,
+  "sonic-controller": 2,
 };
 
 /** Accès sensibles : le composant n'est accepté que si le document les déclare dans `capabilities`. */

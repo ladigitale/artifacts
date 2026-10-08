@@ -420,11 +420,12 @@
     jsonata "^2.2.2"
     url-pattern "^1.0.3"
 
-"@supersoniks/creative-stack@github:ladigitale/creative-stack#4a64174687d1c9fb2526e9bad851f31f0e497eb2":
+"@supersoniks/creative-stack@github:ladigitale/creative-stack#f15824c0065d3583fd6e7086a6d1b31717e2abe3":
   version "0.1.0"
-  resolved "https://codeload.github.com/ladigitale/creative-stack/tar.gz/4a64174687d1c9fb2526e9bad851f31f0e497eb2"
+  resolved "https://codeload.github.com/ladigitale/creative-stack/tar.gz/f15824c0065d3583fd6e7086a6d1b31717e2abe3"
   dependencies:
     jsonata "^2.2.2"
+    planck "1.4.2"
 
 "@tailwindcss/container-queries@^0.1.1":
   version "0.1.1"
@@ -1096,6 +1097,11 @@ pirates@^4.0.1:
   version "4.0.7"
   resolved "https://registry.yarnpkg.com/pirates/-/pirates-4.0.7.tgz#643b4a18c4257c8a65104b73f3049ce9a0a15e22"
   integrity sha512-TfySrs/5nm8fQJDcBDuUng3VOUKsd7S+zqvbOTiGXHfxX4wK31ard+hoNuvkicM/2YFzlpDgABOevKSsB4G/FA==
+
+planck@1.4.2:
+  version "1.4.2"
+  resolved "https://registry.yarnpkg.com/planck/-/planck-1.4.2.tgz#707c390c889f58d1f2942768b0cd2c2ffc6fc8a8"
+  integrity sha512-mNbhnV3g8X2rwGxzcesjmN8BDA6qfXgQxXVMkWau9MCRlQY0RLNEkyHlVp6yFy/X6qrzAXyNONCnZ1cGDLrNew==
 
 playwright-core@1.63.0:
   version "1.63.0"
