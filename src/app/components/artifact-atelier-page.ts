@@ -3,7 +3,7 @@ import "@supersoniks/concorde/button";
 import {html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
 import tailwind from "../../css/tailwind";
-import {getArtifact} from "../cloud/client";
+import {fetchAgentSettingsStatus, getArtifact, tadaaaAssistantSettingsUrl} from "../cloud/client";
 import {getApiRoot, loadArtifactsAccount} from "../cloud/account";
 import {navigate} from "../navigate";
 import "./artifact-viewer";
@@ -25,6 +25,8 @@ export class ArtifactAtelierPage extends LitElement {
   @state() private preview: Record<string, unknown> | null = null;
   @state() private previewVersion = 0;
   @state() private error = "";
+  /** null : inconnu (API ancienne ou hors ligne) — on n'affiche alors rien. */
+  @state() private agentReady: boolean | null = null;
   /** Objets stables : le chat les relit à chaque run. */
   private chatHeaders: Record<string, string> = {};
   private chatContext: Record<string, unknown> = {};
@@ -32,6 +34,36 @@ export class ArtifactAtelierPage extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     if (this.slug) void this.loadCurrent();
+    void this.checkAgent();
+  }
+
+  /** Assistant pas encore configuré dans Tadaaa : on le dit avant la première question. */
+  private async checkAgent() {
+    if (!loadArtifactsAccount()) return;
+    try {
+      const s = await fetchAgentSettingsStatus();
+      this.agentReady = s.configured || s.serverKeyAvailable;
+    } catch {
+      this.agentReady = null;
+    }
+  }
+
+  /** Un run a échoué faute de configuration (réglages supprimés entre-temps). */
+  private onRunError = (e: Event) => {
+    if ((e as CustomEvent<{code?: string}>).detail?.code === "AGENT_NOT_CONFIGURED") this.agentReady = false;
+  };
+
+  private renderAgentBanner() {
+    if (this.agentReady !== false) return nothing;
+    return html`<div
+      class="rounded-lg border border-amber-600/30 bg-amber-50 text-amber-950 p-3 text-sm flex flex-wrap items-center gap-2"
+      role="status"
+      data-agent-not-configured
+    >
+      <span>L’assistant n’est pas encore configuré : choisis un fournisseur et ta clé API dans Tadaaa.</span>
+      <a class="underline font-medium" href=${tadaaaAssistantSettingsUrl()} target="_blank" rel="noopener">Configurer l’assistant</a>
+      <sonic-button size="xs" variant="ghost" @click=${() => void this.checkAgent()}>J’ai configuré, vérifier</sonic-button>
+    </div>`;
   }
 
   /** En modification, l'aperçu part de la version publiée. */
@@ -79,6 +111,7 @@ export class ArtifactAtelierPage extends LitElement {
             : nothing}
         </div>
         ${this.error ? html`<p class="text-red-600 m-0">${this.error}</p>` : nothing}
+        ${this.renderAgentBanner()}
         <div class="grid gap-3 flex-1 min-h-0 grid-cols-1 lg:grid-cols-[minmax(20rem,26rem)_1fr]">
           <sonic-chat
             class="min-h-[20rem] lg:min-h-0 rounded-lg border border-black/10 p-3"
@@ -87,6 +120,7 @@ export class ArtifactAtelierPage extends LitElement {
             .headers=${this.chatHeaders}
             .forwardedProps=${this.chatContext}
             @chat-custom=${this.onCustom}
+            @chat-run-error=${this.onRunError}
           ></sonic-chat>
           <section
             class="min-h-[20rem] lg:min-h-0 overflow-auto rounded-lg border border-black/10"

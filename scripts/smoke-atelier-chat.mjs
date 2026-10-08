@@ -21,6 +21,7 @@ const DIST = path.join(ROOT, "dist");
 const PORT = 4455;
 const doc = JSON.parse(fs.readFileSync(path.join(ROOT, "tests/fixtures/a2ui-reservation.json"), "utf8"));
 const runs = [];
+let settingsConfigured = true;
 
 const sse = (r, events) => {
   r.writeHead(200, {"Content-Type": "text/event-stream", "Access-Control-Allow-Origin": "*"});
@@ -63,6 +64,10 @@ const server = http.createServer(async (q, r) => {
       ]},
       {type: "RUN_FINISHED", threadId: input.threadId, runId: input.runId},
     ]);
+  }
+  if (u.pathname === "/api/agent/settings") {
+    r.writeHead(200, {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"});
+    return r.end(JSON.stringify({configured: settingsConfigured, serverKeyAvailable: false, provider: "anthropic", model: ""}));
   }
   if (u.pathname.startsWith("/api/")) {
     r.writeHead(200, {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"});
@@ -109,6 +114,15 @@ check("clic « Publier » renvoyé comme action A2UI", runs[1]?.input?.forwarded
 check("historique conservé", (runs[1]?.input?.messages ?? []).map((m) => m.role).join(",") === "user,assistant");
 const msgs2 = await ev(`return all(document, "[data-chat-msg]").map((e) => e.textContent);`);
 check("réponse après publication", msgs2.at(-1) === "Publié.", msgs2.join(" | "));
+const bannerOk = await ev(`return all(document, "[data-agent-not-configured]").length;`);
+check("pas de bandeau quand l'assistant est configuré", bannerOk === 0);
+
+settingsConfigured = false;
+await page.goto(`http://localhost:${PORT}/admin/atelier`);
+await page.waitForTimeout(2000);
+const banner = await ev(`const b = all(document, "[data-agent-not-configured]")[0]; return b ? {text: b.textContent, href: b.querySelector("a")?.href} : null;`);
+check("bandeau « assistant non configuré » avec lien vers Tadaaa", !!banner && /connectivity\/assistant$/.test(banner.href ?? ""), JSON.stringify(banner));
+
 check("aucune erreur JS", errors.length === 0, errors.join(" | ").slice(0, 300));
 await browser.close();
 server.close();
