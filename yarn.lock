@@ -409,10 +409,10 @@
   resolved "https://registry.yarnpkg.com/@sinclair/typebox/-/typebox-0.34.52.tgz#62f8a686e4ab28a8944902e2ad2d648312ef11cb"
   integrity sha512-XiMQh7qqVlxZzcVD+kkGMNGMzcTrDMLWI7S4x7z1MkCkbDPrekpZXEUK0eZqZFMuHQg2a2DZOcDIh9o5v3Gonw==
 
-"@supersoniks/concorde@4.9.98-visual-stack.4":
-  version "4.9.98-visual-stack.4"
-  resolved "https://registry.yarnpkg.com/@supersoniks/concorde/-/concorde-4.9.98-visual-stack.4.tgz#d805c6c9f0e691a92861358ad491194c535ff975"
-  integrity sha512-Al6VUgzv4CrYE8MKmJX6Bk+0iyKqgRq5TK8xCa8jPCnI99xYtZ3mWsLki4Kn4axDYLcZd41NKt92m6v4wxPVWA==
+"@supersoniks/concorde@5.0.5":
+  version "5.0.5"
+  resolved "https://registry.yarnpkg.com/@supersoniks/concorde/-/concorde-5.0.5.tgz#a05c346a04aef679b72c44a488fdaa67e2adcf20"
+  integrity sha512-B58Ln000vEJjo9ASe8ulFnzQaKhzhUKH/1bGkjrtyDJbqErJ6jyMs5WUhKr/Tz51x7ZdEYK442REajFhxr1qgg==
   dependencies:
     "@lit-labs/motion" "^1.0.7"
     "@lit-labs/observers" "^2.0.2"
@@ -420,9 +420,9 @@
     jsonata "^2.2.2"
     url-pattern "^1.0.3"
 
-"@supersoniks/creative-stack@github:ladigitale/creative-stack#f15824c0065d3583fd6e7086a6d1b31717e2abe3":
+"@supersoniks/creative-stack@github:ladigitale/creative-stack#26207411c465a7f3b9b63e7177ff770a52bf6a88":
   version "0.1.0"
-  resolved "https://codeload.github.com/ladigitale/creative-stack/tar.gz/f15824c0065d3583fd6e7086a6d1b31717e2abe3"
+  resolved "https://codeload.github.com/ladigitale/creative-stack/tar.gz/26207411c465a7f3b9b63e7177ff770a52bf6a88"
   dependencies:
     jsonata "^2.2.2"
     planck "1.4.2"

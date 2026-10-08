@@ -1,5 +1,5 @@
 import "@supersoniks/concorde/button";
-import "@supersoniks/concorde/interactive";
+import "@supersoniks/creative-stack/interactive";
 import "@supersoniks/concorde/sdui";
 import {html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
