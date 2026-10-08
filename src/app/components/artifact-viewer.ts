@@ -1,5 +1,8 @@
 import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/sdui";
+import "./artifact-a2ui-view";
+import {agentStackLibrary, injectAgentStackStyles} from "@ladigitale/agent-stack/libraries";
+import type {A2uiServerMessage} from "@ladigitale/agent-stack/a2ui";
 import {html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
 import {
@@ -20,7 +23,40 @@ import {declaredNames, nsName, nsTree, nsValue} from "../dp-namespace";
 import {dp, set} from "@supersoniks/concorde/utils";
 import tailwind from "../../css/tailwind";
 
-type ViewDef = {id: string; title: string; root: Record<string, unknown>; hidden?: boolean};
+/** Une vue porte soit `root` (descripteur SDUI), soit `a2ui` (messages A2UI v0.9). */
+type ViewDef = {
+  id: string;
+  title: string;
+  root?: Record<string, unknown>;
+  a2ui?: A2uiServerMessage[];
+  /** Store du document qui reçoit les actions A2UI. */
+  actionStore?: string;
+  hidden?: boolean;
+};
+
+/**
+ * Libraries agent-stack (`a2ui:*`, `chat:*`) disponibles dans toutes les vues SDUI.
+ * Ajoutées avant `transformDocument` pour que l'embed réécrive aussi leurs tagNames ;
+ * une entrée du document du même nom l'emporte.
+ */
+function withAgentLibraries(doc: Record<string, unknown>): Record<string, unknown> {
+  const views = (doc as {views?: ViewDef[]}).views;
+  if (!Array.isArray(views)) return doc;
+  return {
+    ...doc,
+    views: views.map((v) =>
+      v?.root && typeof v.root === "object"
+        ? {
+            ...v,
+            root: {
+              ...v.root,
+              library: {...agentStackLibrary, ...((v.root as {library?: object}).library ?? {})},
+            },
+          }
+        : v,
+    ),
+  };
+}
 type StoreDef = {
   initial?: unknown;
   reducer?: string;
@@ -163,7 +199,7 @@ export class ArtifactViewer extends LitElement {
     this.clearLiveData();
     try {
       const fetched = await fetchPublicArtifact(this.slug, this.linkToken());
-      this.data = {...fetched, document: transformDocument(fetched.document)};
+      this.data = {...fetched, document: transformDocument(withAgentLibraries(fetched.document))};
       this.releaseNamespace();
       this.nsNames = declaredNames(this.data.document, this.slug);
       this.nsClaim = claimNamespace(this.slug, this.nsNames);
@@ -416,6 +452,29 @@ export class ArtifactViewer extends LitElement {
     </p>`;
   }
 
+  protected firstUpdated() {
+    // CSS des libraries agent-stack : les styles du document ne traversent pas le shadow root.
+    if (this.renderRoot instanceof ShadowRoot) injectAgentStackStyles(this.renderRoot);
+  }
+
+  private currentView(): ViewDef | undefined {
+    const doc = this.data?.document as {views?: ViewDef[]} | undefined;
+    return doc?.views?.find((v) => v.id === this.viewId);
+  }
+
+  private renderBody(root: Record<string, unknown> | null) {
+    if (!this.scriptsReady) return html`<p class="opacity-70">Préparation…</p>`;
+    const view = this.currentView();
+    if (view && Array.isArray(view.a2ui)) {
+      return html`<artifact-a2ui-view
+        .messages=${view.a2ui}
+        .store=${view.actionStore ? this.n(view.actionStore) : ""}
+        .prefix=${this.n(`a2ui_${this.slug}_`).replace(/[^\w-]/g, "_")}
+      ></artifact-a2ui-view>`;
+    }
+    return root ? html`<sonic-sdui .props=${root}></sonic-sdui>` : html`<p class="opacity-70">Préparation…</p>`;
+  }
+
   render() {
     if (this.loading) return html`<p class="p-4">Chargement…</p>`;
     if (this.error) {
@@ -467,9 +526,7 @@ export class ArtifactViewer extends LitElement {
           : nothing}
         ${this.renderCapabilities()}
         <div class="artifact-sdui flex-1 min-h-[12rem] p-3 sm:p-4">
-          ${root && this.scriptsReady
-            ? html`<sonic-sdui .props=${root}></sonic-sdui>`
-            : html`<p class="opacity-70">Préparation…</p>`}
+          ${this.renderBody(root)}
         </div>
       </div>
     `;

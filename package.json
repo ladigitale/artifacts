@@ -11,7 +11,8 @@
     "smoke:sound": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-sound.mjs",
     "smoke:audio": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-audio.mjs",
     "smoke:media": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-media.mjs",
-    "smoke:embed": "VITE_API_BASE_URL=http://localhost:4455 vite build && VITE_API_BASE_URL=http://localhost:4455 yarn build:embed && node scripts/smoke-embed.mjs"
+    "smoke:embed": "VITE_API_BASE_URL=http://localhost:4455 vite build && VITE_API_BASE_URL=http://localhost:4455 yarn build:embed && node scripts/smoke-embed.mjs",
+    "smoke:a2ui": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-a2ui.mjs"
   },
   "devDependencies": {
     "@supersoniks/concorde": "5.1.0",
@@ -28,6 +29,7 @@
     "vite": "^5.4.11"
   },
   "dependencies": {
+    "@ladigitale/agent-stack": "github:ladigitale/agent-stack#e17b8f91857faf5d83ecc2ec56732043910aa3ea",
     "@supersoniks/creative-stack": "github:ladigitale/creative-stack#26207411c465a7f3b9b63e7177ff770a52bf6a88",
     "three": "0.180.0"
   },
