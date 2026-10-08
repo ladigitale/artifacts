@@ -84,6 +84,11 @@ export class ArtifactViewer extends LitElement {
   @property({type: String, attribute: "read-key"}) readKeyValue = "";
   /** Embed : vue affichée au démarrage (sinon `defaultView`). */
   @property({type: String}) view = "";
+  /**
+   * Aperçu (atelier) : document à afficher tel quel, sans appel à l'API. Les collections
+   * sont vides et rien n'est envoyé (pas de sinks) ; à utiliser avec `embedded`.
+   */
+  @property({attribute: false}) previewDocument: Record<string, unknown> | null = null;
 
   @state() private data: PublicArtifact | null = null;
   @state() private error = "";
@@ -187,8 +192,12 @@ export class ArtifactViewer extends LitElement {
     this.transformUnsubs = [];
   }
 
+  protected updated(changed: Map<PropertyKey, unknown>) {
+    if (changed.has("previewDocument") && changed.get("previewDocument") !== undefined) void this.load();
+  }
+
   private async load() {
-    if (!this.slug?.trim()) {
+    if (!this.slug?.trim() && !this.previewDocument) {
       this.loading = false;
       this.error = "Slug manquant.";
       this.data = null;
@@ -200,7 +209,9 @@ export class ArtifactViewer extends LitElement {
     this.clearTransformWatchers();
     this.clearLiveData();
     try {
-      const fetched = await fetchPublicArtifact(this.slug, this.linkToken());
+      const fetched = this.previewDocument
+        ? previewArtifact(this.slug, this.previewDocument)
+        : await fetchPublicArtifact(this.slug, this.linkToken());
       this.data = {...fetched, document: transformDocument(withAgentLibraries(fetched.document))};
       this.bindingCache.clear();
       this.releaseNamespace();
@@ -219,7 +230,7 @@ export class ArtifactViewer extends LitElement {
         this.scriptsReady = true;
         await this.applyDataProviders();
         const sinks = (this.data.document as {data?: {sinks?: Record<string, SinkDef>}}).data?.sinks;
-        this.stopSinks = startSinks(this.slug, this.linkToken(), this.nsSinks(sinks));
+        if (!this.previewDocument) this.stopSinks = startSinks(this.slug, this.linkToken(), this.nsSinks(sinks));
       }
     } catch (e) {
       const raw = e instanceof Error ? e.message : String(e);
@@ -309,7 +320,7 @@ export class ArtifactViewer extends LitElement {
       let member: unknown[] = [];
       let denied = false;
       try {
-        member = await fetchPublicCollection(this.slug, collection, k, rk);
+        member = this.previewDocument ? [] : await fetchPublicCollection(this.slug, collection, k, rk);
       } catch (e) {
         member = [];
         denied = isDenied(e);
@@ -329,7 +340,7 @@ export class ArtifactViewer extends LitElement {
       const every = Number(src.refresh);
       // Pas de relecture si l’accès est refusé (élève sans lien secret) : toute une classe
       // derrière la même IP épuiserait la limite de requêtes.
-      if (!denied && Number.isFinite(every) && every >= 5) {
+      if (!this.previewDocument && !denied && Number.isFinite(every) && every >= 5) {
         const timer = window.setInterval(async () => {
           if (await this.refreshSource(name, collection)) return;
           clearInterval(timer);
@@ -549,6 +560,23 @@ export class ArtifactViewer extends LitElement {
       </div>
     `;
   }
+}
+
+/** Enveloppe locale d'un document en aperçu (pas de scripts résolus, pas de collections). */
+function previewArtifact(slug: string, document: Record<string, unknown>): PublicArtifact {
+  return {
+    id: "preview",
+    slug: slug || "preview",
+    title: String(document.title ?? "Aperçu"),
+    document,
+    scriptAssets: [],
+    concordeVersion: "",
+    version: 0,
+    updatedAt: new Date().toISOString(),
+    collections: [],
+    canWrite: false,
+    visibility: "private",
+  };
 }
 
 function isDenied(e: unknown): boolean {

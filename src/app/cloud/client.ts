@@ -114,15 +114,36 @@ export async function exchangeHandoff(
   return account;
 }
 
-export function tadaaaLoginUrl(returnTo: string): string {
-  const tadaaa =
+function tadaaaWebUrl(): string {
+  return (
     (typeof import.meta !== "undefined" &&
       import.meta.env?.VITE_TADAAA_URL &&
       String(import.meta.env.VITE_TADAAA_URL)) ||
-    "http://localhost:3000";
-  const url = new URL("/account/login", tadaaa.replace(/\/$/, ""));
+    "http://localhost:3000"
+  ).replace(/\/$/, "");
+}
+
+export function tadaaaLoginUrl(returnTo: string): string {
+  const url = new URL("/account/login", tadaaaWebUrl());
   url.searchParams.set("return_to", returnTo);
   return url.toString();
+}
+
+/** Page « Assistant IA » de Tadaaa (fournisseur, modèle, clé de l'agent). */
+export function tadaaaAssistantSettingsUrl(): string {
+  return new URL("/connectivity/assistant", tadaaaWebUrl()).toString();
+}
+
+/** État des réglages de l'agent de l'utilisateur (la clé n'est jamais renvoyée). */
+export type AgentSettingsStatus = {
+  configured: boolean;
+  serverKeyAvailable: boolean;
+  provider: string;
+  model: string;
+};
+
+export async function fetchAgentSettingsStatus(): Promise<AgentSettingsStatus> {
+  return apiFetch<AgentSettingsStatus>("/agent/settings");
 }
 
 export async function listMyArtifacts(): Promise<ArtifactSummary[]> {
