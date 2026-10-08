@@ -301,11 +301,17 @@ export class ArtifactViewer extends LitElement {
     `;
   }
 
-  /** Bandeau : l'artefact peut demander caméra / micro (jamais sans un clic de l'utilisateur). */
+  /** Bandeau : l'artefact peut demander caméra / micro / MIDI / écran (jamais sans un clic de l'utilisateur). */
   private renderCapabilities() {
     const caps = docCapabilities(this.data?.document);
     if (!caps.length) return nothing;
-    const names = caps.map((c) => (c === "camera" ? "la caméra" : "le micro"));
+    const label: Record<string, string> = {
+      camera: "la caméra",
+      microphone: "le micro",
+      midi: "vos appareils MIDI",
+      screen: "un partage d’écran",
+    };
+    const names = caps.map((c) => label[c] ?? c);
     const list = names.length > 1 ? `${names.slice(0, -1).join(", ")} et ${names[names.length - 1]}` : names[0];
     return html`<p
       class="artifact-capabilities m-0 mx-3 mt-3 sm:mx-4 px-3 py-2 rounded-md text-sm print:hidden"

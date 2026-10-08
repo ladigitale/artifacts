@@ -27,15 +27,19 @@ const MAX_AUDIO: Record<string, number> = {
   "sonic-video": 6,
   "sonic-audio-recorder": 4,
   "sonic-media-recorder": 2,
+  "sonic-midi": 2,
+  "sonic-screen": 1,
 };
 
 /** Accès sensibles : le composant n'est accepté que si le document les déclare dans `capabilities`. */
-export const CAPABILITY_TAGS: Record<string, "camera" | "microphone"> = {
+export const CAPABILITY_TAGS: Record<string, "camera" | "microphone" | "midi" | "screen"> = {
   "sonic-camera": "camera",
   "sonic-mic": "microphone",
+  "sonic-midi": "midi",
+  "sonic-screen": "screen",
 };
 
-export const KNOWN_CAPABILITIES = ["camera", "microphone"] as const;
+export const KNOWN_CAPABILITIES = ["camera", "microphone", "midi", "screen"] as const;
 
 /** Capacités déclarées par le document (inconnues ignorées). */
 export function docCapabilities(doc: unknown): string[] {
