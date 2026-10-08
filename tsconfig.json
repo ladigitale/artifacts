@@ -18,7 +18,10 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@tailwind": ["./src/css/tailwind.ts"]
+      "@tailwind": ["./src/css/tailwind.ts"],
+      "@supersoniks/creative-stack/3d": ["./src/types/creative-stack-addons.d.ts"],
+      "@supersoniks/creative-stack/webgpu": ["./src/types/creative-stack-addons.d.ts"],
+      "@supersoniks/creative-stack/hugging-face-infer": ["./src/types/creative-stack-addons.d.ts"]
     }
   },
   "include": ["./src"]

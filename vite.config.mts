@@ -34,9 +34,12 @@ const config = {
     }),
   ],
   resolve: {
-    alias: {
-      "@tailwind": path.resolve(__dirname, "./src/css/tailwind.ts"),
-    },
+    alias: [
+      {find: "@tailwind", replacement: path.resolve(__dirname, "./src/css/tailwind.ts")},
+      /* $cosine, $rankBySimilarity, $mediaUrl dans sonic-jsonata (ajouts visual-stack portés
+       * dans la creative-stack) : Concorde classique n'a pas de point d'extension JSONata. */
+      {find: /^jsonata$/, replacement: "@supersoniks/creative-stack/jsonata"},
+    ],
   },
 };
 

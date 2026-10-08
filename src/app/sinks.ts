@@ -1,4 +1,4 @@
-import {dispatch} from "@supersoniks/concorde/registry";
+import {dispatch} from "@supersoniks/creative-stack/interactive";
 import {dp, get} from "@supersoniks/concorde/utils";
 import {IntakeError, postIntakeRecord} from "./cloud/client";
 

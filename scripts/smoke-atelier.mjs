@@ -45,7 +45,13 @@ const snapshot = (p) => p.evaluate(() => {
   const values = deep(document, "sonic-value").map((v) => (v.shadowRoot ? v.shadowRoot.textContent : v.textContent).trim());
   const shader = deep(document, "sonic-shader")[0];
   const canvas = shader?.shadowRoot?.querySelector("canvas");
+  // Ajouts visual-stack portés dans la creative-stack (Concorde classique) :
+  // sonic-if dataProvider/key/equals et sonic-value format="00000".
+  const pauseIf = deep(document, "sonic-if").find((e) => e.getAttribute("key") === "running" && e.getAttribute("equals") === "false");
+  const frameValue = deep(document, "sonic-value").find((e) => e.getAttribute("format") === "00000");
   return {
+    pauseShown: pauseIf ? !!pauseIf.shadowRoot?.querySelector("slot") : null,
+    frameText: frameValue ? (frameValue.shadowRoot?.textContent ?? "").trim() : null,
     viewer: deep(document, "artifact-viewer").length > 0,
     state: store?.state ?? null,
     stateIsPromise: !!store?.state && typeof store.state.then === "function",
@@ -104,11 +110,14 @@ for (const url of ["/atelier-visuel/?k=tok", "/atelier-visuel?k=tok"]) {
   await page.waitForTimeout(1000);
   s = await snapshot(page);
   check("ticker anime la mosaïque", typeof f0 === "number" && s.state?.frame > f0, `frame ${f0} → ${s.state?.frame}`);
+  check("sonic-value format=00000", /^\d{5}$/.test(s.frameText ?? ""), `« ${s.frameText} »`);
+  check("sonic-if equals=false masqué pendant la lecture", s.pauseShown === false, String(s.pauseShown));
 
   await page.locator("sonic-action").nth(2).click({timeout: 3000});
   await page.waitForTimeout(500);
   s = await snapshot(page);
   check("pause", s.state?.running === false);
+  check("sonic-if equals=false affiché en pause", s.pauseShown === true, String(s.pauseShown));
   check("aucune erreur JS / CSP", errors.length === 0, errors.join(" | ").slice(0, 300));
   await page.close();
 }

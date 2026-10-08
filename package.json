@@ -12,7 +12,7 @@
     "smoke:media": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-media.mjs"
   },
   "devDependencies": {
-    "@supersoniks/concorde": "4.9.98-visual-stack.4",
+    "@supersoniks/concorde": "5.0.5",
     "@tailwindcss/container-queries": "^0.1.1",
     "autoprefixer": "^10.4.16",
     "dotenv": "^16.3.1",
@@ -26,7 +26,7 @@
     "vite": "^5.4.11"
   },
   "dependencies": {
-    "@supersoniks/creative-stack": "github:ladigitale/creative-stack#f15824c0065d3583fd6e7086a6d1b31717e2abe3",
+    "@supersoniks/creative-stack": "github:ladigitale/creative-stack#26207411c465a7f3b9b63e7177ff770a52bf6a88",
     "three": "0.180.0"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
