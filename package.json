@@ -14,7 +14,7 @@
     "smoke:embed": "VITE_API_BASE_URL=http://localhost:4455 vite build && VITE_API_BASE_URL=http://localhost:4455 yarn build:embed && node scripts/smoke-embed.mjs"
   },
   "devDependencies": {
-    "@supersoniks/concorde": "5.0.5",
+    "@supersoniks/concorde": "5.1.0",
     "@tailwindcss/container-queries": "^0.1.1",
     "autoprefixer": "^10.4.16",
     "dotenv": "^16.3.1",
