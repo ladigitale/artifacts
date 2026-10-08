@@ -11,8 +11,11 @@ import "../components/artifact-logo";
 import "../components/artifact-theme-switcher";
 
 const shellStyles = css`
+  /* html/body sont en overflow:hidden : le shell occupe exactement l'écran
+     et <main> porte le scroll (sinon le bas de page est inatteignable). */
   .app {
-    min-height: 100%;
+    height: 100%;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     background: var(--sc-base-50, #e8e4f8);
@@ -25,6 +28,7 @@ const shellStyles = css`
     padding: 0.75rem 1rem;
     background: var(--sc-base, #f4f2ff);
     border-bottom: 1px solid var(--sc-base-100);
+    flex-shrink: 0;
   }
   .bar-start {
     display: flex;
@@ -75,7 +79,14 @@ const shellStyles = css`
   }
   main.shell-main {
     flex: 1;
-    padding: 1rem;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  .shell-content {
+    padding: 1rem 1rem 3rem;
     max-width: 72rem;
     width: 100%;
     margin: 0 auto;
@@ -94,8 +105,8 @@ const shellStyles = css`
     .nav-burger {
       display: none;
     }
-    main.shell-main {
-      padding: 1.5rem;
+    .shell-content {
+      padding: 1.5rem 1.5rem 3rem;
     }
   }
 `;
@@ -225,7 +236,9 @@ export function renderAdminShell(children: TemplateResult | unknown): TemplateRe
           </sonic-pop>
         </div>
       </header>
-      <main class="shell-main app-shell-main custom-scroll">${children}</main>
+      <main class="shell-main app-shell-main custom-scroll">
+        <div class="shell-content">${children}</div>
+      </main>
     </div>
   `;
 }
