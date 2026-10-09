@@ -45,6 +45,7 @@ const server = http.createServer(async (q, r) => {
         {type: "TEXT_MESSAGE_START", messageId: "m3", role: "assistant"},
         {type: "TEXT_MESSAGE_CONTENT", messageId: "m3", delta: "Publié."},
         {type: "TEXT_MESSAGE_END", messageId: "m3"},
+        {type: "CUSTOM", name: "artifact-published", value: {slug: "reservation-orchestre", url: "https://artifacts.example/reservation-orchestre", version: 1}},
       ]);
     }
     return sse(r, [
@@ -114,6 +115,8 @@ check("clic « Publier » renvoyé comme action A2UI", runs[1]?.input?.forwarded
 check("historique conservé", (runs[1]?.input?.messages ?? []).map((m) => m.role).join(",") === "user,assistant");
 const msgs2 = await ev(`return all(document, "[data-chat-msg]").map((e) => e.textContent);`);
 check("réponse après publication", msgs2.at(-1) === "Publié.", msgs2.join(" | "));
+const pub = await ev(`const b = all(document, "[data-published]")[0]; return b ? {text: b.textContent.trim(), href: b.getAttribute("href")} : null;`);
+check("lien vers l'artefact publié", pub?.href === "https://artifacts.example/reservation-orchestre" && /reservation-orchestre/.test(pub?.text ?? ""), JSON.stringify(pub));
 const bannerOk = await ev(`return all(document, "[data-agent-not-configured]").length;`);
 check("pas de bandeau quand l'assistant est configuré", bannerOk === 0);
 

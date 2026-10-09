@@ -25,6 +25,8 @@ export class ArtifactAtelierPage extends LitElement {
   @state() private preview: Record<string, unknown> | null = null;
   @state() private previewVersion = 0;
   @state() private error = "";
+  /** Dernière publication faite par l'agent dans cette conversation (`publish_preview`). */
+  @state() private published: {slug: string; url?: string; version?: number} | null = null;
   /** null : inconnu (API ancienne ou hors ligne) — on n'affiche alors rien. */
   @state() private agentReady: boolean | null = null;
   /** Objets stables : le chat les relit à chaque run. */
@@ -84,6 +86,17 @@ export class ArtifactAtelierPage extends LitElement {
 
   private onCustom = (e: Event) => {
     const {name, value} = (e as CustomEvent<{name: string; value: unknown}>).detail;
+    if (name === "artifact-published") {
+      const v = value as {slug?: unknown; url?: unknown; version?: unknown};
+      if (typeof v?.slug === "string") {
+        this.published = {
+          slug: v.slug,
+          url: typeof v.url === "string" ? v.url : undefined,
+          version: typeof v.version === "number" ? v.version : undefined,
+        };
+      }
+      return;
+    }
     if (name !== "artifact-preview") return;
     const document = (value as {document?: unknown})?.document;
     if (document && typeof document === "object") this.showPreview(document as Record<string, unknown>);
@@ -106,9 +119,15 @@ export class ArtifactAtelierPage extends LitElement {
               ${this.slug ? html`Modification de <code>${this.slug}</code>` : "Décrivez l’artefact à créer."}
             </p>
           </div>
-          ${this.slug
-            ? html`<sonic-button size="sm" variant="outline" @click=${() => navigate(`/${this.slug}/`)}>Voir la page</sonic-button>`
-            : nothing}
+          ${this.published && this.published.slug !== this.slug
+            ? html`<sonic-button size="sm" type="primary" data-published href=${this.published.url ?? `/${this.published.slug}`} target="_blank"
+                >Publié : ${this.published.slug}${this.published.version ? ` (v${this.published.version})` : ""}</sonic-button
+              >`
+            : this.slug
+              ? html`<sonic-button size="sm" variant="outline" @click=${() => navigate(`/${this.slug}/`)}
+                  >Voir la page${this.published?.version ? ` (v${this.published.version})` : ""}</sonic-button
+                >`
+              : nothing}
         </div>
         ${this.error ? html`<p class="text-red-600 m-0">${this.error}</p>` : nothing}
         ${this.renderAgentBanner()}
