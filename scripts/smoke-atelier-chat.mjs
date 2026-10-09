@@ -95,6 +95,18 @@ await page.evaluate((port) => localStorage.setItem("artifacts-account", JSON.str
 await page.goto(`http://localhost:${PORT}/admin/atelier`);
 await page.waitForTimeout(2000);
 
+// Mise en page : pleine largeur, et le bas de l'atelier ne dépasse pas l'écran.
+const layout = () => ev(`const a = document.querySelector("artifact-atelier-page"); const m = document.querySelector("main.shell-main"); const r = a.getBoundingClientRect(); const mr = m.getBoundingClientRect(); const root = (a.shadowRoot ?? a).querySelector("div").getBoundingClientRect(); return {w: Math.round(r.width), mainW: Math.round(mr.width), bottom: Math.round(r.bottom), mainBottom: Math.round(mr.bottom), rootBottom: Math.round(root.bottom), vh: innerHeight, docScroll: document.documentElement.scrollHeight, mainScroll: m.scrollHeight - m.clientHeight};`);
+let l = await layout();
+check("atelier en pleine largeur", l.w === l.mainW && l.w > 1100, JSON.stringify(l));
+check("atelier : le bas ne dépasse pas l'écran", l.rootBottom <= l.mainBottom && l.mainBottom <= l.vh && l.docScroll <= l.vh && l.mainScroll <= 0, JSON.stringify(l));
+await page.setViewportSize({width: 390, height: 700});
+await page.waitForTimeout(300);
+l = await layout();
+check("mobile : pas de débordement de la page (l'atelier défile seul)", l.docScroll <= l.vh && l.mainScroll <= 0 && l.bottom <= l.vh, JSON.stringify(l));
+await page.setViewportSize({width: 1280, height: 860});
+await page.waitForTimeout(300);
+
 const ta = await page.evaluateHandle(new Function(deepJs + `return all(document, "sonic-chat textarea")[0];`));
 await ta.asElement().fill("Une page de réservation");
 await ta.asElement().press("Enter");

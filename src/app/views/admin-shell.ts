@@ -92,6 +92,19 @@ const shellStyles = css`
     margin: 0 auto;
     box-sizing: border-box;
   }
+  /* Page « plein cadre » (atelier) : pleine largeur, hauteur = celle de <main>,
+     le scroll est porté par la page elle-même. */
+  main.shell-main:has(artifact-atelier-page) {
+    overflow-y: hidden;
+  }
+  .shell-content:has(artifact-atelier-page) sonic-router {
+    display: contents;
+  }
+  .shell-content:has(artifact-atelier-page) {
+    max-width: none;
+    height: 100%;
+    padding: 0;
+  }
   @media (min-width: 768px) {
     header.bar {
       padding: 0.85rem 1.5rem;
@@ -107,6 +120,9 @@ const shellStyles = css`
     }
     .shell-content {
       padding: 1.5rem 1.5rem 3rem;
+    }
+    .shell-content:has(artifact-atelier-page) {
+      padding: 0;
     }
   }
 `;

@@ -111,7 +111,7 @@ export class ArtifactAtelierPage extends LitElement {
     this.chatHeaders.Authorization = `Bearer ${account.token}`;
     if (this.slug) this.chatContext.artifact = {slug: this.slug};
     return html`
-      <div class="flex flex-col gap-3 p-3 sm:p-4 h-[calc(100dvh-4rem)] min-h-[32rem]">
+      <div class="flex flex-col gap-3 p-3 sm:p-4 h-full min-h-[32rem] box-border">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h1 class="text-2xl font-semibold m-0">Atelier</h1>
