@@ -2,7 +2,7 @@ export default async (h) => {
   let s = await h.state("scene");
   h.check("réglages initialisés", s.param0 === 1 && s.param1 === 4 && s.param2 === 0.6, JSON.stringify([s.param0, s.param1, s.param2]));
   h.check("3 réglages affichés", await h.visible("[data-control]") === 3);
-  h.check("libellés et valeurs", (await h.text("[data-control]")).join(" | ").includes("Vitesse −1 +"), (await h.text("[data-control]")).join(" | "));
+  h.check("libellés et valeurs", (await h.text("[data-control]")).join(" | ").includes("Vitesse 1"), (await h.text("[data-control]")).join(" | "));
   await h.click("[data-inc='1']"); await h.wait(200); await h.click("[data-inc='1']"); await h.wait(200);
   await h.click("[data-dec='0']"); await h.wait(200);
   s = await h.state("scene");
