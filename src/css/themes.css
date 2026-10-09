@@ -224,8 +224,8 @@ html[data-theme="matcha"] sonic-theme {
   --sc-primary-content: #f4fff0;
   --sc-info: #00a8a8;
   --sc-info-content: #ffffff;
-  --sc-success: #1ea84a;
-  --sc-success-content: #ffffff;
+  --sc-success: #12803a;
+  --sc-success-content: #f0fff4;
   --sc-warning: #ff9a1a;
   --sc-warning-content: #2a1600;
   --sc-danger: #e63a4a;
@@ -290,8 +290,8 @@ html[data-theme="bubblegum"] sonic-theme {
   --sc-primary-content: #ffffff;
   --sc-info: #3dbbff;
   --sc-info-content: #002438;
-  --sc-success: #00d98c;
-  --sc-success-content: #003820;
+  --sc-success: #0b8a5a;
+  --sc-success-content: #effff8;
   --sc-warning: #ffcc00;
   --sc-warning-content: #3a2800;
   --sc-danger: #ff3366;
@@ -356,8 +356,8 @@ html[data-theme="lavande"] sonic-theme {
   --sc-primary-content: #ffffff;
   --sc-info: #4a7cff;
   --sc-info-content: #ffffff;
-  --sc-success: #20b070;
-  --sc-success-content: #ffffff;
+  --sc-success: #12804f;
+  --sc-success-content: #f0fff7;
   --sc-warning: #ff8c20;
   --sc-warning-content: #2a1400;
   --sc-danger: #e02070;
