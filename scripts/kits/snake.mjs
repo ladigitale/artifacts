@@ -1,0 +1,31 @@
+export default async (h) => {
+  let s = await h.state("game");
+  h.check("grille rendue au chargement", s.phase === "ready" && s.cells.length === 280 && s.cells.filter((c) => c === 2).length === 1, JSON.stringify({phase: s.phase, n: s.cells?.length}));
+  h.check("textes de l'interface", (await h.text("h1"))[0] === "Snake" && (await h.text("[data-button=toggle]"))[0] === "Jouer / Pause", await h.text("[data-button]"));
+  h.check("stats", (await h.text("[data-stat=score]"))[0]?.startsWith("Score"), await h.text("[data-stat]"));
+  await h.key("ArrowRight");
+  await h.wait(700);
+  s = await h.state("game");
+  h.check("flèche → partie lancée, le serpent avance", s.phase === "play" && s.snake[0].x > 6, JSON.stringify(s.snake[0]));
+  // Fruit placé juste devant la tête : il est mangé au tick suivant.
+  await h.eval(`const st = all("sonic-store").find(e => e.id.endsWith("game")); const x = st.state; st.state = {...x, food: {x: x.snake[0].x + 1, y: x.snake[0].y}, queued: "right", dir: "right"};`);
+  await h.wait(260);
+  s = await h.state("game");
+  h.check("fruit mangé : score, longueur, accélération", s.score === 10 && s.snake.length === 4 && s.speed < 150, JSON.stringify({score: s.score, len: s.snake.length, speed: s.speed}));
+  h.check("nouveau fruit sur une case libre", !s.snake.some((p) => p.x === s.food.x && p.y === s.food.y));
+  await h.key("ArrowLeft"); await h.wait(200);
+  h.check("demi-tour refusé", (await h.state("game")).queued !== "left");
+  await h.key("ArrowUp");
+  await h.wait(3000);
+  s = await h.state("game");
+  h.check("mur → perdu, record", s.phase === "over" && s.best === 10 && s.msg.includes("10"), JSON.stringify({phase: s.phase, best: s.best, msg: s.msg}));
+  await h.click("[data-button=restart]"); await h.wait(300);
+  s = await h.state("game");
+  h.check("recommencer", s.phase === "play" && s.score === 0 && s.snake.length === 3);
+  await h.key("Space"); await h.wait(300);
+  const p = (await h.state("game")); await h.wait(500);
+  h.check("pause", p.phase === "pause" && JSON.stringify((await h.state("game")).snake) === JSON.stringify(p.snake));
+  await h.key("Space"); await h.wait(100);
+  await h.click("[data-pad=down]"); await h.wait(400);
+  h.check("croix directionnelle", (await h.state("game")).dir === "down", (await h.state("game")).dir);
+};

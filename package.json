@@ -13,7 +13,8 @@
     "smoke:media": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-media.mjs",
     "smoke:embed": "VITE_API_BASE_URL=http://localhost:4455 vite build && VITE_API_BASE_URL=http://localhost:4455 yarn build:embed && node scripts/smoke-embed.mjs",
     "smoke:a2ui": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-a2ui.mjs && node scripts/smoke-a2ui-form.mjs",
-    "smoke:atelier-chat": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-atelier-chat.mjs"
+    "smoke:atelier-chat": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-atelier-chat.mjs",
+    "smoke:kits": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-kits.mjs"
   },
   "devDependencies": {
     "@supersoniks/concorde": "5.1.0",
