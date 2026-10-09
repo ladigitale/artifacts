@@ -15,6 +15,16 @@ import "./artifact-viewer";
  * rendue par le vrai viewer en mode aperçu. La publication reste une action de l'agent,
  * après confirmation dans le chat.
  */
+const KITS_KEY = "artifacts-atelier-kits";
+
+function readUseKits(): boolean {
+  try {
+    return localStorage.getItem(KITS_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+
 @customElement("artifact-atelier-page")
 export class ArtifactAtelierPage extends LitElement {
   static styles = [tailwind];
@@ -25,6 +35,8 @@ export class ArtifactAtelierPage extends LitElement {
   @state() private preview: Record<string, unknown> | null = null;
   @state() private previewVersion = 0;
   @state() private error = "";
+  /** Kits de l'agent (quiz, jeux, shader…) : décochés, l'agent compose tout librement. */
+  @state() private useKits = readUseKits();
   /** Dernière publication faite par l'agent dans cette conversation (`publish_preview`). */
   @state() private published: {slug: string; url?: string; version?: number} | null = null;
   /** null : inconnu (API ancienne ou hors ligne) — on n'affiche alors rien. */
@@ -84,6 +96,15 @@ export class ArtifactAtelierPage extends LitElement {
     this.previewVersion += 1;
   }
 
+  private setUseKits(value: boolean) {
+    this.useKits = value;
+    try {
+      localStorage.setItem(KITS_KEY, value ? "1" : "0");
+    } catch {
+      /* préférence non mémorisée */
+    }
+  }
+
   private onCustom = (e: Event) => {
     const {name, value} = (e as CustomEvent<{name: string; value: unknown}>).detail;
     if (name === "artifact-published") {
@@ -110,6 +131,7 @@ export class ArtifactAtelierPage extends LitElement {
     const endpoint = `${getApiRoot(account)}/agent/artifacts/run`;
     this.chatHeaders.Authorization = `Bearer ${account.token}`;
     if (this.slug) this.chatContext.artifact = {slug: this.slug};
+    this.chatContext.atelier = {kits: this.useKits};
     return html`
       <div class="flex flex-col gap-3 p-3 sm:p-4 h-[calc(100dvh-4rem)] min-h-[32rem]">
         <div class="flex flex-wrap items-center justify-between gap-2">
@@ -119,6 +141,15 @@ export class ArtifactAtelierPage extends LitElement {
               ${this.slug ? html`Modification de <code>${this.slug}</code>` : "Décrivez l’artefact à créer."}
             </p>
           </div>
+          <label class="flex items-center gap-2 text-sm cursor-pointer select-none" title="Décoché : l’agent compose tout librement, sans partir des kits (quiz, jeux, shader, page, sondage).">
+            <input
+              type="checkbox"
+              data-kits-toggle
+              .checked=${this.useKits}
+              @change=${(e: Event) => this.setUseKits((e.target as HTMLInputElement).checked)}
+            />
+            Partir des kits quand c’est possible
+          </label>
           ${this.published && this.published.slug !== this.slug
             ? html`<sonic-button size="sm" type="primary" data-published href=${this.published.url ?? `/${this.published.slug}`} target="_blank"
                 >Publié : ${this.published.slug}${this.published.version ? ` (v${this.published.version})` : ""}</sonic-button

@@ -112,6 +112,7 @@ check("aperçu jouable (store local)", count === "1", count);
 await ev(`all(document, 'sonic-chat [data-sdui-node-id="root"]')[0]?.click();`);
 await page.waitForTimeout(1200);
 check("clic « Publier » renvoyé comme action A2UI", runs[1]?.input?.forwardedProps?.a2uiAction?.action?.name === "publish", JSON.stringify(runs[1]?.input?.forwardedProps?.a2uiAction ?? null));
+check("kits proposés par défaut", runs[0]?.input?.forwardedProps?.atelier?.kits === true, JSON.stringify(runs[0]?.input?.forwardedProps?.atelier));
 check("historique conservé", (runs[1]?.input?.messages ?? []).map((m) => m.role).join(",") === "user,assistant");
 const msgs2 = await ev(`return all(document, "[data-chat-msg]").map((e) => e.textContent);`);
 check("réponse après publication", msgs2.at(-1) === "Publié.", msgs2.join(" | "));
@@ -119,6 +120,16 @@ const pub = await ev(`const b = all(document, "[data-published]")[0]; return b ?
 check("lien vers l'artefact publié", pub?.href === "https://artifacts.example/reservation-orchestre" && /reservation-orchestre/.test(pub?.text ?? ""), JSON.stringify(pub));
 const bannerOk = await ev(`return all(document, "[data-agent-not-configured]").length;`);
 check("pas de bandeau quand l'assistant est configuré", bannerOk === 0);
+
+// Case décochée : l'agent compose sans kit (mémorisé).
+await ev(`const c = all(document, "[data-kits-toggle]")[0]; c.click();`);
+await page.waitForTimeout(300);
+const ta2 = await page.evaluateHandle(new Function(deepJs + `return all(document, "sonic-chat textarea")[0];`));
+await ta2.asElement().fill("Sans kit cette fois");
+await ta2.asElement().press("Enter");
+await page.waitForTimeout(1500);
+check("case « kits » décochée transmise à l'agent", runs.at(-1)?.input?.forwardedProps?.atelier?.kits === false, JSON.stringify(runs.at(-1)?.input?.forwardedProps?.atelier));
+check("préférence mémorisée", (await page.evaluate(() => localStorage.getItem("artifacts-atelier-kits"))) === "0");
 
 settingsConfigured = false;
 await page.goto(`http://localhost:${PORT}/admin/atelier`);
