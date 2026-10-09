@@ -55,12 +55,21 @@ for (const name of names) {
   doc = JSON.parse(fs.readFileSync(path.join(ROOT, `tests/fixtures/kit-${name}.json`), "utf8"));
   posts.length = 0;
   const page = await (await browser.newContext({viewport: {width: 900, height: 1000}})).newPage();
+  // Icônes : les CDN (iconoir sur cdnjs, heroicons sur jsDelivr) sont simulés par un SVG
+  // neutre ; on vérifie les URL demandées et le rendu.
+  const cdn = [];
+  await page.route(/cdnjs\.cloudflare\.com\/ajax\/libs\/iconoir\/|cdn\.jsdelivr\.net\/npm\/heroicons@/, (route) => {
+    cdn.push(route.request().url());
+    return route.fulfill({status: 200, contentType: "image/svg+xml", headers: {"access-control-allow-origin": "*"},
+      body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor"/></svg>'});
+  });
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") errors.push(`[${m.type()}] ${m.text()}`); });
   const h = {
     page,
     posts,
+    cdn,
     eval: (body, arg) => page.evaluate(new Function("arg", deep + body), arg),
     text: (sel) => page.evaluate(new Function("sel", deep + `return all(sel).map((e) => txt(e).replace(/\\s+/g, " ").trim());`), sel),
     // Vrai clic souris : sonic-action écoute pointerdown / pointerup.
@@ -87,6 +96,8 @@ for (const name of names) {
   } catch (e) {
     h.check("scénario", false, e.stack);
   }
+  const icons = await h.eval(`return all("sonic-icon").filter((e) => e.getBoundingClientRect().width > 0).map((e) => !!(e.shadowRoot && e.shadowRoot.querySelector("svg")));`);
+  if (icons.length) h.check(`${icons.length} icône(s) visible(s) rendue(s)`, icons.every(Boolean), JSON.stringify(icons));
   const real = errors.filter((e) => !IGNORED.test(e));
   h.check("aucune erreur JS", real.length === 0, real.join(" | "));
   await page.context().close();

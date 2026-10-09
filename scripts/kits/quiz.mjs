@@ -17,7 +17,7 @@ export default async (h) => {
   h.check("question 2 (4 réponses)", (await h.state("quiz")).i === 1 && await h.visible("[data-answer]") === 4, await h.visible("[data-answer]"));
   await h.wait(5600);
   s = await h.state("quiz");
-  h.check("temps écoulé", s.phase === "feedback" && s.msg.startsWith("⏱") && s.good === 1, s.msg);
+  h.check("temps écoulé", s.phase === "feedback" && s.msg.startsWith("Temps écoulé") && s.good === 1, s.msg);
   await h.click("[data-next]"); await h.wait(400);
   await h.click("[data-answer='1']"); await h.wait(400);
   s = await h.state("quiz");

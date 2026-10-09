@@ -29,6 +29,16 @@ const sse = (r, events) => {
   r.end();
 };
 
+/** Comme sse(), avec une pause avant chaque événement dont `delays[i]` > 0 (pour voir l'état d'attente). */
+const sseSlow = async (r, events, delays) => {
+  r.writeHead(200, {"Content-Type": "text/event-stream", "Access-Control-Allow-Origin": "*"});
+  for (const [i, e] of events.entries()) {
+    if (delays[i]) await new Promise((res) => setTimeout(res, delays[i]));
+    r.write(`data: ${JSON.stringify(e)}\n\n`);
+  }
+  r.end();
+};
+
 const server = http.createServer(async (q, r) => {
   const u = new URL(q.url, "http://x");
   if (q.method === "OPTIONS") {
@@ -48,7 +58,7 @@ const server = http.createServer(async (q, r) => {
         {type: "CUSTOM", name: "artifact-published", value: {slug: "reservation-orchestre", url: "https://artifacts.example/reservation-orchestre", version: 1}},
       ]);
     }
-    return sse(r, [
+    return sseSlow(r, [
       {type: "RUN_STARTED", threadId: input.threadId, runId: input.runId},
       {type: "TOOL_CALL_START", toolCallId: "p", toolCallName: "preview_artifact"},
       {type: "CUSTOM", name: "artifact-preview", value: {document: doc}},
@@ -64,7 +74,7 @@ const server = http.createServer(async (q, r) => {
         ]}},
       ]},
       {type: "RUN_FINISHED", threadId: input.threadId, runId: input.runId},
-    ]);
+    ], [0, 900, 900, 0, 0]);
   }
   if (u.pathname === "/api/agent/settings") {
     r.writeHead(200, {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"});
@@ -95,10 +105,35 @@ await page.evaluate((port) => localStorage.setItem("artifacts-account", JSON.str
 await page.goto(`http://localhost:${PORT}/admin/atelier`);
 await page.waitForTimeout(2000);
 
+// Mise en page : pleine largeur, et le bas de l'atelier ne dépasse pas l'écran.
+const layout = () => ev(`const a = document.querySelector("artifact-atelier-page"); const m = document.querySelector("main.shell-main"); const r = a.getBoundingClientRect(); const mr = m.getBoundingClientRect(); const root = (a.shadowRoot ?? a).querySelector("div").getBoundingClientRect(); return {w: Math.round(r.width), mainW: Math.round(mr.width), bottom: Math.round(r.bottom), mainBottom: Math.round(mr.bottom), rootBottom: Math.round(root.bottom), vh: innerHeight, docScroll: document.documentElement.scrollHeight, mainScroll: m.scrollHeight - m.clientHeight};`);
+let l = await layout();
+check("atelier en pleine largeur", l.w === l.mainW && l.w > 1100, JSON.stringify(l));
+check("atelier : le bas ne dépasse pas l'écran", l.rootBottom <= l.mainBottom && l.mainBottom <= l.vh && l.docScroll <= l.vh && l.mainScroll <= 0, JSON.stringify(l));
+await page.setViewportSize({width: 390, height: 700});
+await page.waitForTimeout(300);
+l = await layout();
+check("mobile : pas de débordement de la page (l'atelier défile seul)", l.docScroll <= l.vh && l.mainScroll <= 0 && l.bottom <= l.vh, JSON.stringify(l));
+await page.setViewportSize({width: 1280, height: 860});
+await page.waitForTimeout(300);
+
 const ta = await page.evaluateHandle(new Function(deepJs + `return all(document, "sonic-chat textarea")[0];`));
 await ta.asElement().fill("Une page de réservation");
 await ta.asElement().press("Enter");
-await page.waitForTimeout(2000);
+// Pendant l'attente : un état visible tout de suite, puis l'outil en cours.
+await page.waitForTimeout(300);
+const st1 = await ev(`const s = all(document, "[data-chat-status]")[0]; return s ? {phase: s.getAttribute("data-phase"), text: s.textContent.trim()} : null;`);
+check("loader dès l'envoi", !!st1 && /Envoi|Réflexion/.test(st1.text), JSON.stringify(st1));
+await page.waitForTimeout(900);
+const st2 = await ev(`const s = all(document, "[data-chat-status]")[0]; return s ? {phase: s.getAttribute("data-phase"), text: s.textContent.trim()} : null;`);
+if (process.env.SHOT) console.log(await ev(`const s = all(document, "[data-chat-spinner]")[0]; if (!s) return "none"; const c = getComputedStyle(s); const r = s.getBoundingClientRect(); return [c.display, c.width, c.height, c.borderTopWidth, c.borderTopStyle, c.animationName, r.width].join(" ");`));
+if (process.env.SHOT) await page.screenshot({path: process.env.SHOT, clip: {x: 0, y: 60, width: 460, height: 800}});
+check("état précis : outil en cours", st2?.phase === "tool" && /Construction de l’aperçu/.test(st2.text), JSON.stringify(st2));
+await page.waitForTimeout(2200);
+const st3 = await ev(`return all(document, "[data-chat-status]").length;`);
+check("loader retiré en fin de run", st3 === 0, String(st3));
+const toolRow = await ev(`const t = all(document, "[data-chat-tool]")[0]; return t ? t.textContent.trim() : null;`);
+check("ligne d'outil terminée", /Aperçu construit/.test(toolRow ?? ""), toolRow);
 
 check("jeton envoyé à l'agent", runs[0]?.auth === "Bearer tok-smoke", runs[0]?.auth);
 const msgs = await ev(`return all(document, "[data-chat-msg]").map((e) => e.getAttribute("data-chat-msg") + ":" + e.textContent);`);

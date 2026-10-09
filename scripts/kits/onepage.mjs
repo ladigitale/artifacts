@@ -1,4 +1,7 @@
 export default async (h) => {
+  await h.wait(600);
+  const icons = await h.eval(`return all("sonic-icon").map(e => !!(e.shadowRoot && e.shadowRoot.querySelector("svg")))`);
+  h.check("icônes rendues", icons.length > 0 && icons.every(Boolean), JSON.stringify(icons));
   h.check("bandeau", (await h.text("[data-hero]"))[0]?.startsWith("Fanfare des Ponts") , await h.text("[data-hero]"));
   h.check("bouton d'action", (await h.eval(`return all("[data-cta]")[0]?.getAttribute("href")`)) === "https://example.org/contact");
   h.check("2 sections", await h.visible("[data-section]") === 2);

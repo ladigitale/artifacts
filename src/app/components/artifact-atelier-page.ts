@@ -7,6 +7,7 @@ import {fetchAgentSettingsStatus, getArtifact, tadaaaAssistantSettingsUrl} from 
 import {getApiRoot, loadArtifactsAccount} from "../cloud/account";
 import {navigate} from "../navigate";
 import "./artifact-viewer";
+import {atelierToolLabels} from "../atelier-tool-labels";
 
 /**
  * Atelier : création / modification d'un artefact en conversation avec l'agent de
@@ -133,7 +134,7 @@ export class ArtifactAtelierPage extends LitElement {
     if (this.slug) this.chatContext.artifact = {slug: this.slug};
     this.chatContext.atelier = {kits: this.useKits};
     return html`
-      <div class="flex flex-col gap-3 p-3 sm:p-4 h-[calc(100dvh-4rem)] min-h-[32rem]">
+      <div class="flex flex-col gap-3 p-3 sm:p-4 h-full min-h-[32rem] box-border">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h1 class="text-2xl font-semibold m-0">Atelier</h1>
@@ -169,6 +170,7 @@ export class ArtifactAtelierPage extends LitElement {
             placeholder=${this.slug ? "Que faut-il changer ?" : "Ex. : un quiz de 5 questions sur les châteaux de la Loire"}
             .headers=${this.chatHeaders}
             .forwardedProps=${this.chatContext}
+            .toolLabels=${atelierToolLabels}
             @chat-custom=${this.onCustom}
             @chat-run-error=${this.onRunError}
           ></sonic-chat>
