@@ -3,7 +3,16 @@ import "@supersoniks/concorde/button";
 import {html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
 import tailwind from "../../css/tailwind";
-import {fetchAgentSettingsStatus, getArtifact, tadaaaAssistantSettingsUrl} from "../cloud/client";
+import {
+  deleteAgentThread,
+  fetchAgentSettingsStatus,
+  getAgentThread,
+  getArtifact,
+  listAgentThreads,
+  renameAgentThread,
+  tadaaaAssistantSettingsUrl,
+  type AgentThreadSummary,
+} from "../cloud/client";
 import {getApiRoot, loadArtifactsAccount} from "../cloud/account";
 import {navigate} from "../navigate";
 import "./artifact-viewer";
@@ -42,14 +51,130 @@ export class ArtifactAtelierPage extends LitElement {
   @state() private published: {slug: string; url?: string; version?: number} | null = null;
   /** null : inconnu (API ancienne ou hors ligne) — on n'affiche alors rien. */
   @state() private agentReady: boolean | null = null;
+  /** Conversation en cours (id côté serveur) et son journal quand on la reprend. */
+  @state() private threadId: string = crypto.randomUUID();
+  @state() private restoreEntries: unknown[] = [];
+  @state() private threads: AgentThreadSummary[] = [];
+  @state() private historyOpen = false;
   /** Objets stables : le chat les relit à chaque run. */
   private chatHeaders: Record<string, string> = {};
   private chatContext: Record<string, unknown> = {};
 
   connectedCallback() {
     super.connectedCallback();
-    if (this.slug) void this.loadCurrent();
+    const wanted = new URLSearchParams(location.search).get("thread");
+    if (wanted) void this.resume(wanted);
+    else if (this.slug) void this.loadCurrent();
     void this.checkAgent();
+    void this.refreshThreads();
+  }
+
+  private async refreshThreads() {
+    if (!loadArtifactsAccount()) return;
+    try {
+      this.threads = await listAgentThreads();
+    } catch {
+      /* API ancienne : pas d'historique */
+    }
+  }
+
+  private setThreadParam(id: string | null) {
+    try {
+      const url = new URL(location.href);
+      if (id) url.searchParams.set("thread", id);
+      else url.searchParams.delete("thread");
+      history.replaceState(history.state, "", url);
+    } catch {
+      /* hors navigateur */
+    }
+  }
+
+  /** Reprend une conversation : journal dans le chat, dernier aperçu, publication. */
+  private async resume(threadId: string) {
+    try {
+      const t = await getAgentThread(threadId);
+      this.preview = null;
+      this.published = t.published?.slug ? {slug: t.published.slug, url: t.published.url, version: t.published.version} : null;
+      if (t.preview?.document) this.showPreview(t.preview.document);
+      else if (this.slug) void this.loadCurrent();
+      this.restoreEntries = t.entries;
+      this.threadId = t.threadId;
+      this.historyOpen = false;
+      this.error = "";
+      this.setThreadParam(t.threadId);
+    } catch {
+      this.error = "Conversation introuvable.";
+      this.setThreadParam(null);
+    }
+  }
+
+  private newConversation() {
+    this.preview = null;
+    this.published = null;
+    this.error = "";
+    this.restoreEntries = [];
+    this.threadId = crypto.randomUUID();
+    this.historyOpen = false;
+    this.setThreadParam(null);
+    if (this.slug) void this.loadCurrent();
+  }
+
+  private onRunEnd = () => {
+    this.setThreadParam(this.threadId);
+    void this.refreshThreads();
+  };
+
+  private async renameThread(t: AgentThreadSummary) {
+    const title = window.prompt("Nom de la conversation", t.title)?.trim();
+    if (!title || title === t.title) return;
+    try {
+      await renameAgentThread(t.threadId, title);
+      await this.refreshThreads();
+    } catch {
+      this.error = "Renommage impossible.";
+    }
+  }
+
+  private async removeThread(t: AgentThreadSummary) {
+    if (!window.confirm(`Supprimer la conversation « ${t.title || "sans titre"} » ?`)) return;
+    try {
+      await deleteAgentThread(t.threadId);
+    } catch {
+      this.error = "Suppression impossible.";
+      return;
+    }
+    if (t.threadId === this.threadId) this.newConversation();
+    await this.refreshThreads();
+  }
+
+  private renderHistory() {
+    if (!this.historyOpen) return nothing;
+    const fmt = new Intl.DateTimeFormat("fr", {day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"});
+    return html`<div class="rounded-lg border border-black/10 max-h-56 overflow-auto" data-history>
+      ${this.threads.length === 0
+        ? html`<p class="p-3 m-0 text-sm opacity-70">Aucune conversation enregistrée pour l’instant.</p>`
+        : html`<ul class="list-none m-0 p-0 divide-y divide-black/10">
+            ${this.threads.map(
+              (t) => html`<li
+                class="flex items-center gap-2 px-3 py-2 ${t.threadId === this.threadId ? "bg-black/5" : ""}"
+                data-thread=${t.threadId}
+              >
+                <button
+                  type="button"
+                  class="flex-1 min-w-0 text-left bg-transparent border-0 p-0 cursor-pointer text-inherit"
+                  @click=${() => void this.resume(t.threadId)}
+                >
+                  <span class="block truncate font-medium">${t.title || "Sans titre"}</span>
+                  <span class="block text-xs opacity-70"
+                    >${fmt.format(new Date(t.updatedAt))}${t.artifactSlug ? html` · <code>${t.artifactSlug}</code>` : nothing}</span
+                  >
+                </button>
+                <sonic-button size="xs" variant="ghost" @click=${() => void this.renameThread(t)}>Renommer</sonic-button>
+                <sonic-button size="xs" variant="ghost" @click=${() => void this.removeThread(t)}>Supprimer</sonic-button>
+              </li>`,
+            )}
+          </ul>`}
+    </div>`;
   }
 
   /** Assistant pas encore configuré dans Tadaaa : on le dit avant la première question. */
@@ -151,6 +276,13 @@ export class ArtifactAtelierPage extends LitElement {
             />
             Partir des kits quand c’est possible
           </label>
+          <div class="flex items-center gap-2">
+            <sonic-button size="sm" variant="outline" data-history-toggle @click=${() => {
+              this.historyOpen = !this.historyOpen;
+              if (this.historyOpen) void this.refreshThreads();
+            }}>Historique${this.threads.length ? ` (${this.threads.length})` : ""}</sonic-button>
+            <sonic-button size="sm" variant="outline" data-new-thread @click=${() => this.newConversation()}>Nouvelle conversation</sonic-button>
+          </div>
           ${this.published && this.published.slug !== this.slug
             ? html`<sonic-button size="sm" type="primary" data-published href=${this.published.url ?? `/${this.published.slug}`} target="_blank"
                 >Publié : ${this.published.slug}${this.published.version ? ` (v${this.published.version})` : ""}</sonic-button
@@ -162,17 +294,20 @@ export class ArtifactAtelierPage extends LitElement {
               : nothing}
         </div>
         ${this.error ? html`<p class="text-red-600 m-0">${this.error}</p>` : nothing}
-        ${this.renderAgentBanner()}
+        ${this.renderAgentBanner()} ${this.renderHistory()}
         <div class="grid gap-3 flex-1 min-h-0 grid-cols-1 lg:grid-cols-[minmax(20rem,26rem)_1fr]">
           <sonic-chat
             class="min-h-[20rem] lg:min-h-0 rounded-lg border border-black/10 p-3"
             endpoint=${endpoint}
+            thread-id=${this.threadId}
+            .restoreEntries=${this.restoreEntries}
             placeholder=${this.slug ? "Que faut-il changer ?" : "Ex. : un quiz de 5 questions sur les châteaux de la Loire"}
             .headers=${this.chatHeaders}
             .forwardedProps=${this.chatContext}
             .toolLabels=${atelierToolLabels}
             @chat-custom=${this.onCustom}
             @chat-run-error=${this.onRunError}
+            @chat-run-end=${this.onRunEnd}
           ></sonic-chat>
           <section
             class="min-h-[20rem] lg:min-h-0 overflow-auto rounded-lg border border-black/10"

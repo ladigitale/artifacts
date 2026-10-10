@@ -217,9 +217,9 @@
     "@jridgewell/resolve-uri" "^3.1.0"
     "@jridgewell/sourcemap-codec" "^1.4.14"
 
-"@ladigitale/agent-stack@github:ladigitale/agent-stack#deda898d05facc47a9d0613739c5f66f278c86c9":
+"@ladigitale/agent-stack@github:ladigitale/agent-stack#17aed099ca248ddcc12ccec2ad66d2d2f7bd82d2":
   version "0.1.0"
-  resolved "https://codeload.github.com/ladigitale/agent-stack/tar.gz/deda898d05facc47a9d0613739c5f66f278c86c9"
+  resolved "https://codeload.github.com/ladigitale/agent-stack/tar.gz/17aed099ca248ddcc12ccec2ad66d2d2f7bd82d2"
 
 "@lit-labs/motion@^1.0.7":
   version "1.1.0"
@@ -424,9 +424,9 @@
     jsonata "^2.2.2"
     url-pattern "^1.0.3"
 
-"@supersoniks/creative-stack@github:ladigitale/creative-stack#26207411c465a7f3b9b63e7177ff770a52bf6a88":
+"@supersoniks/creative-stack@github:ladigitale/creative-stack#443a778dd2230fd546510144596f1fa3815cacfe":
   version "0.1.0"
-  resolved "https://codeload.github.com/ladigitale/creative-stack/tar.gz/26207411c465a7f3b9b63e7177ff770a52bf6a88"
+  resolved "https://codeload.github.com/ladigitale/creative-stack/tar.gz/443a778dd2230fd546510144596f1fa3815cacfe"
   dependencies:
     jsonata "^2.2.2"
     planck "1.4.2"

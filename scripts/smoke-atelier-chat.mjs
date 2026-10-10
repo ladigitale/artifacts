@@ -29,6 +29,13 @@ const sse = (r, events) => {
   r.end();
 };
 
+/** Historique : fausse table des conversations (threadId -> fiche). */
+const threads = new Map();
+const json = (r, status, body) => {
+  r.writeHead(status, {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"});
+  r.end(body === undefined ? "" : JSON.stringify(body));
+};
+
 /** Comme sse(), avec une pause avant chaque événement dont `delays[i]` > 0 (pour voir l'état d'attente). */
 const sseSlow = async (r, events, delays) => {
   r.writeHead(200, {"Content-Type": "text/event-stream", "Access-Control-Allow-Origin": "*"});
@@ -42,7 +49,7 @@ const sseSlow = async (r, events, delays) => {
 const server = http.createServer(async (q, r) => {
   const u = new URL(q.url, "http://x");
   if (q.method === "OPTIONS") {
-    r.writeHead(204, {"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "GET, POST"});
+    r.writeHead(204, {"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE"});
     return r.end();
   }
   if (u.pathname === "/api/agent/artifacts/run") {
@@ -50,6 +57,10 @@ const server = http.createServer(async (q, r) => {
     for await (const c of q) body += c;
     const input = JSON.parse(body);
     runs.push({auth: q.headers.authorization, input});
+    if (!threads.has(input.threadId)) {
+      const first = input.messages.find((m) => m.role === "user")?.content ?? "Sans titre";
+      threads.set(input.threadId, {threadId: input.threadId, title: first, artifactSlug: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()});
+    }
     if (input.forwardedProps?.a2uiAction) {
       return sse(r, [
         {type: "TEXT_MESSAGE_START", messageId: "m3", role: "assistant"},
@@ -75,6 +86,30 @@ const server = http.createServer(async (q, r) => {
       ]},
       {type: "RUN_FINISHED", threadId: input.threadId, runId: input.runId},
     ], [0, 900, 900, 0, 0]);
+  }
+  if (u.pathname === "/api/agent/artifacts/threads" && q.method === "GET") {
+    return json(r, 200, {threads: [...threads.values()]});
+  }
+  const one = u.pathname.match(/^\/api\/agent\/artifacts\/threads\/([\w-]+)$/);
+  if (one) {
+    const t = threads.get(one[1]);
+    if (!t) return json(r, 404, {detail: "Conversation introuvable."});
+    if (q.method === "DELETE") {
+      threads.delete(one[1]);
+      r.writeHead(204, {"Access-Control-Allow-Origin": "*"});
+      return r.end();
+    }
+    return json(r, 200, {
+      ...t,
+      entries: [
+        {role: "user", text: "Une page de réservation"},
+        {event: {type: "TOOL_CALL_START", toolCallId: "p", toolCallName: "preview_artifact"}},
+        {event: {type: "TOOL_CALL_END", toolCallId: "p"}},
+        {role: "assistant", id: "m1", text: "Voici une page de réservation."},
+      ],
+      preview: {document: doc},
+      published: {slug: "reservation-orchestre", url: "https://artifacts.example/reservation-orchestre", version: 1},
+    });
   }
   if (u.pathname === "/api/agent/settings") {
     r.writeHead(200, {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"});
@@ -165,6 +200,40 @@ await ta2.asElement().press("Enter");
 await page.waitForTimeout(1500);
 check("case « kits » décochée transmise à l'agent", runs.at(-1)?.input?.forwardedProps?.atelier?.kits === false, JSON.stringify(runs.at(-1)?.input?.forwardedProps?.atelier));
 check("préférence mémorisée", (await page.evaluate(() => localStorage.getItem("artifacts-atelier-kits"))) === "0");
+
+// Historique : liste, nouvelle conversation, reprise (journal, aperçu, publication), suite, suppression.
+const threadId = runs[0].input.threadId;
+await ev(`all(document, "[data-history-toggle]")[0].click();`);
+await page.waitForTimeout(600);
+const listed = await ev(`return all(document, "[data-thread]").map((e) => e.getAttribute("data-thread") + ":" + e.textContent.replace(/\\s+/g, " ").trim());`);
+check("l'historique liste la conversation", listed.length === 1 && listed[0].startsWith(threadId) && listed[0].includes("Une page de réservation"), listed.join(" | "));
+await ev(`all(document, "[data-new-thread]")[0].click();`);
+await page.waitForTimeout(500);
+const emptied = await ev(`return all(document, "sonic-chat [data-chat-msg]").length;`);
+check("nouvelle conversation : chat vide", emptied === 0, String(emptied));
+await ev(`all(document, "[data-history-toggle]")[0].click();`);
+await page.waitForTimeout(400);
+await ev(`all(document, "[data-thread] button")[0].click();`);
+await page.waitForTimeout(1000);
+const back = await ev(`return all(document, "sonic-chat [data-chat-msg]").map((e) => e.getAttribute("data-chat-msg") + ":" + e.textContent);`);
+check("reprise : messages réaffichés", back.join("|") === "user:Une page de réservation|assistant:Voici une page de réservation.", back.join(" | "));
+check("reprise : adresse ?thread=", new URL(page.url()).searchParams.get("thread") === threadId, page.url());
+const backTitle = await ev(`return all(document, '[data-sdui-node-id="title"]')[0]?.textContent;`);
+check("reprise : aperçu restauré", backTitle === "Orchestre d'harmonie", backTitle);
+const backPub = await ev(`return all(document, "[data-published]")[0]?.getAttribute("href") ?? null;`);
+check("reprise : publication restaurée", backPub === "https://artifacts.example/reservation-orchestre", String(backPub));
+const ta3 = await page.evaluateHandle(new Function(deepJs + `return all(document, "sonic-chat textarea")[0];`));
+await ta3.asElement().fill("Ajoute un tarif réduit");
+await ta3.asElement().press("Enter");
+await page.waitForTimeout(1500);
+const resumed = runs.at(-1).input;
+check("la suite part sur le même fil, avec l'historique", resumed.threadId === threadId && resumed.messages.map((m) => m.role + ":" + m.content).join("|") === "user:Une page de réservation|assistant:Voici une page de réservation.|user:Ajoute un tarif réduit", JSON.stringify(resumed.messages));
+page.once("dialog", (d) => d.accept());
+await ev(`all(document, "[data-history-toggle]")[0].click();`);
+await page.waitForTimeout(500);
+await ev(`all(document, "[data-thread] sonic-button")[1].click();`);
+await page.waitForTimeout(800);
+check("suppression : conversation retirée", threads.size === 0 && (await ev(`return all(document, "[data-thread]").length;`)) === 0, String(threads.size));
 
 settingsConfigured = false;
 await page.goto(`http://localhost:${PORT}/admin/atelier`);
