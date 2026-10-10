@@ -146,6 +146,41 @@ export async function fetchAgentSettingsStatus(): Promise<AgentSettingsStatus> {
   return apiFetch<AgentSettingsStatus>("/agent/settings");
 }
 
+/** Conversation de l'agent (historique de l'atelier). */
+export type AgentThreadSummary = {
+  threadId: string;
+  title: string;
+  artifactSlug: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AgentThread = AgentThreadSummary & {
+  /** Journal à rejouer dans le chat (`ChatLogEntry`, agent-stack). */
+  entries: unknown[];
+  preview: {document?: Record<string, unknown>} | null;
+  published: {slug?: string; url?: string; version?: number} | null;
+};
+
+export async function listAgentThreads(): Promise<AgentThreadSummary[]> {
+  return (await apiFetch<{threads: AgentThreadSummary[]}>("/agent/artifacts/threads")).threads ?? [];
+}
+
+export async function getAgentThread(threadId: string): Promise<AgentThread> {
+  return apiFetch(`/agent/artifacts/threads/${encodeURIComponent(threadId)}`);
+}
+
+export async function renameAgentThread(threadId: string, title: string): Promise<AgentThreadSummary> {
+  return apiFetch(`/agent/artifacts/threads/${encodeURIComponent(threadId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({title}),
+  });
+}
+
+export async function deleteAgentThread(threadId: string): Promise<void> {
+  await apiFetch(`/agent/artifacts/threads/${encodeURIComponent(threadId)}`, {method: "DELETE"});
+}
+
 export async function listMyArtifacts(): Promise<ArtifactSummary[]> {
   const data = await apiFetch<{member?: ArtifactSummary[]}>("/artifacts");
   return data.member ?? [];
