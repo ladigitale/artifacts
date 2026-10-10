@@ -36,6 +36,16 @@ const json = (r, status, body) => {
   r.end(body === undefined ? "" : JSON.stringify(body));
 };
 
+/** Comme sse(), avec une pause avant chaque événement dont `delays[i]` > 0 (pour voir l'état d'attente). */
+const sseSlow = async (r, events, delays) => {
+  r.writeHead(200, {"Content-Type": "text/event-stream", "Access-Control-Allow-Origin": "*"});
+  for (const [i, e] of events.entries()) {
+    if (delays[i]) await new Promise((res) => setTimeout(res, delays[i]));
+    r.write(`data: ${JSON.stringify(e)}\n\n`);
+  }
+  r.end();
+};
+
 const server = http.createServer(async (q, r) => {
   const u = new URL(q.url, "http://x");
   if (q.method === "OPTIONS") {
@@ -59,7 +69,7 @@ const server = http.createServer(async (q, r) => {
         {type: "CUSTOM", name: "artifact-published", value: {slug: "reservation-orchestre", url: "https://artifacts.example/reservation-orchestre", version: 1}},
       ]);
     }
-    return sse(r, [
+    return sseSlow(r, [
       {type: "RUN_STARTED", threadId: input.threadId, runId: input.runId},
       {type: "TOOL_CALL_START", toolCallId: "p", toolCallName: "preview_artifact"},
       {type: "CUSTOM", name: "artifact-preview", value: {document: doc}},
@@ -75,7 +85,7 @@ const server = http.createServer(async (q, r) => {
         ]}},
       ]},
       {type: "RUN_FINISHED", threadId: input.threadId, runId: input.runId},
-    ]);
+    ], [0, 900, 900, 0, 0]);
   }
   if (u.pathname === "/api/agent/artifacts/threads" && q.method === "GET") {
     return json(r, 200, {threads: [...threads.values()]});
@@ -145,7 +155,20 @@ await page.waitForTimeout(300);
 const ta = await page.evaluateHandle(new Function(deepJs + `return all(document, "sonic-chat textarea")[0];`));
 await ta.asElement().fill("Une page de réservation");
 await ta.asElement().press("Enter");
-await page.waitForTimeout(2000);
+// Pendant l'attente : un état visible tout de suite, puis l'outil en cours.
+await page.waitForTimeout(300);
+const st1 = await ev(`const s = all(document, "[data-chat-status]")[0]; return s ? {phase: s.getAttribute("data-phase"), text: s.textContent.trim()} : null;`);
+check("loader dès l'envoi", !!st1 && /Envoi|Réflexion/.test(st1.text), JSON.stringify(st1));
+await page.waitForTimeout(900);
+const st2 = await ev(`const s = all(document, "[data-chat-status]")[0]; return s ? {phase: s.getAttribute("data-phase"), text: s.textContent.trim()} : null;`);
+if (process.env.SHOT) console.log(await ev(`const s = all(document, "[data-chat-spinner]")[0]; if (!s) return "none"; const c = getComputedStyle(s); const r = s.getBoundingClientRect(); return [c.display, c.width, c.height, c.borderTopWidth, c.borderTopStyle, c.animationName, r.width].join(" ");`));
+if (process.env.SHOT) await page.screenshot({path: process.env.SHOT, clip: {x: 0, y: 60, width: 460, height: 800}});
+check("état précis : outil en cours", st2?.phase === "tool" && /Construction de l’aperçu/.test(st2.text), JSON.stringify(st2));
+await page.waitForTimeout(2200);
+const st3 = await ev(`return all(document, "[data-chat-status]").length;`);
+check("loader retiré en fin de run", st3 === 0, String(st3));
+const toolRow = await ev(`const t = all(document, "[data-chat-tool]")[0]; return t ? t.textContent.trim() : null;`);
+check("ligne d'outil terminée", /Aperçu construit/.test(toolRow ?? ""), toolRow);
 
 check("jeton envoyé à l'agent", runs[0]?.auth === "Bearer tok-smoke", runs[0]?.auth);
 const msgs = await ev(`return all(document, "[data-chat-msg]").map((e) => e.getAttribute("data-chat-msg") + ":" + e.textContent);`);
@@ -159,6 +182,7 @@ check("aperçu jouable (store local)", count === "1", count);
 await ev(`all(document, 'sonic-chat [data-sdui-node-id="root"]')[0]?.click();`);
 await page.waitForTimeout(1200);
 check("clic « Publier » renvoyé comme action A2UI", runs[1]?.input?.forwardedProps?.a2uiAction?.action?.name === "publish", JSON.stringify(runs[1]?.input?.forwardedProps?.a2uiAction ?? null));
+check("kits proposés par défaut", runs[0]?.input?.forwardedProps?.atelier?.kits === true, JSON.stringify(runs[0]?.input?.forwardedProps?.atelier));
 check("historique conservé", (runs[1]?.input?.messages ?? []).map((m) => m.role).join(",") === "user,assistant");
 const msgs2 = await ev(`return all(document, "[data-chat-msg]").map((e) => e.textContent);`);
 check("réponse après publication", msgs2.at(-1) === "Publié.", msgs2.join(" | "));
@@ -166,6 +190,16 @@ const pub = await ev(`const b = all(document, "[data-published]")[0]; return b ?
 check("lien vers l'artefact publié", pub?.href === "https://artifacts.example/reservation-orchestre" && /reservation-orchestre/.test(pub?.text ?? ""), JSON.stringify(pub));
 const bannerOk = await ev(`return all(document, "[data-agent-not-configured]").length;`);
 check("pas de bandeau quand l'assistant est configuré", bannerOk === 0);
+
+// Case décochée : l'agent compose sans kit (mémorisé).
+await ev(`const c = all(document, "[data-kits-toggle]")[0]; c.click();`);
+await page.waitForTimeout(300);
+const ta2 = await page.evaluateHandle(new Function(deepJs + `return all(document, "sonic-chat textarea")[0];`));
+await ta2.asElement().fill("Sans kit cette fois");
+await ta2.asElement().press("Enter");
+await page.waitForTimeout(1500);
+check("case « kits » décochée transmise à l'agent", runs.at(-1)?.input?.forwardedProps?.atelier?.kits === false, JSON.stringify(runs.at(-1)?.input?.forwardedProps?.atelier));
+check("préférence mémorisée", (await page.evaluate(() => localStorage.getItem("artifacts-atelier-kits"))) === "0");
 
 // Historique : liste, nouvelle conversation, reprise (journal, aperçu, publication), suite, suppression.
 const threadId = runs[0].input.threadId;
@@ -188,9 +222,9 @@ const backTitle = await ev(`return all(document, '[data-sdui-node-id="title"]')[
 check("reprise : aperçu restauré", backTitle === "Orchestre d'harmonie", backTitle);
 const backPub = await ev(`return all(document, "[data-published]")[0]?.getAttribute("href") ?? null;`);
 check("reprise : publication restaurée", backPub === "https://artifacts.example/reservation-orchestre", String(backPub));
-const ta2 = await page.evaluateHandle(new Function(deepJs + `return all(document, "sonic-chat textarea")[0];`));
-await ta2.asElement().fill("Ajoute un tarif réduit");
-await ta2.asElement().press("Enter");
+const ta3 = await page.evaluateHandle(new Function(deepJs + `return all(document, "sonic-chat textarea")[0];`));
+await ta3.asElement().fill("Ajoute un tarif réduit");
+await ta3.asElement().press("Enter");
 await page.waitForTimeout(1500);
 const resumed = runs.at(-1).input;
 check("la suite part sur le même fil, avec l'historique", resumed.threadId === threadId && resumed.messages.map((m) => m.role + ":" + m.content).join("|") === "user:Une page de réservation|assistant:Voici une page de réservation.|user:Ajoute un tarif réduit", JSON.stringify(resumed.messages));
