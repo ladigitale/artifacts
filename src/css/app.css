@@ -16,6 +16,32 @@ h1,
 h2,
 h3 {
   font-family: var(--sc-font-family-headings, var(--sc-headings-font-family));
+  text-wrap: balance;
+}
+
+/* Surfaces du navigateur : elles suivent la palette du thème actif. */
+:root {
+  accent-color: var(--sc-primary);
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--sc-primary) 30%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--sc-base-content);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+  }
 }
 
 html,
@@ -40,9 +66,15 @@ sonic-router {
   display: block;
 }
 
-/* Le routeur qui porte le shell doit avoir la hauteur de l'écran, sinon .app
+/* Atelier plein cadre : les routeurs imbriqués ne doivent pas casser la chaîne de hauteur
+   entre la coque et la page. */
+artifact-shell sonic-router:has(artifact-atelier-page) {
+  display: contents;
+}
+
+/* Le routeur qui porte la coque doit avoir la hauteur de l'écran, sinon elle
    (height: 100%) retombe sur la hauteur de son contenu. */
-sonic-router:has(> .app-shell) {
+sonic-router:has(> artifact-shell) {
   height: 100%;
   min-height: 0;
 }
@@ -94,22 +126,6 @@ artifact-atelier-page {
   body {
     height: auto !important;
     overflow: visible !important;
-  }
-
-  .app-shell {
-    height: auto !important;
-    overflow: visible !important;
-  }
-
-  .app-shell-chrome {
-    display: none !important;
-  }
-
-  .app-shell-main,
-  .shell-content {
-    max-width: none !important;
-    overflow: visible !important;
-    padding: 0 !important;
   }
 
   sonic-theme,

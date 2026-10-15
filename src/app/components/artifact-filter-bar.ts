@@ -4,8 +4,7 @@ import "@supersoniks/concorde/input";
 import "@supersoniks/concorde/pop";
 import {html, LitElement, css} from "lit";
 import {customElement, property} from "lit/decorators.js";
-import tailwind from "../../css/tailwind";
-import {formLabelStyles} from "../styles/form-label";
+import {hidePop, uiStyles} from "../styles/ui";
 
 export type FilterOption = {
   value: string;
@@ -25,39 +24,70 @@ export type FilterSelectConfig = {
 @customElement("artifact-filter-bar")
 export class ArtifactFilterBar extends LitElement {
   static styles = [
-    tailwind,
-    formLabelStyles,
+    uiStyles,
     css`
-      :host {
-        display: block;
-      }
       .toolbar {
         display: flex;
         flex-wrap: wrap;
-        align-items: flex-end;
-        gap: 0.5rem 0.65rem;
+        align-items: center;
+        gap: var(--ui-2);
       }
       .toolbar sonic-input {
-        flex: 1 1 12rem;
+        flex: 1 1 14rem;
         min-width: 10rem;
+        /* Loupe discrète sur fond de surface, au lieu du bloc plein de Concorde. */
+        --sc-input-addon-bg: transparent;
+        --sc-input-addon-color: var(--ui-muted);
+        --sc-input-bg: var(--sc-base);
       }
       .panel {
-        min-width: 11rem;
-        padding: 0.75rem;
+        min-width: 12rem;
+        padding: var(--ui-2);
         background: var(--sc-base);
         color: var(--sc-base-content);
-        border: 1px solid var(--sc-base-100);
-        border-radius: var(--sc-rounded, 0.25rem);
+        border: 1px solid var(--ui-line);
+        border-radius: var(--ui-radius);
+        box-shadow: var(--ui-shadow-pop);
+      }
+      .panel .label {
+        display: block;
+        padding: var(--ui-1) var(--ui-2) var(--ui-2);
+        color: var(--ui-muted);
+        font-size: var(--ui-fs-xs);
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
       }
       .panel-list {
         display: flex;
         flex-direction: column;
-        gap: 0.35rem;
-        margin-top: 0.45rem;
+        gap: 2px;
       }
-      .panel-list sonic-button {
+      .opt {
+        display: flex;
+        align-items: center;
+        gap: var(--ui-2);
         width: 100%;
-        justify-content: flex-start;
+        min-height: 2.5rem;
+        padding: 0 var(--ui-3);
+        border: 0;
+        border-radius: calc(var(--ui-radius) * 0.75);
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        font-size: var(--ui-fs-sm);
+        text-align: start;
+        cursor: pointer;
+      }
+      .opt .name {
+        flex: 1;
+      }
+      .opt:hover {
+        background: var(--ui-hover);
+      }
+      .opt[aria-checked="true"] {
+        background: var(--ui-selected);
+        font-weight: 600;
       }
     `,
   ];
@@ -66,33 +96,26 @@ export class ArtifactFilterBar extends LitElement {
   @property({type: String}) searchPlaceholder = "Rechercher…";
   @property({attribute: false}) selects: FilterSelectConfig[] = [];
 
-  private renderOption(name: string, option: FilterOption) {
+  private choose(e: Event, name: string, value: string) {
+    hidePop(e);
+    this.dispatchEvent(
+      new CustomEvent("select-change", {detail: {name, value}, bubbles: true, composed: true}),
+    );
+  }
+
+  private renderOption(select: FilterSelectConfig, option: FilterOption) {
+    const on = (select.value ?? select.defaultValue) === option.value;
     return html`
-      <sonic-button
-        unique
-        name=${name}
-        value=${option.value}
-        variant="ghost"
-        size="sm"
-        justify="flex-start"
-        align="left"
+      <button
+        type="button"
+        role="menuitemradio"
+        class="opt"
+        aria-checked=${on ? "true" : "false"}
+        @click=${(e: Event) => this.choose(e, select.name, option.value)}
       >
-        <sonic-icon
-          slot="prefix"
-          library="custom"
-          name="check"
-          size="xs"
-          swap="on"
-        ></sonic-icon>
-        <sonic-icon
-          slot="prefix"
-          library="custom"
-          name="circle"
-          size="xs"
-          swap="off"
-        ></sonic-icon>
-        ${option.label}
-      </sonic-button>
+        <span class="name">${option.label}</span>
+        ${on ? html`<sonic-icon library="custom" name="check" size="xs"></sonic-icon>` : null}
+      </button>
     `;
   }
 
@@ -120,9 +143,9 @@ export class ArtifactFilterBar extends LitElement {
           ></sonic-icon>
         </sonic-button>
         <div slot="content" class="panel">
-          <span class="form-label">${select.label}</span>
-          <div class="panel-list">
-            ${select.options.map((option) => this.renderOption(select.name, option))}
+          <span class="label">${select.label}</span>
+          <div class="panel-list" role="menu" aria-label=${select.label}>
+            ${select.options.map((option) => this.renderOption(select, option))}
           </div>
         </div>
       </sonic-pop>

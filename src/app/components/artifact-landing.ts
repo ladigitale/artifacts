@@ -1,10 +1,8 @@
 import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/icon";
-import "@supersoniks/concorde/badge";
-import "@supersoniks/concorde/divider";
 import {html, LitElement} from "lit";
 import {customElement, state} from "lit/decorators.js";
-import tailwind from "../../css/tailwind";
+import {uiStyles} from "../styles/ui";
 import {landingStyles} from "../css/landing";
 import {loadArtifactsAccount} from "../cloud/account";
 import {tadaaaLoginUrl} from "../cloud/client";
@@ -14,7 +12,7 @@ import "./artifact-theme-switcher";
 
 @customElement("artifact-landing")
 export class ArtifactLanding extends LitElement {
-  static styles = [tailwind, landingStyles];
+  static styles = [uiStyles, landingStyles];
 
   @state() private authed = !!loadArtifactsAccount();
 
@@ -43,51 +41,55 @@ export class ArtifactLanding extends LitElement {
         </header>
 
         <main>
-          <section class="brand-col">
-            <div class="hero-viz" aria-hidden="true"></div>
-            <h1 class="brand">Artefacts</h1>
+          <section class="copy" aria-labelledby="promise">
+            <h1 id="promise">Décrivez une page. Elle est en ligne.</h1>
             <p class="lede">
-              Documents SDUI Concorde publiés via Tadaaa / MCP — partageables en pleine page.
+              Dites à l’atelier ce que vous voulez : un quiz, un sondage, un jeu, une visualisation. Vous
+              ajustez l’aperçu, puis vous partagez le lien ou vous l’intégrez sur votre site.
             </p>
-            <div class="meta">
-              <sonic-badge type="success" variant="outline" size="sm">
-                <sonic-icon slot="prefix" library="custom" name="page" size="xs"></sonic-icon>
-                SDUI Concorde
-              </sonic-badge>
-              <sonic-badge type="info" variant="outline" size="sm">
-                <sonic-icon slot="prefix" library="custom" name="share-android" size="xs"></sonic-icon>
-                Liens publics
-              </sonic-badge>
-            </div>
-          </section>
-
-          <section class="auth-col" aria-label="Connexion">
-            <div class="auth-panel">
+            <div class="cta">
               ${this.authed
                 ? html`
-                    <h2 class="auth-title">Déjà connecté</h2>
-                    <p class="auth-lede">Gérez vos artefacts, filtres et partages.</p>
-                    <sonic-button type="button" @click=${this.goAdmin}>
+                    <sonic-button type="primary" size="lg" @click=${this.goAdmin}>
                       <sonic-icon slot="prefix" library="custom" name="folder" size="sm"></sonic-icon>
                       Ouvrir la bibliothèque
                     </sonic-button>
+                    <p class="note">Vous êtes déjà connecté.</p>
                   `
                 : html`
-                    <h2 class="auth-title">Connexion</h2>
-                    <p class="auth-lede">Connectez-vous avec votre compte Tadaaa.</p>
-                    <sonic-button type="button" @click=${() => this.login()}>
+                    <sonic-button type="primary" size="lg" @click=${() => this.login()}>
                       <sonic-icon slot="prefix" library="custom" name="log-in" size="sm"></sonic-icon>
                       Se connecter avec Tadaaa
                     </sonic-button>
+                    <p class="note">Artefacts utilise votre compte Tadaaa.</p>
                   `}
+            </div>
+          </section>
+
+          <section class="demo" aria-hidden="true">
+            <div class="pane">
+              <span class="pane-title">Conversation</span>
+              <p class="bubble me">Un quiz de 5 questions sur les châteaux de la Loire</p>
+              <p class="step">Composition du quiz</p>
+              <p class="bubble agent">Voici une première version. Je la publie ?</p>
+            </div>
+            <div class="pane">
+              <span class="pane-title">Aperçu</span>
+              <div class="quiz">
+                <span class="count">Question 1 sur 5</span>
+                <p class="q">Quel château enjambe le Cher ?</p>
+                <ul>
+                  <li>Chambord</li>
+                  <li data-on>Chenonceau</li>
+                  <li>Azay-le-Rideau</li>
+                </ul>
+              </div>
+              <p class="publish">Publié sur <code>/quiz-chateaux</code></p>
             </div>
           </section>
         </main>
 
-        <footer>
-          <sonic-divider></sonic-divider>
-          <p class="mt-3 mb-0">Artefacts — publication SDUI</p>
-        </footer>
+        <footer>Artefacts — pages interactives publiées depuis une conversation</footer>
       </div>
     `;
   }
