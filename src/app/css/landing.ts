@@ -1,107 +1,229 @@
 import {css} from "lit";
 
+/**
+ * Page d'accueil — mode « persuader » : une promesse, un geste (se connecter), et la preuve
+ * du produit (conversation → aperçu) plutôt qu'un décor. Tout vient des variables du thème.
+ */
 export const landingStyles = css`
   :host {
     display: block;
-    min-height: 100%;
-    font-family: var(--sc-font-family-base, "DM Sans", system-ui, sans-serif);
-    background: var(--sc-base-50, #e8e4f8);
-    color: var(--sc-base-content, #14101f);
+    height: 100vh;
+    height: 100dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--sc-base-50);
   }
   .stage {
     min-height: 100%;
     display: flex;
     flex-direction: column;
   }
+  header,
+  main,
+  footer {
+    width: 100%;
+    max-width: var(--artifacts-content-max-width, 72rem);
+    margin-inline: auto;
+    padding-inline: var(--ui-4);
+  }
   header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
-    padding: 1.25rem 1.5rem;
-    max-width: 72rem;
-    width: 100%;
-    margin: 0 auto;
-    box-sizing: border-box;
+    gap: var(--ui-4);
+    padding-block: var(--ui-4);
   }
   main {
     flex: 1;
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 2.5rem;
-    align-items: center;
-    padding: 1.5rem 1.5rem 3rem;
-    max-width: 72rem;
-    width: 100%;
-    margin: 0 auto;
-    box-sizing: border-box;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: center;
+    gap: var(--ui-8);
+    padding-block: var(--ui-4) var(--ui-8);
   }
-  @media (min-width: 900px) {
-    main {
-      grid-template-columns: 1.1fr 0.9fr;
-      gap: 3.5rem;
-      padding-top: 2rem;
-      padding-bottom: 4rem;
-    }
+
+  /* ───── Promesse ───── */
+  .copy {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--ui-6);
   }
-  .brand {
-    font-family: var(--sc-font-family-headings, "Space Grotesk", system-ui, sans-serif);
+  h1 {
+    max-width: 14ch;
+    font-size: clamp(2.5rem, 7vw, 4.25rem);
+    line-height: 1.02;
+    letter-spacing: -0.035em;
     font-weight: 700;
-    font-size: clamp(3rem, 10vw, 5.5rem);
-    line-height: 0.95;
-    letter-spacing: -0.03em;
-    margin: 1rem 0 0;
-    color: var(--sc-base-900);
+    color: var(--sc-base-900, var(--sc-base-content));
   }
   .lede {
-    max-width: 26rem;
-    margin: 1.15rem 0 0;
-    font-size: 1.05rem;
+    max-width: 34rem;
+    font-size: var(--ui-fs-lg);
     line-height: 1.55;
-    color: var(--sc-base-500);
+    color: var(--ui-muted);
   }
-  .meta {
-    margin-top: 1.5rem;
+  .cta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--ui-2);
+  }
+  .cta .note {
+    color: var(--ui-muted);
+    font-size: var(--ui-fs-sm);
+  }
+  .kinds {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: var(--ui-1) var(--ui-4);
+    color: var(--ui-muted);
+    font-size: var(--ui-fs-sm);
   }
-  .hero-viz {
-    width: min(18rem, 100%);
-    aspect-ratio: 4 / 3;
-    border-radius: var(--sc-rounded, 0.625rem);
-    background:
-      linear-gradient(135deg, var(--sc-primary) 0%, transparent 55%),
-      linear-gradient(225deg, var(--sc-info) 0%, transparent 50%),
-      var(--sc-base-100);
-    border: 1px solid var(--sc-base-100);
+  .kinds li + li::before {
+    content: "·";
+    margin-inline-end: var(--ui-4);
   }
-  .auth-panel {
+
+  /* ───── Démonstration : le produit, pas un décor ───── */
+  .demo {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
     background: var(--sc-base);
-    padding: 1.5rem 1.35rem 1.6rem;
-    border-radius: var(--sc-rounded, 0.625rem);
-    border: 1px solid var(--sc-base-100);
+    border: 1px solid var(--ui-line-strong);
+    border-radius: calc(var(--ui-radius) * 1.5);
+    box-shadow: var(--ui-shadow-pop);
+    overflow: hidden;
+    pointer-events: none;
+    user-select: none;
   }
-  .auth-title {
-    font-family: var(--sc-font-family-headings, "Space Grotesk", system-ui, sans-serif);
-    font-weight: 700;
-    font-size: 1.35rem;
-    letter-spacing: -0.02em;
-    margin: 0;
-    color: var(--sc-base-900);
+  .pane {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ui-3);
+    padding: var(--ui-4);
+    min-width: 0;
   }
-  .auth-lede {
-    margin: 0.35rem 0 1.1rem;
-    font-size: 0.9rem;
-    color: var(--sc-base-500);
+  .pane + .pane {
+    border-top: 1px solid var(--ui-line);
+    background: var(--sc-base-50);
   }
+  .pane-title {
+    color: var(--ui-muted);
+    font-size: var(--ui-fs-xs);
+    font-weight: 600;
+  }
+  .bubble {
+    max-width: 90%;
+    padding: var(--ui-2) var(--ui-3);
+    border-radius: var(--ui-radius);
+    font-size: var(--ui-fs-sm);
+    line-height: 1.45;
+  }
+  .bubble.me {
+    align-self: flex-end;
+    background: var(--sc-primary);
+    color: var(--sc-primary-content);
+  }
+  .bubble.agent {
+    align-self: flex-start;
+    background: var(--sc-base-50);
+    border: 1px solid var(--ui-line);
+  }
+  .step {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ui-2);
+    color: var(--ui-muted);
+    font-size: var(--ui-fs-xs);
+  }
+  .step::before {
+    content: "";
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--sc-success);
+  }
+  .quiz {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ui-3);
+    padding: var(--ui-4);
+    background: var(--sc-base);
+    border: 1px solid var(--ui-line);
+    border-radius: var(--ui-radius);
+  }
+  .quiz .count {
+    color: var(--ui-muted);
+    font-size: var(--ui-fs-xs);
+    font-variant-numeric: tabular-nums;
+  }
+  .quiz .q {
+    font-family: var(--sc-font-family-headings, inherit);
+    font-size: var(--ui-fs-lg);
+    font-weight: 600;
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+  .quiz ul {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ui-2);
+  }
+  .quiz li {
+    padding: var(--ui-2) var(--ui-3);
+    border: 1px solid var(--ui-line-strong);
+    border-radius: var(--ui-radius);
+    font-size: var(--ui-fs-sm);
+  }
+  .quiz li[data-on] {
+    background: var(--ui-selected);
+    border-color: var(--sc-primary);
+    box-shadow: inset 0 0 0 1px var(--sc-primary);
+    font-weight: 600;
+  }
+  .publish {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ui-2);
+    font-size: var(--ui-fs-xs);
+    color: var(--ui-muted);
+  }
+  .publish code {
+    padding: 0.15em 0.5em;
+    border-radius: 0.35em;
+    background: var(--sc-base);
+    border: 1px solid var(--ui-line);
+    color: var(--sc-base-content);
+  }
+
   footer {
-    padding: 1rem 1.5rem 1.5rem;
-    max-width: 72rem;
-    width: 100%;
-    margin: 0 auto;
-    box-sizing: border-box;
-    color: var(--sc-base-400);
-    font-size: 0.8rem;
+    padding-block: var(--ui-4) var(--ui-6);
+    color: var(--ui-muted);
+    font-size: var(--ui-fs-sm);
+  }
+
+  @media (min-width: 640px) {
+    header,
+    main,
+    footer {
+      padding-inline: var(--ui-6);
+    }
+  }
+  @media (min-width: 960px) {
+    main {
+      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+      gap: var(--ui-12);
+      padding-block: var(--ui-6) var(--ui-12);
+    }
+    .demo {
+      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    }
+    .pane + .pane {
+      border-top: 0;
+      border-inline-start: 1px solid var(--ui-line);
+    }
   }
 `;

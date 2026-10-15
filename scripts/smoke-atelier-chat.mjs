@@ -141,7 +141,7 @@ await page.goto(`http://localhost:${PORT}/admin/atelier`);
 await page.waitForTimeout(2000);
 
 // Mise en page : pleine largeur, et le bas de l'atelier ne dépasse pas l'écran.
-const layout = () => ev(`const a = document.querySelector("artifact-atelier-page"); const m = document.querySelector("main.shell-main"); const r = a.getBoundingClientRect(); const mr = m.getBoundingClientRect(); const root = (a.shadowRoot ?? a).querySelector("div").getBoundingClientRect(); return {w: Math.round(r.width), mainW: Math.round(mr.width), bottom: Math.round(r.bottom), mainBottom: Math.round(mr.bottom), rootBottom: Math.round(root.bottom), vh: innerHeight, docScroll: document.documentElement.scrollHeight, mainScroll: m.scrollHeight - m.clientHeight};`);
+const layout = () => ev(`const a = document.querySelector("artifact-atelier-page"); const m = document.querySelector("artifact-shell").shadowRoot.querySelector("main"); const r = a.getBoundingClientRect(); const mr = m.getBoundingClientRect(); const root = (a.shadowRoot ?? a).querySelector(".atelier").getBoundingClientRect(); return {w: Math.round(r.width), mainW: Math.round(mr.width), bottom: Math.round(r.bottom), mainBottom: Math.round(mr.bottom), rootBottom: Math.round(root.bottom), vh: innerHeight, docScroll: document.documentElement.scrollHeight, mainScroll: m.scrollHeight - m.clientHeight};`);
 let l = await layout();
 check("atelier en pleine largeur", l.w === l.mainW && l.w > 1100, JSON.stringify(l));
 check("atelier : le bas ne dépasse pas l'écran", l.rootBottom <= l.mainBottom && l.mainBottom <= l.vh && l.docScroll <= l.vh && l.mainScroll <= 0, JSON.stringify(l));

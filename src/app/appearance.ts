@@ -223,6 +223,44 @@ export async function initAppearance(): Promise<void> {
   }
 }
 
+/**
+ * Choix d'un thème par la personne : appliqué tout de suite, puis enregistré sur le compte
+ * (sinon la re-synchronisation au retour sur l'onglet ramènerait l'ancien thème).
+ */
+export async function chooseTheme(id: string): Promise<void> {
+  saveThemeId(id);
+  applyTheme(id);
+  const account = loadArtifactsAccount();
+  try {
+    let payload: AppearancePayload | null = null;
+    if (account?.token) {
+      const res = await fetch(`${loadApiBaseUrl()}/api/appearance`, {
+        method: "PUT",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${account.token}`,
+        },
+        body: JSON.stringify({themeId: id}),
+      });
+      if (res.ok) {
+        const body = (await res.json()) as AppearancePayload;
+        if (body?.themeId && body.vars) payload = body;
+      }
+    }
+    payload ??= await fetchAppearance(id, account?.token);
+    if (payload) {
+      applyAppearance(payload);
+      if (account?.user) {
+        account.user = {...account.user, themeId: payload.themeId};
+        saveArtifactsAccount(account);
+      }
+    }
+  } catch {
+    /* hors ligne : themes.css + data-theme suffisent */
+  }
+}
+
 /** Re-sync quand on revient sur l’onglet (thème changé dans Tadaaa). */
 export function watchAppearanceSync(): void {
   const refresh = () => {

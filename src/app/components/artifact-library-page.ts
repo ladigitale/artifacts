@@ -7,11 +7,12 @@ import "@supersoniks/concorde/menu";
 import "@supersoniks/concorde/menu-item";
 import "@supersoniks/concorde/divider";
 import "@supersoniks/concorde/tooltip";
-import {html, LitElement, nothing} from "lit";
+import {css, html, LitElement, nothing} from "lit";
 import {customElement, state} from "lit/decorators.js";
 import {subscribe} from "@supersoniks/concorde/decorators";
 import {dp, set} from "@supersoniks/concorde/utils";
-import tailwind from "../../css/tailwind";
+import {repeat} from "lit/directives/repeat.js";
+import {fullDate, hidePop, relativeTime, uiStyles, VISIBILITY_LABELS} from "../styles/ui";
 import {
   artifactListFilterKey,
   emptyArtifactListFilter,
@@ -43,9 +44,211 @@ const SORT_OPTS = [
   {value: "slug", label: "Slug"},
 ] as const;
 
+const libraryStyles = css`
+  .grow {
+    flex: 1;
+  }
+  .list {
+    overflow: hidden;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--ui-fs-sm);
+  }
+  th {
+    padding: var(--ui-2) var(--ui-3);
+    border-bottom: 1px solid var(--ui-line);
+    color: var(--ui-muted);
+    font-size: var(--ui-fs-xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-align: start;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  td {
+    padding: var(--ui-3);
+    vertical-align: middle;
+  }
+  tbody tr {
+    border-bottom: 1px solid var(--ui-line);
+    transition: background-color 0.12s;
+  }
+  tbody tr:last-child {
+    border-bottom: 0;
+  }
+  tbody tr:hover {
+    background: var(--ui-hover);
+  }
+  tbody tr[data-selected="true"] {
+    background: var(--ui-selected);
+  }
+  .c-check {
+    width: 3rem;
+    padding-inline: var(--ui-1) 0;
+  }
+  .check {
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    cursor: pointer;
+  }
+  .check input {
+    width: 1.1rem;
+    height: 1.1rem;
+    margin: 0;
+    cursor: pointer;
+  }
+  .c-title {
+    min-width: 0;
+  }
+  .title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    font-size: var(--ui-fs-md);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .title:hover {
+    text-decoration: underline;
+  }
+  .slug {
+    display: block;
+    overflow: hidden;
+    color: var(--ui-muted);
+    font-size: var(--ui-fs-xs);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .c-vis,
+  .c-ver,
+  .c-date {
+    display: none;
+    white-space: nowrap;
+  }
+  .c-date {
+    color: var(--ui-muted);
+  }
+  .c-act {
+    width: 3rem;
+    padding-inline: 0 var(--ui-2);
+    text-align: end;
+    white-space: nowrap;
+  }
+  .refresh {
+    order: 2;
+  }
+  .open {
+    display: none;
+  }
+  .more {
+    display: inline-block;
+  }
+  .meta-m {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ui-1) var(--ui-3);
+    margin-top: var(--ui-1);
+    color: var(--ui-muted);
+    font-size: var(--ui-fs-xs);
+  }
+  /* Mobile : pas d'en-tête de colonnes, une ligne = case · titre · menu. */
+  thead {
+    display: none;
+  }
+  .selbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ui-2);
+    padding: var(--ui-2) var(--ui-3);
+    background: var(--ui-selected);
+    border-bottom: 1px solid var(--ui-line);
+    font-size: var(--ui-fs-sm);
+    font-weight: 600;
+  }
+  .toast {
+    position: fixed;
+    inset-block-end: calc(var(--ui-6) + env(safe-area-inset-bottom));
+    inset-inline: 0;
+    width: fit-content;
+    margin-inline: auto;
+    max-width: calc(100vw - 2rem);
+    padding: var(--ui-2) var(--ui-4);
+    border-radius: 9999px;
+    background: var(--sc-base-content);
+    color: var(--sc-base);
+    font-size: var(--ui-fs-sm);
+    font-weight: 500;
+    box-shadow: var(--ui-shadow-pop);
+    animation: toast-in 0.25s var(--ui-ease);
+    z-index: 5;
+  }
+  @media (max-width: 767px) {
+    .toast {
+      inset-block-end: calc(4.5rem + env(safe-area-inset-bottom));
+    }
+  }
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.5rem);
+    }
+  }
+  .sk-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ui-4);
+    padding: var(--ui-4);
+    border-bottom: 1px solid var(--ui-line);
+  }
+  .sk-row:last-child {
+    border-bottom: 0;
+  }
+  @media (min-width: 768px) {
+    .refresh {
+      order: 0;
+    }
+    thead {
+      display: table-header-group;
+    }
+    .meta-m {
+      display: none;
+    }
+    .c-vis,
+    .c-date {
+      display: table-cell;
+    }
+    .c-ver {
+      display: table-cell;
+    }
+    .c-title {
+      width: 100%;
+    }
+    .c-act {
+      width: 6.5rem;
+    }
+    .open {
+      display: inline-block;
+    }
+  }
+  @media (min-width: 768px) and (max-width: 959px) {
+    .c-ver {
+      display: none;
+    }
+  }
+`;
+
 @customElement("artifact-library-page")
 export class ArtifactLibraryPage extends LitElement {
-  static styles = [tailwind];
+  static styles = [uiStyles, libraryStyles];
 
   @subscribe(artifactListFilterKey)
   @state()
@@ -141,7 +344,19 @@ export class ArtifactLibraryPage extends LitElement {
   private renderActions(a: ArtifactSummary) {
     const copied = this.copiedId === a.id;
     return html`
-      <sonic-pop class="inline-block" placement="bottom-end" shadow="sm">
+      <sonic-button
+        class="open"
+        type="button"
+        shape="circle"
+        size="sm"
+        variant="ghost"
+        title="Ouvrir l’artefact"
+        data-aria-label=${`Ouvrir ${a.title}`}
+        @click=${() => this.openArtifact(a)}
+      >
+        <sonic-icon library="custom" name="open-new-window" size="md"></sonic-icon>
+      </sonic-button>
+      <sonic-pop class="more" placement="bottom-end" shadow="sm">
         <sonic-tooltip label="Actions" placement="left">
           <sonic-button
             type="button"
@@ -161,27 +376,26 @@ export class ArtifactLibraryPage extends LitElement {
           size="sm"
           minWidth="13rem"
         >
-          <sonic-menu-item @click=${() => this.openArtifact(a)}>
+          <sonic-menu-item @click=${(e: Event) => { hidePop(e); this.openArtifact(a); }}>
             ${this.menuIcon("open-new-window")} Ouvrir l’artefact
           </sonic-menu-item>
-          <sonic-menu-item @click=${() => this.copyLink(a)}>
-            ${this.menuIcon(copied ? "check" : "copy")}
-            ${copied ? "Lien copié" : "Copier le lien"}
+          <sonic-menu-item @click=${(e: Event) => { hidePop(e); void this.copyLink(a); }}>
+            ${this.menuIcon(copied ? "check" : "copy")} Copier le lien
           </sonic-menu-item>
-          <sonic-menu-item @click=${() => navigate(`/admin/${a.slug}/edit`)}>
+          <sonic-menu-item @click=${(e: Event) => { hidePop(e); navigate(`/admin/${a.slug}/edit`); }}>
             ${this.menuIcon("edit-pencil")} Modifier
           </sonic-menu-item>
-          <sonic-menu-item @click=${() => navigate(`/admin/${a.slug}/atelier`)}>
+          <sonic-menu-item @click=${(e: Event) => { hidePop(e); navigate(`/admin/${a.slug}/atelier`); }}>
             ${this.menuIcon("chat-bubble")} Modifier avec l’atelier
           </sonic-menu-item>
-          <sonic-menu-item @click=${() => navigate(`/admin/${a.slug}/versions`)}>
+          <sonic-menu-item @click=${(e: Event) => { hidePop(e); navigate(`/admin/${a.slug}/versions`); }}>
             ${this.menuIcon("clock")} Historique des versions
           </sonic-menu-item>
           <sonic-divider size="xs"></sonic-divider>
           <sonic-menu-item
             type="danger"
             ?disabled=${this.busy}
-            @click=${() => this.removeOne(a)}
+            @click=${(e: Event) => { hidePop(e); void this.removeOne(a); }}
           >
             ${this.menuIcon("trash")} Supprimer
           </sonic-menu-item>
@@ -232,7 +446,9 @@ export class ArtifactLibraryPage extends LitElement {
   private selects(): FilterSelectConfig[] {
     const f = this.filter ?? emptyArtifactListFilter();
     const visLabel =
-      VISIBILITY_OPTS.find((o) => o.value === f.visibility)?.label ?? "Visibilité";
+      f.visibility && f.visibility !== "all"
+        ? (VISIBILITY_OPTS.find((o) => o.value === f.visibility)?.label ?? "Visibilité")
+        : "Visibilité";
     const sortLabel = SORT_OPTS.find((o) => o.value === f.sort)?.label ?? "Ordre";
     return [
       {
@@ -256,16 +472,121 @@ export class ArtifactLibraryPage extends LitElement {
     ];
   }
 
+  private plural(n: number): string {
+    return n === 1 ? "1 artefact" : `${n} artefacts`;
+  }
+
+  private onSelect = (e: Event) => {
+    const {name, value} = (e as CustomEvent<{name: string; value: string}>).detail;
+    set(artifactListFilterKey, {...emptyArtifactListFilter(), ...(this.filter ?? {}), [name]: value});
+  };
+
+  private resetFilters() {
+    set(artifactListFilterKey, emptyArtifactListFilter());
+  }
+
+  private pill(visibility: string) {
+    const v = VISIBILITY_LABELS[visibility];
+    return html`<span class="pill" data-tone=${visibility} title=${v?.hint ?? ""}
+      >${v?.label ?? visibility}</span
+    >`;
+  }
+
+  private renderSkeleton() {
+    return html`
+      <div class="panel" aria-hidden="true">
+        ${[0, 1, 2, 3].map(
+          () => html`<div class="sk-row">
+            <span class="skeleton" style="width: min(22rem, 60%)"></span>
+            <span class="skeleton" style="width: 4rem"></span>
+          </div>`,
+        )}
+      </div>
+    `;
+  }
+
+  private renderEmpty(hasItems: boolean) {
+    if (hasItems) {
+      return html`
+        <div class="panel empty">
+          <h2>Aucun artefact ne correspond</h2>
+          <p>Essayez un autre mot, ou retirez les filtres pour revoir toute la bibliothèque.</p>
+          <sonic-button type="button" size="sm" variant="outline" @click=${() => this.resetFilters()}>
+            Réinitialiser les filtres
+          </sonic-button>
+        </div>
+      `;
+    }
+    return html`
+      <div class="panel empty">
+        <h2>Aucun artefact pour l’instant</h2>
+        <p>
+          Décrivez ce que vous voulez à l’atelier : l’agent le conçoit, vous le prévisualisez, puis vous
+          le publiez. Vous pouvez aussi en publier depuis un client MCP.
+        </p>
+        <sonic-button type="primary" @click=${() => navigate("/admin/atelier")}>
+          <sonic-icon slot="prefix" library="custom" name="chat-bubble" size="sm"></sonic-icon>
+          Créer avec l’atelier
+        </sonic-button>
+      </div>
+    `;
+  }
+
+  private renderRow(a: ArtifactSummary) {
+    const on = this.selected.has(a.id);
+    return html`
+      <tr data-selected=${on ? "true" : "false"}>
+        <td class="c-check">
+          <label class="check">
+            <input
+              type="checkbox"
+              .checked=${on}
+              @change=${(e: Event) => this.toggle(a.id, (e.target as HTMLInputElement).checked)}
+              aria-label=${`Sélectionner ${a.title}`}
+            />
+          </label>
+        </td>
+        <td class="c-title">
+          <a
+            class="title"
+            href=${`/admin/${a.slug}/edit`}
+            @click=${(e: Event) => {
+              e.preventDefault();
+              navigate(`/admin/${a.slug}/edit`);
+            }}
+            >${a.title}</a
+          >
+          <code class="slug">${a.slug}</code>
+          <span class="meta-m">
+            ${this.pill(a.visibility)}
+            <span class="num">v${a.currentVersion}</span>
+            <time datetime=${a.updatedAt} title=${fullDate(a.updatedAt)}>${relativeTime(a.updatedAt)}</time>
+          </span>
+        </td>
+        <td class="c-vis">${this.pill(a.visibility)}</td>
+        <td class="c-ver num">v${a.currentVersion}</td>
+        <td class="c-date">
+          <time datetime=${a.updatedAt} title=${fullDate(a.updatedAt)}>${relativeTime(a.updatedAt)}</time>
+        </td>
+        <td class="c-act">${this.renderActions(a)}</td>
+      </tr>
+    `;
+  }
+
   render() {
     const account = loadArtifactsAccount();
     if (!account) {
       return html`
-        <div class="flex flex-col gap-4 max-w-md">
-          <h1 class="text-2xl font-semibold m-0">Bibliothèque</h1>
-          <p class="opacity-80 m-0">Connectez-vous pour gérer vos artefacts.</p>
-          <sonic-button type="button" @click=${() => this.login()}>
-            Se connecter avec Tadaaa
-          </sonic-button>
+        <div class="page page-narrow">
+          <h1>Bibliothèque</h1>
+          <div class="panel empty">
+            <h2>Connectez-vous pour gérer vos artefacts</h2>
+            <p>Votre bibliothèque est liée à votre compte Tadaaa.</p>
+            <sonic-button type="primary" @click=${() => this.login()}>
+              <sonic-icon slot="prefix" library="custom" name="log-in" size="sm"></sonic-icon>
+              Se connecter avec Tadaaa
+            </sonic-button>
+          </div>
         </div>
       `;
     }
@@ -273,132 +594,123 @@ export class ArtifactLibraryPage extends LitElement {
     const rows = this.filtered();
     const allOn = rows.length > 0 && rows.every((r) => this.selected.has(r.id));
     const selCount = this.selected.size;
+    const count = this.loading
+      ? "Chargement…"
+      : rows.length === this.items.length
+        ? this.plural(rows.length)
+        : `${rows.length} sur ${this.plural(this.items.length)}`;
 
     return html`
       <div
-        class="flex flex-col gap-4"
+        class="page"
         formDataProvider=${artifactListFilterKey.path}
         dataFilterProvider=${artifactListFilterKey.path}
       >
-        <div class="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 class="text-2xl font-semibold m-0">Bibliothèque</h1>
-            <p class="opacity-70 m-0 text-sm">
-              ${this.loading ? "Chargement…" : `${rows.length} artefact(s)`}
-            </p>
+        <div class="page-head">
+          <div class="titles">
+            <h1>Bibliothèque</h1>
+            <p class="sub" aria-live="polite">${count}</p>
           </div>
-          <div class="flex flex-wrap gap-2">
-            <sonic-button type="button" size="sm" @click=${() => navigate("/admin/atelier")}>
-              Créer avec l’atelier
+          <div class="actions">
+            <sonic-button
+              class="refresh"
+              type="button"
+              variant="ghost"
+              size="sm"
+              ?disabled=${this.loading}
+              title="Actualiser"
+              aria-label="Actualiser la liste"
+              @click=${() => this.refresh()}
+            >
+              <sonic-icon library="custom" name="refresh" size="sm"></sonic-icon>
             </sonic-button>
-            <sonic-button type="button" size="sm" variant="outline" @click=${() => this.refresh()}>
-              <sonic-icon slot="prefix" library="custom" name="refresh" size="sm"></sonic-icon>
-              Actualiser
+            <sonic-button type="primary" @click=${() => navigate("/admin/atelier")}>
+              <sonic-icon slot="prefix" library="custom" name="chat-bubble" size="sm"></sonic-icon>
+              Créer avec l’atelier
             </sonic-button>
           </div>
         </div>
 
-        <artifact-filter-bar
-          searchPlaceholder="Titre ou slug…"
-          .selects=${this.selects()}
-        ></artifact-filter-bar>
-
-        ${selCount
-          ? html`
-              <div
-                class="flex flex-wrap items-center gap-2 p-2 rounded border border-current/15"
-              >
-                <span class="text-sm">${selCount} sélectionné(s)</span>
-                <sonic-button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  ?disabled=${this.busy}
-                  @click=${() => this.removeSelected()}
-                >
-                  <sonic-icon
-                    slot="prefix"
-                    library="custom"
-                    name="trash"
-                    size="sm"
-                  ></sonic-icon>
-                  Supprimer
-                </sonic-button>
-              </div>
-            `
+        ${this.items.length || this.loading
+          ? html`<artifact-filter-bar
+              searchPlaceholder="Titre, slug ou description…"
+              .selects=${this.selects()}
+              @select-change=${this.onSelect}
+            ></artifact-filter-bar>`
           : nothing}
-
-        ${this.error ? html`<p class="text-red-600 m-0">${this.error}</p>` : nothing}
-
-        ${!this.loading && rows.length === 0
-          ? html`
-              <div class="opacity-70 flex flex-col gap-2 py-8">
-                <p class="m-0">Aucun artefact. Publiez-en un via MCP.</p>
-              </div>
-            `
-          : html`
-              <div class="overflow-x-auto">
-                <table class="w-full text-sm border-collapse">
-                  <thead>
-                    <tr class="text-left border-b border-current/15">
-                      <th class="p-2 w-10">
-                        <input
-                          type="checkbox"
-                          .checked=${allOn}
-                          @change=${(e: Event) =>
-                            this.toggleAll(rows, (e.target as HTMLInputElement).checked)}
-                          aria-label="Tout sélectionner"
-                        />
-                      </th>
-                      <th class="p-2">Titre</th>
-                      <th class="p-2">Visibilité</th>
-                      <th class="p-2 hidden sm:table-cell">Version</th>
-                      <th class="p-2 hidden md:table-cell">Modifié</th>
-                      <th class="p-2 text-right"><span class="sr-only">Actions</span></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${rows.map(
-                      (a) => html`
-                        <tr class="border-b border-current/10 align-middle">
-                          <td class="p-2">
-                            <input
-                              type="checkbox"
-                              .checked=${this.selected.has(a.id)}
-                              @change=${(e: Event) =>
-                                this.toggle(a.id, (e.target as HTMLInputElement).checked)}
-                              aria-label=${`Sélectionner ${a.title}`}
-                            />
-                          </td>
-                          <td class="p-2">
-                            <a
-                              class="font-medium text-inherit no-underline hover:underline cursor-pointer"
-                              href=${`/admin/${a.slug}/edit`}
-                              @click=${(e: Event) => {
-                                e.preventDefault();
-                                navigate(`/admin/${a.slug}/edit`);
-                              }}
-                              >${a.title}</a
-                            >
-                            <div class="opacity-60 text-xs break-all">${a.slug}</div>
-                          </td>
-                          <td class="p-2">
-                            <sonic-badge variant="outline" size="sm">${a.visibility}</sonic-badge>
-                          </td>
-                          <td class="p-2 hidden sm:table-cell">v${a.currentVersion}</td>
-                          <td class="p-2 opacity-70 whitespace-nowrap hidden md:table-cell">
-                            ${a.updatedAt?.slice?.(0, 16)?.replace("T", " ") ?? a.updatedAt}
-                          </td>
-                          <td class="p-1 text-right w-12">
-                            ${this.renderActions(a)}
-                          </td>
+        ${this.error
+          ? html`<div class="notice" data-tone="danger" role="alert">
+              <sonic-icon library="custom" name="warning-triangle" size="sm"></sonic-icon>
+              <span class="grow">${this.error}</span>
+              <sonic-button size="xs" variant="outline" @click=${() => this.refresh()}
+                >Réessayer</sonic-button
+              >
+            </div>`
+          : nothing}
+        ${this.loading
+          ? this.renderSkeleton()
+          : rows.length === 0 && !this.error
+            ? this.renderEmpty(this.items.length > 0)
+            : rows.length === 0
+              ? nothing
+              : html`
+                  <div class="panel list">
+                    ${selCount
+                      ? html`<div class="selbar" role="status">
+                          <span class="num">${selCount} sélectionné${selCount > 1 ? "s" : ""}</span>
+                          ${allOn
+                            ? nothing
+                            : html`<sonic-button
+                                size="xs"
+                                variant="ghost"
+                                @click=${() => this.toggleAll(rows, true)}
+                                >Tout sélectionner</sonic-button
+                              >`}
+                          <sonic-button size="xs" variant="ghost" @click=${() => this.toggleAll(rows, false)}
+                            >Désélectionner</sonic-button
+                          >
+                          <span class="grow"></span>
+                          <sonic-button
+                            size="sm"
+                            variant="outline"
+                            ?disabled=${this.busy}
+                            @click=${() => this.removeSelected()}
+                          >
+                            <sonic-icon slot="prefix" library="custom" name="trash" size="sm"></sonic-icon>
+                            Supprimer
+                          </sonic-button>
+                        </div>`
+                      : nothing}
+                    <table>
+                      <thead>
+                        <tr>
+                          <th class="c-check">
+                            <label class="check">
+                              <input
+                                type="checkbox"
+                                .checked=${allOn}
+                                @change=${(e: Event) =>
+                                  this.toggleAll(rows, (e.target as HTMLInputElement).checked)}
+                                aria-label="Tout sélectionner"
+                              />
+                            </label>
+                          </th>
+                          <th class="c-title">Titre</th>
+                          <th class="c-vis">Visibilité</th>
+                          <th class="c-ver">Version</th>
+                          <th class="c-date">Modifié</th>
+                          <th class="c-act"><span class="sr-only">Actions</span></th>
                         </tr>
-                      `,
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            `}
+                      </thead>
+                      <tbody>
+                        ${repeat(rows, (a) => a.id, (a) => this.renderRow(a))}
+                      </tbody>
+                    </table>
+                  </div>
+                `}
+        <p class="${this.copiedId ? "toast" : "sr-only"}" role="status">
+          ${this.copiedId ? "Lien copié dans le presse-papiers" : ""}
+        </p>
       </div>
     `;
   }

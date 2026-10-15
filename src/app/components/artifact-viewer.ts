@@ -505,24 +505,32 @@ export class ArtifactViewer extends LitElement {
   }
 
   render() {
-    if (this.loading) return html`<p class="p-4">Chargement…</p>`;
+    if (this.loading) {
+      return html`<p class="p-4 m-0" role="status" style="color: color-mix(in srgb, currentColor 70%, transparent)">
+        Chargement…
+      </p>`;
+    }
     if (this.error) {
-      return html`<div class="p-4 flex flex-col gap-2">
-        <h1 class="text-xl m-0">Impossible d’afficher l’artefact</h1>
-        <p class="text-red-600 m-0">${this.error}</p>
+      return html`<div class="p-4 sm:p-6 flex flex-col gap-2 max-w-xl" role="alert">
+        <h1 class="text-xl font-semibold m-0">Impossible d’afficher l’artefact</h1>
+        <p class="m-0" style="color: color-mix(in srgb, var(--sc-danger, #c00) 75%, var(--sc-base-content, currentColor))">
+          ${this.error}
+        </p>
       </div>`;
     }
     if (!this.data) return nothing;
     if (this.guardErrors.length) {
-      return html`<div class="p-4 flex flex-col gap-2">
-        <h1 class="text-xl m-0">Document refusé</h1>
+      return html`<div class="p-4 sm:p-6 flex flex-col gap-2 max-w-xl" role="alert">
+        <h1 class="text-xl font-semibold m-0">Document refusé</h1>
         <ul class="m-0">
           ${this.guardErrors.map(
             (e) => html`<li><code>${e.path}</code> — ${e.message}</li>`,
           )}
         </ul>
         ${this.data.canWrite
-          ? html`<p class="text-sm opacity-70">Corrigez le document et republiez.</p>`
+          ? html`<p class="text-sm m-0" style="color: color-mix(in srgb, currentColor 70%, transparent)">
+              Corrigez le document et republiez.
+            </p>`
           : nothing}
       </div>`;
     }
