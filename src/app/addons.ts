@@ -74,4 +74,9 @@ export async function ensureAddonsFor(doc: unknown): Promise<void> {
     if (load) needed.add(load);
   }
   await Promise.all([...needed].map(loadOnce));
+  // L'alias `model` d'un artefact n'existe que si la liste blanche est configurée, avant le rendu.
+  if (tags.has("sonic-hugging-face-infer")) {
+    const {configureViewerHuggingFace} = await import("./hf-config");
+    configureViewerHuggingFace();
+  }
 }
