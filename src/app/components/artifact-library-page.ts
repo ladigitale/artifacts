@@ -346,7 +346,7 @@ export class ArtifactLibraryPage extends LitElement {
     return html`
       <sonic-button
         class="open"
-        type="button"
+        type="default"
         shape="circle"
         size="sm"
         variant="ghost"
@@ -359,7 +359,7 @@ export class ArtifactLibraryPage extends LitElement {
       <sonic-pop class="more" placement="bottom-end" shadow="sm">
         <sonic-tooltip label="Actions" placement="left">
           <sonic-button
-            type="button"
+            type="default"
             shape="circle"
             size="sm"
             variant="ghost"
@@ -511,7 +511,7 @@ export class ArtifactLibraryPage extends LitElement {
         <div class="panel empty">
           <h2>Aucun artefact ne correspond</h2>
           <p>Essayez un autre mot, ou retirez les filtres pour revoir toute la bibliothèque.</p>
-          <sonic-button type="button" size="sm" variant="outline" @click=${() => this.resetFilters()}>
+          <sonic-button type="default" size="sm" variant="outline" @click=${() => this.resetFilters()}>
             Réinitialiser les filtres
           </sonic-button>
         </div>
@@ -614,7 +614,7 @@ export class ArtifactLibraryPage extends LitElement {
           <div class="actions">
             <sonic-button
               class="refresh"
-              type="button"
+              type="default"
               variant="ghost"
               size="sm"
               ?disabled=${this.loading}
