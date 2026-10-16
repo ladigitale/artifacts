@@ -550,7 +550,7 @@ export class ArtifactViewer extends LitElement {
                 ${views.map(
                   (v) => html`
                     <sonic-button
-                      type="button"
+                      type="default"
                       size="sm"
                       variant=${v.id === this.viewId ? "default" : "outline"}
                       @click=${() => this.goView(v.id)}
