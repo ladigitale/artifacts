@@ -44,6 +44,8 @@ export type PublicArtifact = {
   }[];
   concordeVersion: string;
   version: number;
+  /** Vrai quand la version affichée est un brouillon non publié (membres, `?draft=1`). */
+  draft?: boolean;
   updatedAt: string;
   collections: string[];
   canWrite?: boolean;
@@ -228,7 +230,11 @@ export async function fetchPublicArtifact(
   slug: string,
   linkToken?: string | null,
 ): Promise<PublicArtifact> {
-  const q = linkToken ? `?k=${encodeURIComponent(linkToken)}` : "";
+  const params = new URLSearchParams();
+  if (linkToken) params.set("k", linkToken);
+  // Brouillon : ?draft=1 dans l'URL de la page (l'API ne le sert qu'aux membres du jeu).
+  if (typeof location !== "undefined" && new URLSearchParams(location.search).get("draft") === "1") params.set("draft", "1");
+  const q = params.toString() ? `?${params}` : "";
   return apiFetch<PublicArtifact>(`/public/artifacts/${encodeURIComponent(slug)}${q}`);
 }
 
@@ -237,10 +243,14 @@ export async function fetchPublicCollection(
   collection: string,
   linkToken?: string | null,
   readKey?: string | null,
+  query?: {sort?: string; limit?: number},
 ): Promise<unknown[]> {
   const params = new URLSearchParams();
   if (linkToken) params.set("k", linkToken);
   if (readKey) params.set("rk", readKey);
+  // Tri / limite faits par le serveur (sources.<x>.sort / limit) : classement sans tout télécharger.
+  if (query?.sort) params.set("sort", query.sort);
+  if (query?.limit && query.limit > 0) params.set("limit", String(Math.floor(query.limit)));
   const q = params.toString() ? `?${params}` : "";
   const data = await apiFetch<{member?: unknown[]}>(
     `/public/artifacts/${encodeURIComponent(slug)}/collections/${encodeURIComponent(collection)}${q}`,
