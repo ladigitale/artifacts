@@ -540,6 +540,11 @@ export class ArtifactViewer extends LitElement {
     const views = (doc.views ?? []).filter((v) => v.hidden !== true);
     return html`
       <div class="artifact-bare flex flex-col min-h-full">
+        ${this.data.draft
+          ? html`<p class="m-0 px-3 py-1 text-sm print:hidden" role="status" style="background: color-mix(in srgb, var(--sc-warning, #d90) 25%, transparent)">
+              Brouillon — non publié (visible par les membres seulement).
+            </p>`
+          : nothing}
         ${this.renderDocStores()}
         ${views.length > 1
           ? html`
