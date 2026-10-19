@@ -237,10 +237,14 @@ export async function fetchPublicCollection(
   collection: string,
   linkToken?: string | null,
   readKey?: string | null,
+  query?: {sort?: string; limit?: number},
 ): Promise<unknown[]> {
   const params = new URLSearchParams();
   if (linkToken) params.set("k", linkToken);
   if (readKey) params.set("rk", readKey);
+  // Tri / limite faits par le serveur (sources.<x>.sort / limit) : classement sans tout télécharger.
+  if (query?.sort) params.set("sort", query.sort);
+  if (query?.limit && query.limit > 0) params.set("limit", String(Math.floor(query.limit)));
   const q = params.toString() ? `?${params}` : "";
   const data = await apiFetch<{member?: unknown[]}>(
     `/public/artifacts/${encodeURIComponent(slug)}/collections/${encodeURIComponent(collection)}${q}`,

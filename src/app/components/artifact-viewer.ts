@@ -306,7 +306,7 @@ export class ArtifactViewer extends LitElement {
     if (!this.data) return;
     const doc = this.data.document as {
       data?: {
-        sources?: Record<string, {collection: string; refresh?: number}>;
+        sources?: Record<string, {collection: string; refresh?: number; sort?: string; limit?: number}>;
         transforms?: Record<string, {jsonata: string}>;
       };
     };
@@ -320,7 +320,7 @@ export class ArtifactViewer extends LitElement {
       let member: unknown[] = [];
       let denied = false;
       try {
-        member = this.previewDocument ? [] : await fetchPublicCollection(this.slug, collection, k, rk);
+        member = this.previewDocument ? [] : await fetchPublicCollection(this.slug, collection, k, rk, {sort: src.sort, limit: src.limit});
       } catch (e) {
         member = [];
         denied = isDenied(e);
@@ -342,7 +342,7 @@ export class ArtifactViewer extends LitElement {
       // derrière la même IP épuiserait la limite de requêtes.
       if (!this.previewDocument && !denied && Number.isFinite(every) && every >= 5) {
         const timer = window.setInterval(async () => {
-          if (await this.refreshSource(name, collection)) return;
+          if (await this.refreshSource(name, collection, {sort: src.sort, limit: src.limit})) return;
           clearInterval(timer);
         }, Math.min(every, 3600) * 1000);
         this.refreshTimers.push(timer);
@@ -353,10 +353,10 @@ export class ArtifactViewer extends LitElement {
   }
 
   /** Relecture périodique (`sources.<x>.refresh`, en secondes) — onglet visible seulement. */
-  private async refreshSource(name: string, collection: string): Promise<boolean> {
+  private async refreshSource(name: string, collection: string, query?: {sort?: string; limit?: number}): Promise<boolean> {
     if (document.hidden) return true;
     try {
-      const member = await fetchPublicCollection(this.slug, collection, this.linkToken(), this.readKey());
+      const member = await fetchPublicCollection(this.slug, collection, this.linkToken(), this.readKey(), query);
       const items = member.map((row) =>
         row && typeof row === "object" && "data" in row ? (row as {data: unknown}).data : row,
       );
