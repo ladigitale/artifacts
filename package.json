@@ -7,6 +7,7 @@
     "build": "yarn generate-routes && tsc --pretty false && vite build && yarn build:embed",
     "build:embed": "LIB_NAME=embed vite build",
     "preview": "vite preview --port 3300",
+    "render": "node scripts/render-artifact.mjs",
     "simulate": "node scripts/simulate-store.mjs",
     "smoke": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-atelier.mjs",
     "smoke:sound": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-sound.mjs",
