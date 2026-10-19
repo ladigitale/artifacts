@@ -19,6 +19,7 @@ import {ensureAddonsFor} from "../addons";
 import {startSinks, type SinkDef} from "../sinks";
 import {applyDocFonts} from "../doc-fonts";
 import {claimNamespace, transformDocument, type NamespaceClaim} from "../doc-transform";
+import {withRoomContext} from "../room-context";
 import {declaredNames, nsName, nsTree, nsValue} from "../dp-namespace";
 import {dp, set} from "@supersoniks/concorde/utils";
 import tailwind from "../../css/tailwind";
@@ -212,7 +213,16 @@ export class ArtifactViewer extends LitElement {
       const fetched = this.previewDocument
         ? previewArtifact(this.slug, this.previewDocument)
         : await fetchPublicArtifact(this.slug, this.linkToken());
-      this.data = {...fetched, document: transformDocument(withAgentLibraries(fetched.document))};
+      const roomContext = {
+        slug: this.slug,
+        api: loadApiBaseUrl(),
+        linkToken: this.linkToken(),
+        preview: !!this.previewDocument,
+      };
+      this.data = {
+        ...fetched,
+        document: transformDocument(withRoomContext(withAgentLibraries(fetched.document), roomContext)),
+      };
       this.bindingCache.clear();
       this.releaseNamespace();
       this.nsNames = declaredNames(this.data.document, this.slug);
