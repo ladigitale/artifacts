@@ -18,7 +18,7 @@ const MAX_A2UI_MESSAGES = 200;
 const MAX_A2UI_BINDINGS = 8;
 const MAX_TICKERS = 8;
 const MAX_SOUNDS = 2;
-/** Instruments et horloges audio par document. */
+/** Composants à ressource limitée par document (audio, médias, physique, salon p2p, API appareil). */
 const MAX_AUDIO: Record<string, number> = {
   "sonic-patch": 16,
   "sonic-sampler": 8,
@@ -33,6 +33,11 @@ const MAX_AUDIO: Record<string, number> = {
   "sonic-screen": 1,
   "sonic-physics": 4,
   "sonic-controller": 2,
+  // Un seul salon (connexion Mercure) et un seul verrou par page ; l'API appareil est exclusive.
+  "sonic-p2p": 1,
+  "sonic-pointer-lock": 1,
+  "sonic-wake-lock": 1,
+  "sonic-orientation": 1,
 };
 
 /** Accès sensibles : le composant n'est accepté que si le document les déclare dans `capabilities`. */
