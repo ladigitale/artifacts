@@ -16,7 +16,8 @@
     "smoke:embed": "VITE_API_BASE_URL=http://localhost:4455 vite build && VITE_API_BASE_URL=http://localhost:4455 yarn build:embed && node scripts/smoke-embed.mjs",
     "smoke:a2ui": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-a2ui.mjs && node scripts/smoke-a2ui-form.mjs",
     "smoke:atelier-chat": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-atelier-chat.mjs",
-    "smoke:kits": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-kits.mjs"
+    "smoke:kits": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-kits.mjs",
+    "smoke:scenes": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-scenes.mjs"
   },
   "devDependencies": {
     "@supersoniks/concorde": "5.1.0",
@@ -34,7 +35,8 @@
   },
   "dependencies": {
     "@ladigitale/agent-stack": "github:ladigitale/agent-stack#97be9bf6e4af22a7892dd0911246b68daab727f1",
-    "@supersoniks/creative-stack": "github:ladigitale/creative-stack#05f4d50d915c297dddf1995444ccf63b101b11ab",
+    "@supersoniks/creative-stack": "github:ladigitale/creative-stack#daea4998bf121de11a7200f501bd162df6e26dbe",
+    "pixi.js": "8.19.0",
     "three": "0.180.0"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
