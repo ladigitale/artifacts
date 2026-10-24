@@ -1,0 +1,82 @@
+(
+$s := $state;
+$t := $action.type;
+$p := $action.payload;
+$K := $s.k + 1;
+$RACK := {"b1": {"x": 560.0, "y": 225.0}, "b9": {"x": 579.25, "y": 213.85}, "b2": {"x": 579.25, "y": 236.15}, "b10": {"x": 598.5, "y": 202.7}, "b8": {"x": 598.5, "y": 225.0}, "b3": {"x": 598.5, "y": 247.3}, "b11": {"x": 617.75, "y": 191.55}, "b7": {"x": 617.75, "y": 213.85}, "b14": {"x": 617.75, "y": 236.15}, "b4": {"x": 617.75, "y": 258.45}, "b5": {"x": 637.0, "y": 180.4}, "b13": {"x": 637.0, "y": 202.7}, "b15": {"x": 637.0, "y": 225.0}, "b6": {"x": 637.0, "y": 247.3}, "b12": {"x": 637.0, "y": 269.6}};
+$NAMES := ["b1","b2","b3","b4","b5","b6","b7","b8","b9","b10","b11","b12","b13","b14","b15"];
+$TRAYX := function($i){ 400 + ($i - 7.5) * 24 };
+$clamp := function($v,$a,$b){ $min([$max([$v,$a]),$b]) };
+$atan := function($z){ ($z2 := $z*$z; $z*(0.999866 + $z2*(-0.3302995 + $z2*(0.180141 + $z2*(-0.085133 + $z2*0.0208351))))) };
+$atan2 := function($y,$x){ (
+  $ax := $abs($x); $ay := $abs($y);
+  $ax = 0 and $ay = 0 ? 0 : (
+    $a := $ax >= $ay ? $atan($ay/$ax) : 1.5707963 - $atan($ax/$ay);
+    $a2 := $x < 0 ? 3.1415927 - $a : $a;
+    $y < 0 ? -$a2 : $a2 ) ) };
+$setOf := function($inp,$name,$set){ $merge([$inp, {$name: $merge([$lookup($inp,$name), {"set": $set}])}]) };
+$aimAt := function($s,$aim){ (
+  $c := $s.pos.cue;
+  $dx := $aim.x - $c.x; $dy := $aim.y - $c.y;
+  $L := $sqrt($dx*$dx + $dy*$dy);
+  $a := $L < 18 ? {"x": $clamp($c.x + ($c.x < 400 ? 200 : -200), 12, 788), "y": $c.y} : $aim;
+  $ang := $atan2($a.y - $c.y, $a.x - $c.x) * 57.29578;
+  $i1 := $setOf($s.inp, "queue", {"n": $K, "x": $c.x, "y": $c.y, "angle": $ang});
+  $i2 := $setOf($i1, "tgt", {"n": $K, "x": $a.x, "y": $a.y, "angle": 0});
+  $merge([$s, {"aim": $a, "k": $K, "inp": $i2}]) ) };
+$hide := function($inp){ $setOf($setOf($inp, "queue", {"n": $K, "x": 400, "y": -30, "angle": 0}), "tgt", {"n": $K, "x": 400, "y": -30, "angle": 0}) };
+$beep := function($s,$note,$vel,$dur){ $merge([$s, {"sfx": [{"note": $note, "vel": $vel, "durS": $dur}], "tick": $s.tick + 1}]) };
+$AIMMSG := "Touche la table ou une bille pour viser, affine avec ‹ ›, puis choisis la force.";
+$newGame := function($s){ (
+  $inp := $reduce($NAMES, function($acc,$n){ $setOf($acc, $n, {"n": $K, "x": $lookup($RACK,$n).x, "y": $lookup($RACK,$n).y, "vx": 0, "vy": 0, "angle": 0}) }, $s.inp);
+  $inp2 := $setOf($inp, "cue", {"n": $K, "x": 200, "y": 225, "vx": 0, "vy": 0, "angle": 0});
+  $pos := $merge([$RACK, {"cue": {"x": 200, "y": 225}}]);
+  $aimAt($merge([$s, {"phase": "aim", "shots": 0, "pocketed": [], "scratch": false, "fouls": 0, "pos": $pos, "inp": $inp2, "msg": $AIMMSG}]), {"x": 560, "y": 225}) ) };
+$afterRest := function($s){ (
+  $done := $count($s.pocketed) >= 15;
+  $done ? (
+    $b := $s.best = null or $s.shots < $s.best ? $s.shots : $s.best;
+    $merge([$s, {"phase": "over", "best": $b, "msg": "Table nettoyée en " & $s.shots & " coups" & ($b = $s.shots ? " : record !" : " (record : " & $b & ")")}]) )
+  : (
+    $s2 := $s.scratch ? $merge([$s, {"scratch": false, "fouls": $s.fouls + 1, "pos": $merge([$s.pos, {"cue": {"x": 200, "y": 225}}]), "inp": $setOf($s.inp, "cue", {"n": $K, "x": 200, "y": 225, "vx": 0, "vy": 0, "angle": 0})}]) : $s;
+    $aimAt($merge([$s2, {"phase": "aim", "msg": $s.scratch ? "Blanche empochée : elle revient au départ." : ($s.lastPot ? "Bien joué ! " & $AIMMSG : $AIMMSG)}]), $s2.aim) ) ) };
+$res :=
+  $t = "new" ? $newGame($s)
+  : $t = "pick" and $s.phase = "aim" ? (
+      $id := $p.objectId;
+      $lx := -0.7071068 * $p.x - 0.7071068 * $p.z;
+      $lz := 0.7071068 * $p.x - 0.7071068 * $p.z;
+      $pt := $id = "felt" ? {"x": $clamp($lx * 100 + 400, 12, 788), "y": $clamp($lz * 100 + 225, 12, 438)}
+           : ($id in $NAMES and $not($id in $s.pocketed) ? {"x": $lookup($s.pos, $id).x, "y": $lookup($s.pos, $id).y} : null);
+      $pt ? $aimAt($s, $pt) : $s )
+  : $t = "nudge" and $s.phase = "aim" ? (
+      $c := $s.pos.cue;
+      $vx := $s.aim.x - $c.x; $vy := $s.aim.y - $c.y;
+      $L := $max([1, $sqrt($vx*$vx + $vy*$vy)]);
+      $k := $max([$L, 160]) / $L;
+      $aimAt($s, {"x": $c.x + ($p.c * $vx - $p.s * $vy) * $k, "y": $c.y + ($p.s * $vx + $p.c * $vy) * $k}) )
+  : $t = "shoot" and $s.phase = "aim" ? (
+      $c := $s.pos.cue;
+      $dx := $s.aim.x - $c.x; $dy := $s.aim.y - $c.y;
+      $L := $max([1, $sqrt($dx*$dx + $dy*$dy)]);
+      $m := $p.power * 520;
+      $inp := $hide($s.inp);
+      $inp2 := $merge([$inp, {"cue": $merge([$lookup($inp, "cue"), {"impulse": {"n": $K, "x": $dx / $L * $m, "y": $dy / $L * $m}}])}]);
+      $beep($merge([$s, {"phase": "roll", "k": $K, "shots": $s.shots + 1, "lastPot": false, "inp": $inp2, "msg": "Les billes roulent…"}]), "G4", 0.35 + 0.5 * $p.power, 0.06) )
+  : $t = "enter" and $substring($p.sensor, 0, 1) = "p" ? (
+      $p.body = "cue" ? ($s.scratch ? $s :
+        $beep($merge([$s, {"scratch": true, "k": $K, "inp": $setOf($s.inp, "cue", {"n": $K, "x": $TRAYX(15), "y": 553, "vx": 0, "vy": 0, "angle": 0})}]), "C3", 0.8, 0.25))
+      : ($p.body in $NAMES and $not($p.body in $s.pocketed) ? (
+          $np := $append($s.pocketed, [$p.body]);
+          $i := $count($np) - 1;
+          $beep($merge([$s, {"pocketed": $np, "lastPot": true, "k": $K, "inp": $setOf($s.inp, $p.body, {"n": $K, "x": $TRAYX($i), "y": 553, "vx": 0, "vy": 0, "angle": 0})}]), "C3", 0.9, 0.3) )
+        : $s ) )
+  : $t = "rest" and $s.phase = "roll" ? $afterRest($merge([$s, {"pos": $merge([$s.pos, $p.bodies])}]))
+  : $t = "collide" and $s.phase = "roll" ? (
+      $bb := "ball" in $p.tagsA and "ball" in $p.tagsB;
+      $v := $min([1, $p.impulse * 0.15]);
+      $v < 0.06 ? $s : $beep($s, $bb ? "E7" : "A4", $v, $bb ? 0.04 : 0.07) )
+  : $s;
+$n := $count($res.pocketed);
+$merge([$res, {"score": $n & " / 15", "coups": $res.shots & ($res.shots > 1 ? " coups" : " coup"), "record": $res.best = null ? "—" : $res.best & " coups"}])
+)
