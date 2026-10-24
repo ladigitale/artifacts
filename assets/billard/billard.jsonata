@@ -59,7 +59,7 @@ $res :=
       $c := $s.pos.cue;
       $dx := $s.aim.x - $c.x; $dy := $s.aim.y - $c.y;
       $L := $max([1, $sqrt($dx*$dx + $dy*$dy)]);
-      $m := $p.power * 520;
+      $m := $p.power * 1200;
       $inp := $hide($s.inp);
       $inp2 := $merge([$inp, {"cue": $merge([$lookup($inp, "cue"), {"impulse": {"n": $K, "x": $dx / $L * $m, "y": $dy / $L * $m}}])}]);
       $beep($merge([$s, {"phase": "roll", "k": $K, "shots": $s.shots + 1, "lastPot": false, "inp": $inp2, "msg": "Les billes roulent…"}]), "G4", 0.35 + 0.5 * $p.power, 0.06) )

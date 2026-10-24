@@ -133,9 +133,9 @@ stripe={}
 for n in range(9,16):
     stripe[n]=mesh(P_(BALLM[n-8],ib),P_(WHITE,ic))
 # queue (le long de -x, pointe vers +x, crosse relevée) + guide pointillé (le long de +x, sur le tapis)
-tilt=0.07
+tilt=0.045
 def qy(x): return -x*tilt  # x négatif → y positif
-q=[(-0.16,-0.185,0.0105,0.011,TIP),(-0.185,-0.24,0.011,0.0115,WHITE),(-0.24,-1.15,0.0115,0.02,MAPLE),(-1.15,-1.2,0.02,0.0205,BRASS),(-1.2,-1.8,0.0205,0.028,EBONY)]
+q=[(-0.16,-0.185,0.0105,0.011,TIP),(-0.185,-0.24,0.011,0.0115,WHITE),(-0.24,-1.15,0.0115,0.02,MAPLE),(-1.15,-1.2,0.02,0.0205,BRASS),(-1.2,-1.8,0.0205,0.026,EBONY)]
 qp=[]
 for (x0,x1,r0,r1,m) in q:
     P,I=frustum_x(x0,x1,r0,r1,qy(x0),qy(x1)); qp.append(prim(P,None,I,m))
