@@ -34,6 +34,7 @@ const MAX_AUDIO: Record<string, number> = {
   "sonic-physics": 4,
   // Contextes WebGL (Pixi) : le navigateur en limite le nombre par page.
   "sonic-2d": 4,
+  "sonic-procgen": 2,
   "sonic-controller": 2,
   // Un seul salon (connexion Mercure) et un seul verrou par page ; l'API appareil est exclusive.
   "sonic-p2p": 1,
