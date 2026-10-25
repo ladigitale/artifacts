@@ -35,7 +35,7 @@
   },
   "dependencies": {
     "@ladigitale/agent-stack": "github:ladigitale/agent-stack#97be9bf6e4af22a7892dd0911246b68daab727f1",
-    "@supersoniks/creative-stack": "github:ladigitale/creative-stack#daea4998bf121de11a7200f501bd162df6e26dbe",
+    "@supersoniks/creative-stack": "github:ladigitale/creative-stack#3b56da515aa5c07e5999eebfbb3f2869b7efe71d",
     "pixi.js": "8.19.0",
     "three": "0.180.0"
   },
