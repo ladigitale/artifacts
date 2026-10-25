@@ -23,6 +23,7 @@ import {withRoomContext} from "../room-context";
 import {declaredNames, nsName, nsTree, nsValue} from "../dp-namespace";
 import {dp, set} from "@supersoniks/concorde/utils";
 import tailwind from "../../css/tailwind";
+import {pageFrame, paddingClass} from "../page-frame";
 
 /** Une vue porte soit `root` (descripteur SDUI), soit `a2ui` (messages A2UI v0.9). */
 type ViewDef = {
@@ -548,8 +549,9 @@ export class ArtifactViewer extends LitElement {
     const root = this.currentRoot();
     // Vues `hidden` : hors onglets, accessibles seulement par leur #id.
     const views = (doc.views ?? []).filter((v) => v.hidden !== true);
+    const frame = pageFrame(doc);
     return html`
-      <div class="artifact-bare flex flex-col min-h-full">
+      <div class="artifact-bare flex flex-col min-h-full" style=${frame.background ? `background:${frame.background}` : nothing}>
         ${this.data.draft
           ? html`<p class="m-0 px-3 py-1 text-sm print:hidden" role="status" style="background: color-mix(in srgb, var(--sc-warning, #d90) 25%, transparent)">
               Brouillon — non publié (visible par les membres seulement).
@@ -577,7 +579,7 @@ export class ArtifactViewer extends LitElement {
             `
           : nothing}
         ${this.renderCapabilities()}
-        <div class="artifact-sdui flex-1 min-h-[12rem] p-3 sm:p-4">
+        <div class="artifact-sdui flex-1 min-h-[12rem] ${paddingClass(frame.padding)}">
           ${this.renderBody(root)}
         </div>
       </div>
