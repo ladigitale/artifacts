@@ -69,3 +69,9 @@ import "@supersoniks/concorde/mix";
 /* creative-stack : `interactive` (socle, complète aussi sonic-if / sonic-value) est importé
  * par ./addons ; les autres addons sont chargés à la demande selon le document. */
 import "./addons";
+/* Liaisons data-bind : Concorde évalue `Function("return " + …)` pour les formats « |… » et « js|… »
+ * (Format.js). Un artefact est écrit par un LLM et ses données peuvent venir de visiteurs : le viewer
+ * neutralise cette évaluation (le validateur de l'API refuse déjà ces formats ; ceci couvre les anciens
+ * documents et l'intégration sur des sites tiers dont la CSP autoriserait eval). */
+import Format from "@supersoniks/concorde/core/utils/Format";
+(Format as unknown as {js: (v: string) => string}).js = () => "";

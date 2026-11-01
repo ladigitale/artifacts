@@ -44,6 +44,10 @@ fs.mkdirSync(outDir, {recursive: true});
 const MIME = {".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".wasm": "application/wasm", ".json": "application/json"};
 const server = http.createServer((q, r) => {
   const u = new URL(q.url, "http://x");
+  if (u.pathname.startsWith("/api/appearance")) {
+    r.writeHead(200, {"Content-Type": "application/json"});
+    return r.end("{}");
+  }
   if (u.pathname.startsWith("/api/public/artifacts/")) {
     r.writeHead(200, {"Content-Type": "application/json"});
     if (u.pathname.includes("/collections/")) return r.end('{"member":[]}');
@@ -109,6 +113,12 @@ try {
   });
   // CDN d'icônes / polices : hors scope du rendu, on ne les compte pas comme échecs.
   await page.route(/cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net|fonts\.(googleapis|gstatic)\.com/, (route) => route.fulfill({status: 200, body: "", contentType: "text/plain"}));
+  // Un build de prod appelle son API en URL absolue (VITE_API_BASE_URL) : on sert ces chemins localement.
+  await page.route((url) => url.origin !== base && /^\/api\/(public\/artifacts\/|appearance)/.test(url.pathname), async (route) => {
+    const {pathname, search} = new URL(route.request().url());
+    const res = await fetch(`${base}${pathname}${search}`);
+    return route.fulfill({status: res.status, body: Buffer.from(await res.arrayBuffer()), contentType: res.headers.get("content-type") ?? "application/json"});
+  });
 
   await page.goto(`${base}/preview${req.view ? `#${req.view}` : ""}`, {waitUntil: "load"});
   await page.waitForTimeout(600);

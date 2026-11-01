@@ -62,6 +62,30 @@ export function docCapabilities(doc: unknown): string[] {
 
 export type GuardError = {path: string; message: string};
 
+/**
+ * Liaisons Concorde `data-bind` (`::prop` = propriété DOM écrite avec `$chemin` remplacé par la donnée).
+ * Mêmes règles que le validateur de l'API (ArtifactDocumentValidator::validateBinding) : pas de propriété
+ * qui insère du HTML, un gestionnaire ou du style ; pas de formats `|…` / `js|…` (évaluation de code) ;
+ * une URL liée commence par une URL https littérale, jamais par une donnée.
+ */
+const BINDING_FORBIDDEN = /^(.*-html|on.*|srcdoc|formaction|action|style|attributes)$/i;
+const BINDING_URL = new Set(["href", "src", "poster", "action", "formaction", "data", "srcset"]);
+
+export function bindingError(prop: string, value: unknown): string | null {
+  if (typeof value !== "string") return "liaison : valeur texte attendue.";
+  const p = prop.toLowerCase();
+  if (!/^[a-z][a-z0-9-]{0,40}$/.test(p)) return "liaison : nom de propriété invalide.";
+  if (BINDING_FORBIDDEN.test(p)) return `liaison ::${prop} interdite.`;
+  if (value.length > 1024) return "liaison trop longue.";
+  const v = value.trimStart();
+  if (v.startsWith("|") || /(^|[^A-Za-z0-9_])js\|/.test(v)) return "liaison : formats « | » et « js| » interdits.";
+  if (/javascript:/i.test(value)) return "URL javascript interdite.";
+  if (BINDING_URL.has(p) && !/^(https:\/\/[^\s$]+|\/[^/\s$]|#)/i.test(v)) {
+    return `liaison ::${prop} : URL https littérale attendue en tête.`;
+  }
+  return null;
+}
+
 export function guardDocument(doc: unknown): GuardError[] {
   const errors: GuardError[] = [];
   if (!doc || typeof doc !== "object") {
@@ -130,6 +154,10 @@ export function guardDocument(doc: unknown): GuardError[] {
             path: `${path}/attributes/${attr}`,
             message: "URL javascript interdite.",
           });
+        }
+        if (attr.startsWith("::")) {
+          const msg = bindingError(attr.slice(2), val);
+          if (msg) errors.push({path: `${path}/attributes/${attr}`, message: msg});
         }
         const max = MAX_ATTR[attr.toLowerCase()];
         if (max && typeof val === "string" && val.length > max) {

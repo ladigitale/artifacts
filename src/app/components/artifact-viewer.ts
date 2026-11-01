@@ -22,6 +22,7 @@ import {claimNamespace, transformDocument, type NamespaceClaim} from "../doc-tra
 import {withRoomContext} from "../room-context";
 import {declaredNames, nsName, nsTree, nsValue} from "../dp-namespace";
 import {dp, set} from "@supersoniks/concorde/utils";
+import DataBindObserver from "@supersoniks/concorde/core/utils/DataBindObserver";
 import tailwind from "../../css/tailwind";
 import {pageFrame, paddingClass} from "../page-frame";
 
@@ -72,6 +73,17 @@ type StoreDef = {
 
 @customElement("artifact-viewer")
 export class ArtifactViewer extends LitElement {
+  /**
+   * Concorde n'active `data-bind` (`::prop`) que dans le document et dans le shadow root de SES
+   * composants : le rendu d'un artefact vit dans celui du viewer, il faut l'observer ici, sinon les
+   * gabarits de sonic-list (::text-content, ::href, ::payload…) restent inertes.
+   */
+  protected createRenderRoot() {
+    const root = super.createRenderRoot();
+    DataBindObserver.observe(root as unknown as HTMLElement);
+    return root;
+  }
+
   static styles = [tailwind];
 
   @property({type: String}) slug = "";
