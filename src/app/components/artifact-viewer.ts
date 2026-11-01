@@ -8,6 +8,7 @@ import {customElement, property, state} from "lit/decorators.js";
 import {
   fetchPublicArtifact,
   ApiError,
+  fetchAssetJson,
   fetchPublicCollection,
   type PublicArtifact,
 } from "../cloud/client";
@@ -329,7 +330,7 @@ export class ArtifactViewer extends LitElement {
     if (!this.data) return;
     const doc = this.data.document as {
       data?: {
-        sources?: Record<string, {collection: string; refresh?: number; sort?: string; limit?: number}>;
+        sources?: Record<string, {collection?: string; asset?: string; key?: string; refresh?: number; sort?: string; limit?: number}>;
         transforms?: Record<string, {jsonata: string}>;
       };
     };
@@ -339,7 +340,12 @@ export class ArtifactViewer extends LitElement {
     const rk = this.readKey();
 
     for (const [name, src] of Object.entries(sources)) {
+      if (typeof src.asset === "string") {
+        await this.loadAssetSource(name, src.asset, src.key);
+        continue;
+      }
       const collection = src.collection;
+      if (typeof collection !== "string") continue;
       let member: unknown[] = [];
       let denied = false;
       try {
@@ -373,6 +379,32 @@ export class ArtifactViewer extends LitElement {
     }
 
     await this.publishTransforms();
+  }
+
+  /**
+   * Source « asset » : `{asset: "<URL résolue par le serveur>", key?: "chemin.pointé"}`. Le JSON (ou sa
+   * partie `key`) est publié comme une collection si c'est un tableau (`{member: [...]}`), tel quel si
+   * c'est un objet. Lu une fois : l'URL change quand l'asset change (empreinte). Référence non résolue
+   * (asset absent, `@asset:…`), erreur réseau ou prévisualisation : source vide.
+   */
+  private async loadAssetSource(name: string, url: string, key?: string) {
+    let value: unknown = null;
+    if (!this.previewDocument && /^https?:\/\//.test(url)) {
+      try {
+        value = await fetchAssetJson(url);
+      } catch {
+        value = null;
+      }
+    }
+    const picked = pickPath(value, key);
+    const published: unknown = Array.isArray(picked)
+      ? {member: picked}
+      : picked && typeof picked === "object"
+        ? picked
+        : {member: []};
+    this.sourceData[name] = Array.isArray(picked) ? picked : picked && typeof picked === "object" ? picked : [];
+    set(this.n(name), published);
+    set(this.n(`artifact:${this.slug}:${name}`), published);
   }
 
   /** Relecture périodique (`sources.<x>.refresh`, en secondes) — onglet visible seulement. */
@@ -614,6 +646,17 @@ function previewArtifact(slug: string, document: Record<string, unknown>): Publi
     canWrite: false,
     visibility: "private",
   };
+}
+
+/** Valeur à un chemin pointé (`a.b.0`) ; sans chemin, la valeur elle-même. */
+function pickPath(value: unknown, path?: string): unknown {
+  if (!path) return value;
+  let cur: unknown = value;
+  for (const part of path.split(".")) {
+    if (cur === null || typeof cur !== "object") return undefined;
+    cur = (cur as Record<string, unknown>)[part];
+  }
+  return cur;
 }
 
 function isDenied(e: unknown): boolean {

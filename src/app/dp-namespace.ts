@@ -50,7 +50,7 @@ export function declaredNames(doc: unknown, slug: string): Set<string> {
   const out = new Set<string>([`artifact:${slug}`]);
   const d = (doc ?? {}) as {
     data?: {
-      sources?: Record<string, {collection?: string}>;
+      sources?: Record<string, {collection?: string; asset?: string}>;
       transforms?: Record<string, unknown>;
       stores?: Record<string, {dataProvider?: string}>;
     };
