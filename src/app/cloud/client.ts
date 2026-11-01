@@ -258,6 +258,27 @@ export async function fetchPublicCollection(
   return data.member ?? [];
 }
 
+/**
+ * Lit un fichier JSON stocké comme asset de l'artefact (`data.sources.<x> = {asset}`).
+ * Le jeton de session n'est joint que vers l'hôte de l'API : l'URL reçue du document n'est jamais
+ * une raison d'envoyer le jeton ailleurs.
+ */
+export async function fetchAssetJson(url: string): Promise<unknown> {
+  const acc = loadArtifactsAccount();
+  const headers = new Headers({Accept: "application/json"});
+  try {
+    const apiOrigin = new URL(`${normalizeApiBase(loadApiBaseUrl())}/`, location.href).origin;
+    if (acc?.token && new URL(url, location.href).origin === apiOrigin) {
+      headers.set("Authorization", `Bearer ${acc.token}`);
+    }
+  } catch {
+    /* URL illisible : requête sans jeton */
+  }
+  const res = await fetch(url, {headers});
+  if (!res.ok) throw new ApiError((await res.text()) || `HTTP ${res.status}`, res.status);
+  return res.json();
+}
+
 export class IntakeError extends Error {
   constructor(
     message: string,
