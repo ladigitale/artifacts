@@ -80,4 +80,9 @@ export async function ensureAddonsFor(doc: unknown): Promise<void> {
     const {configureViewerHuggingFace} = await import("./hf-config");
     await configureViewerHuggingFace(doc);
   }
+  // Suivi ML local : origines de modèles approuvées = défauts + `capabilities.ml` du document.
+  if (tags.has("sonic-hand-tracker")) {
+    const {configureViewerVision} = await import("./vision-config");
+    configureViewerVision(doc);
+  }
 }
