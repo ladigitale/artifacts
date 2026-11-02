@@ -26,6 +26,8 @@ const MAX_AUDIO: Record<string, number> = {
   "sonic-audio-analyser": 4,
   "sonic-mic": 2,
   "sonic-camera": 2,
+  // Un suivi ML par page : un modèle chargé, une inférence en continu.
+  "sonic-hand-tracker": 1,
   "sonic-video": 6,
   "sonic-audio-recorder": 4,
   "sonic-media-recorder": 2,
@@ -58,6 +60,39 @@ export function docCapabilities(doc: unknown): string[] {
   const caps = (doc as {capabilities?: unknown} | null)?.capabilities;
   if (!Array.isArray(caps)) return [];
   return caps.filter((c): c is string => typeof c === "string" && (KNOWN_CAPABILITIES as readonly string[]).includes(c));
+}
+
+/** Origines de modèles ML déclarées (`capabilities: [{"ml": ["https://…/"]}]`). Mêmes règles que l'API. */
+export const MAX_ML_ORIGINS = 8;
+
+export function normalizeMlOrigin(value: unknown): string | null {
+  if (typeof value !== "string" || value.length > 200) return null;
+  let u: URL;
+  try {
+    u = new URL(value);
+  } catch {
+    return null;
+  }
+  if (u.protocol !== "https:" || u.username || u.password || u.search || u.hash) return null;
+  // Un vrai nom d'hôte : ni localhost, ni adresse IP, ni nom sans point.
+  if (!u.hostname.includes(".") || /^[\d.]+$/.test(u.hostname) || u.hostname.startsWith("[")) return null;
+  return u.origin + u.pathname;
+}
+
+/** Origines de modèles ML déclarées par le document (entrées invalides ignorées). */
+export function docMlOrigins(doc: unknown): string[] {
+  const caps = (doc as {capabilities?: unknown} | null)?.capabilities;
+  if (!Array.isArray(caps)) return [];
+  const out: string[] = [];
+  for (const c of caps) {
+    const list = c && typeof c === "object" && !Array.isArray(c) ? (c as {ml?: unknown}).ml : undefined;
+    if (!Array.isArray(list)) continue;
+    for (const v of list.slice(0, MAX_ML_ORIGINS)) {
+      const o = normalizeMlOrigin(v);
+      if (o && !out.includes(o)) out.push(o);
+    }
+  }
+  return out;
 }
 
 export type GuardError = {path: string; message: string};
@@ -108,6 +143,18 @@ export function guardDocument(doc: unknown): GuardError[] {
   const declared = new Set(docCapabilities(d));
   if (d.capabilities !== undefined && !Array.isArray(d.capabilities)) {
     errors.push({path: "/capabilities", message: 'capabilities : tableau attendu (ex. ["camera"]).'});
+  } else if (Array.isArray(d.capabilities)) {
+    d.capabilities.forEach((c, i) => {
+      if (c === null || typeof c !== "object" || Array.isArray(c)) return;
+      const list = (c as {ml?: unknown}).ml;
+      const keys = Object.keys(c as object);
+      if (keys.length !== 1 || !Array.isArray(list) || list.length > MAX_ML_ORIGINS || list.some((v) => !normalizeMlOrigin(v))) {
+        errors.push({
+          path: `/capabilities/${i}`,
+          message: `capabilities : {"ml": [origines https]} attendu (au plus ${MAX_ML_ORIGINS}, hôte complet, sans identifiants, requête ni fragment).`,
+        });
+      }
+    });
   }
 
   const data = d.data as {stores?: Record<string, unknown>} | undefined;
