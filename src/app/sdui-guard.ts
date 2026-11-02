@@ -146,7 +146,8 @@ export function guardDocument(doc: unknown): GuardError[] {
     const attrs = n.attributes;
     if (attrs && typeof attrs === "object") {
       for (const [attr, val] of Object.entries(attrs as Record<string, unknown>)) {
-        if (/^on/i.test(attr) && typeof val === "string") {
+        // `once` (sonic-animate) n'est pas un gestionnaire d'événement (même règle que le validateur de l'API).
+        if (/^on/i.test(attr) && attr.toLowerCase() !== "once" && typeof val === "string") {
           errors.push({path: `${path}/attributes/${attr}`, message: "handler interdit."});
         }
         if (typeof val === "string" && /^\s*javascript:/i.test(val)) {

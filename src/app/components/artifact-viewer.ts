@@ -130,6 +130,8 @@ export class ArtifactViewer extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    // Ancres internes (`#programme` vers l'id d'un élément, pas d'une vue) : dans les deux modes.
+    this.addEventListener("click", this.onAnchorClick);
     if (this.embedded) {
       this.addEventListener("click", this.onEmbeddedClick);
     } else {
@@ -140,6 +142,7 @@ export class ArtifactViewer extends LitElement {
 
   disconnectedCallback() {
     window.removeEventListener("hashchange", this.onHash);
+    this.removeEventListener("click", this.onAnchorClick);
     this.removeEventListener("click", this.onEmbeddedClick);
     this.clearTransformWatchers();
     this.clearLiveData();
@@ -169,6 +172,44 @@ export class ArtifactViewer extends LitElement {
       return;
     }
   };
+
+  /**
+   * Lien `#id` qui ne désigne pas une vue : défile jusqu'à l'élément de même `id` dans la vue
+   * courante (le contenu est dans le shadow DOM du viewer : le navigateur ne le trouve pas seul).
+   * Le hash n'est pas modifié : il reste celui de la vue.
+   */
+  private onAnchorClick = (e: Event) => {
+    const views = (this.data?.document as {views?: ViewDef[]} | undefined)?.views ?? [];
+    for (const el of e.composedPath()) {
+      if (!(el instanceof Element)) continue;
+      const href = el.getAttribute("href");
+      if (!href?.startsWith("#") || href.length < 2) continue;
+      const id = decodeURIComponent(href.slice(1));
+      if (views.some((v) => v.id === id)) return;
+      if (this.scrollToAnchor(id)) e.preventDefault();
+      return;
+    }
+  };
+
+  /** Défile jusqu'à l'élément `id` du contenu rendu (shadow roots compris). */
+  private scrollToAnchor(id: string): boolean {
+    const find = (root: ParentNode): Element | null => {
+      const direct = root.querySelector(`[id="${CSS.escape(id)}"]`);
+      if (direct) return direct;
+      for (const el of root.querySelectorAll("*")) {
+        if (el.shadowRoot) {
+          const hit = find(el.shadowRoot);
+          if (hit) return hit;
+        }
+      }
+      return null;
+    };
+    const target = find(this.renderRoot);
+    if (!target) return false;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    target.scrollIntoView({behavior: reduce ? "auto" : "smooth", block: "start"});
+    return true;
+  }
 
   private linkToken(): string | null {
     if (this.embedded) return this.linkKey || null;
@@ -281,7 +322,18 @@ export class ArtifactViewer extends LitElement {
     }
     const hash = this.embedded ? this.viewId || this.view : location.hash.replace(/^#/, "");
     const match = doc.views.find((v) => v.id === hash);
-    this.viewId = match?.id ?? doc.defaultView ?? doc.views[0].id;
+    if (match) {
+      this.viewId = match.id;
+      return;
+    }
+    // Hash qui n'est pas une vue (`/slug#tarifs`, lien partagé vers une section) : on garde la vue
+    // courante (ou celle par défaut) et on défile jusqu'à l'élément une fois rendu.
+    if (!this.viewId || !doc.views.some((v) => v.id === this.viewId)) {
+      this.viewId = doc.defaultView ?? doc.views[0].id;
+    }
+    if (hash && !this.embedded) {
+      void this.updateComplete.then(() => setTimeout(() => this.scrollToAnchor(hash), 50));
+    }
   }
 
   private transformRun = 0;

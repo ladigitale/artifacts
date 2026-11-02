@@ -21,6 +21,7 @@
  *       {"expect": "sonic-shader", "count": 1}, // assertion : le sélecteur existe (count optionnel)
  *       {"shot": "apres-clic"}                // capture intermédiaire (nom)
  *     ],
+ *     "fullPage": true,                       // capture finale de toute la page (défilement compris)
  *     "settleMs": 800,                        // attente avant la capture finale
  *     "fps": true,                            // mesure sur 2 s : images/s, durée des images (p50/p95/max), tâches longues, mémoire JS → perf
  *     "outDir": "/tmp/render"                 // dossier des PNG (défaut : ./render-out)
@@ -124,9 +125,9 @@ try {
   await page.waitForTimeout(600);
 
   const deep = `const all = (sel, r = document, a = []) => { r.querySelectorAll("*").forEach((e) => { if (e.matches(sel)) a.push(e); if (e.shadowRoot) all(sel, e.shadowRoot, a); }); return a; };`;
-  const shot = async (name) => {
+  const shot = async (name, fullPage = false) => {
     const file = path.join(outDir, `${name}.png`);
-    await page.screenshot({path: file});
+    await page.screenshot({path: file, fullPage});
     out.screenshots.push(file);
   };
   const TXT = `(() => { const txt = (n) => { if (n.nodeType === 3) return n.textContent; if (n.nodeType !== 1 && n.nodeType !== 11) return ""; if (n.tagName === "STYLE" || n.tagName === "SCRIPT") return ""; let s = ""; if (n.shadowRoot) s += txt(n.shadowRoot); for (const c of n.childNodes) s += txt(c); return s; }; return txt(document.body).replace(/\\s+/g, " ").trim(); })()`;
@@ -156,6 +157,8 @@ try {
       const n = await page.evaluate(new Function("sel", deep + "return all(sel).length"), s.expect);
       if (s.count != null ? n !== s.count : n === 0) fail(i, s, `« ${s.expect} » : ${n} trouvé(s)${s.count != null ? `, ${s.count} attendu(s)` : ""}`);
     } else if (s.shot) await shot(String(s.shot).replace(/[^\w-]/g, "_"));
+    // Étape non reconnue (chaîne JSON au lieu d'un objet, clé mal orthographiée) : le dire au lieu de l'ignorer.
+    else out.errors.push(`étape ${i} ignorée : objet attendu parmi wait, press, hold, click, waitText, expectText, expectNoText, expect, shot (reçu ${JSON.stringify(s).slice(0, 80)})`);
   }
   await page.waitForTimeout(Math.min(Number(req.settleMs ?? 800), 10000));
 
@@ -188,7 +191,7 @@ try {
       jsHeapMB: lt1.heap ? +(lt1.heap / 1048576).toFixed(1) : null,
     };
   }
-  await shot("final");
+  await shot("final", req.fullPage === true);
   out.text = (await pageText()).slice(0, 1500);
   out.shaderErrors = [...new Set(await page.evaluate(() => window.__gl ?? []))].slice(0, 10);
   out.ok = out.errors.length === 0 && out.assertions.length === 0 && out.shaderErrors.length === 0;
