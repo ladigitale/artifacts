@@ -148,10 +148,10 @@ export function guardDocument(doc: unknown): GuardError[] {
       if (c === null || typeof c !== "object" || Array.isArray(c)) return;
       const list = (c as {ml?: unknown}).ml;
       const keys = Object.keys(c as object);
-      if (keys.length !== 1 || !Array.isArray(list) || list.length > MAX_ML_ORIGINS || list.some((v) => !normalizeMlOrigin(v))) {
+      if (keys.length !== 1 || !Array.isArray(list) || list.length === 0 || list.length > MAX_ML_ORIGINS || list.some((v) => !normalizeMlOrigin(v))) {
         errors.push({
           path: `/capabilities/${i}`,
-          message: `capabilities : {"ml": [origines https]} attendu (au plus ${MAX_ML_ORIGINS}, hôte complet, sans identifiants, requête ni fragment).`,
+          message: `capabilities : {"ml": [origines https]} attendu (1 à ${MAX_ML_ORIGINS}, hôte complet, sans identifiants, requête ni fragment).`,
         });
       }
     });
