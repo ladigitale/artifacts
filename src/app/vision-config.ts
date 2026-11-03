@@ -1,5 +1,5 @@
 /**
- * Configuration des composants de suivi ML (`sonic-hand-tracker`…) pour le viewer.
+ * Configuration des composants de suivi ML (`sonic-hand-tracker`, `sonic-face-tracker`, `sonic-pose-tracker`, `sonic-object-detector`, `sonic-segmenter`) pour le viewer.
  *
  * Un modèle est une donnée, pas du code (le runtime MediaPipe est épinglé côté creative-stack).
  * Niveau « origins » : les modèles par alias, et les URL https dont l'origine est dans la liste par
