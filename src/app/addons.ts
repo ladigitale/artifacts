@@ -64,6 +64,9 @@ function collectTags(value: unknown, out: Set<string>, depth = 0): void {
   }
 }
 
+/** Composants de suivi ML (addon `vision`) qui téléchargent un modèle : ils partagent la même politique de confiance. */
+const ML_TRACKERS = ["sonic-hand-tracker", "sonic-face-tracker", "sonic-pose-tracker", "sonic-object-detector", "sonic-segmenter"];
+
 /** Charge les addons nécessaires au document (et seulement ceux-là). */
 export async function ensureAddonsFor(doc: unknown): Promise<void> {
   const tags = new Set<string>();
@@ -81,7 +84,7 @@ export async function ensureAddonsFor(doc: unknown): Promise<void> {
     await configureViewerHuggingFace(doc);
   }
   // Suivi ML local : origines de modèles approuvées = défauts + `capabilities.ml` du document.
-  if (tags.has("sonic-hand-tracker")) {
+  if (ML_TRACKERS.some((t) => tags.has(t))) {
     const {configureViewerVision} = await import("./vision-config");
     configureViewerVision(doc);
   }

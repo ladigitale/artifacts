@@ -28,6 +28,12 @@ const MAX_AUDIO: Record<string, number> = {
   "sonic-camera": 2,
   // Un suivi ML par page : un modèle chargé, une inférence en continu.
   "sonic-hand-tracker": 1,
+  "sonic-face-tracker": 1,
+  "sonic-pose-tracker": 1,
+  "sonic-object-detector": 1,
+  "sonic-segmenter": 1,
+  "sonic-example-classifier": 2,
+  "sonic-landmarks-overlay": 4,
   "sonic-video": 6,
   "sonic-audio-recorder": 4,
   "sonic-media-recorder": 2,
