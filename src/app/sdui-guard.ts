@@ -35,6 +35,8 @@ const MAX_AUDIO: Record<string, number> = {
   "sonic-example-classifier": 2,
   "sonic-landmarks-overlay": 4,
   "sonic-video": 6,
+  // Chaque synchroniseur garde `history` copies de la source (mémoire) : deux suffisent.
+  "sonic-frame-sync": 2,
   "sonic-audio-recorder": 4,
   "sonic-media-recorder": 2,
   "sonic-midi": 2,
