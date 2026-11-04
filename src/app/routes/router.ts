@@ -9,6 +9,7 @@ import admin_slugEditPage from "./admin/[slug]/edit/page";
 import admin_slugVersionsPage from "./admin/[slug]/versions/page";
 import adminAtelierPage from "./admin/atelier/page";
 import adminPage from "./admin/page";
+import adminRessourcesPage from "./admin/ressources/page";
 import cloudLayout from "./cloud/layout";
 import cloudPage from "./cloud/page";
 import page from "./page";
@@ -36,9 +37,14 @@ const adminAtelierDefaultLayoutRoutes = {
     "/admin/atelier$": adminAtelierPage
 }        
 
+const adminRessourcesDefaultLayoutRoutes = {
+    "/admin/ressources$": adminRessourcesPage
+}        
+
 const adminLayoutRoutes = {
     "/admin/:slug(/*)": () => html`<sonic-router .basePath=${basePath} .routes=${admin_slugDefaultLayoutRoutes}></sonic-router>`,
     "/admin/atelier\\b": () => html`<sonic-router .basePath=${basePath} .routes=${adminAtelierDefaultLayoutRoutes}></sonic-router>`,
+    "/admin/ressources\\b": () => html`<sonic-router .basePath=${basePath} .routes=${adminRessourcesDefaultLayoutRoutes}></sonic-router>`,
     "/admin$": adminPage
 }        
 
