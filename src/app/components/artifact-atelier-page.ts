@@ -325,6 +325,8 @@ export class ArtifactAtelierPage extends LitElement {
   /** Objets stables : le chat les relit à chaque run. */
   private chatHeaders: Record<string, string> = {};
   private chatContext: Record<string, unknown> = {};
+  /** Ressource à reprendre (`?resource=mine:slug` ou `base:addon/id`), transmise à l’agent. */
+  private resourceRef = new URLSearchParams(location.search).get("resource") ?? "";
 
   connectedCallback() {
     super.connectedCallback();
@@ -590,13 +592,16 @@ export class ArtifactAtelierPage extends LitElement {
     this.chatHeaders.Authorization = `Bearer ${account.token}`;
     if (this.slug) this.chatContext.artifact = {slug: this.slug};
     this.chatContext.atelier = {kits: this.useKits};
+    if (this.resourceRef) this.chatContext.resource = {ref: this.resourceRef};
     return html`
       <div class="atelier">
         <div class="bar" data-history-zone>
           <div class="titles">
             <h1>Atelier</h1>
             <p class="sub">
-              ${this.slug
+              ${this.resourceRef
+                ? html`Reprise de la ressource <code>${this.resourceRef}</code>`
+                : this.slug
                 ? html`Modification de <code>${this.slug}</code>`
                 : "Décrivez l’artefact à créer, l’aperçu se met à jour au fil de la conversation."}
             </p>

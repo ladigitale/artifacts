@@ -206,6 +206,96 @@ export async function deleteArtifact(idOrSlug: string): Promise<void> {
   await apiFetch(`/artifacts/${encodeURIComponent(idOrSlug)}`, {method: "DELETE"});
 }
 
+export type ResourceKind = "shader" | "model3d" | "data" | "image" | "audio";
+
+export type ResourceSummary = {
+  ref: string;
+  source: "mine" | "base";
+  kind: ResourceKind | string;
+  slug: string;
+  name: string;
+  description?: string | null;
+  tags: string[];
+  prompt?: string | null;
+  contentType?: string | null;
+  version: number;
+  sizeBytes?: number;
+  sha256?: string;
+  base?: {ref: string; version: number; latest: number} | null;
+  updateAvailable?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  license?: string;
+  channels?: unknown;
+  params?: unknown;
+};
+
+export type ResourceVersion = {version: number; sizeBytes?: number; sha256?: string; createdAt?: string};
+
+export type ResourceQuery = {q?: string; kind?: string; tag?: string; base?: boolean; limit?: number; offset?: number};
+
+export async function listResources(query: ResourceQuery = {}): Promise<ResourceSummary[]> {
+  const p = new URLSearchParams();
+  if (query.q) p.set("q", query.q);
+  if (query.kind) p.set("kind", query.kind);
+  if (query.tag) p.set("tag", query.tag);
+  if (query.base !== undefined) p.set("base", query.base ? "1" : "0");
+  if (query.limit) p.set("limit", String(query.limit));
+  if (query.offset) p.set("offset", String(query.offset));
+  const qs = p.toString();
+  const data = await apiFetch<{member?: ResourceSummary[]}>(`/resources${qs ? `?${qs}` : ""}`);
+  return data.member ?? [];
+}
+
+export async function getResource(ref: string): Promise<{resource: ResourceSummary; versions: ResourceVersion[]}> {
+  const data = await apiFetch<{resource: ResourceSummary; versions?: ResourceVersion[]}>(
+    `/resources/${encodeURIComponent(ref)}`,
+  );
+  return {resource: data.resource, versions: data.versions ?? []};
+}
+
+/** Contenu brut (texte) d’une ressource ; null si binaire ou trop gros pour un aperçu. */
+export async function getResourceContent(ref: string, version?: number, maxChars = 20000): Promise<string | null> {
+  const acc = loadArtifactsAccount();
+  const base = acc ? getApiRoot(acc) : `${normalizeApiBase(loadApiBaseUrl())}/api`;
+  const headers = new Headers();
+  if (acc?.token) headers.set("Authorization", `Bearer ${acc.token}`);
+  const q = version ? `?version=${version}` : "";
+  const res = await fetch(`${base}/resources/${encodeURIComponent(ref)}/content${q}`, {headers});
+  if (!res.ok) throw new ApiError(await res.text(), res.status);
+  const type = res.headers.get("Content-Type") ?? "";
+  if (!/^(text\/|application\/(json|xml|javascript))/.test(type)) return null;
+  const text = await res.text();
+  return text.length > maxChars ? `${text.slice(0, maxChars)}\n… (tronqué)` : text;
+}
+
+/**
+ * Met la copie à jour depuis la base : l’API exige le contenu, on relit donc la version
+ * courante de la ressource de base puis on la ré-enregistre sous le même slug (`from` garde la ref).
+ */
+export async function updateResourceFromBase(r: ResourceSummary): Promise<void> {
+  if (!r.base) throw new Error("Cette ressource ne vient pas de la base.");
+  const content = await getResourceContent(r.base.ref, undefined, Number.MAX_SAFE_INTEGER);
+  if (content === null) throw new Error("Contenu binaire : mise à jour non prise en charge ici.");
+  await apiFetch("/resources", {
+    method: "POST",
+    body: JSON.stringify({
+      kind: r.kind,
+      name: r.name,
+      slug: r.slug,
+      description: r.description ?? undefined,
+      tags: r.tags,
+      prompt: r.prompt ?? undefined,
+      from: r.base.ref,
+      content,
+    }),
+  });
+}
+
+export async function deleteResource(slug: string): Promise<void> {
+  await apiFetch(`/resources/${encodeURIComponent(slug)}`, {method: "DELETE"});
+}
+
 export async function rotateLink(idOrSlug: string): Promise<ArtifactSummary> {
   return apiFetch(`/artifacts/${encodeURIComponent(idOrSlug)}/rotate-link`, {
     method: "POST",

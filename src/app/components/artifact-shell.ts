@@ -8,12 +8,13 @@ import {hidePop, uiStyles} from "../styles/ui";
 import "./artifact-logo";
 import "./artifact-theme-switcher";
 
-type NavId = "library" | "atelier" | "account";
+type NavId = "library" | "atelier" | "resources" | "account";
 
 /** Section active, déduite de l'URL. */
 function sectionOf(path: string): NavId | null {
   if (path.startsWith("/cloud")) return "account";
   if (path === "/admin/atelier" || /^\/admin\/[^/]+\/atelier\/?$/.test(path)) return "atelier";
+  if (path === "/admin/ressources") return "resources";
   if (path === "/admin" || path.startsWith("/admin/")) return "library";
   return null;
 }
@@ -21,6 +22,7 @@ function sectionOf(path: string): NavId | null {
 const NAV: {id: NavId; href: string; label: string; icon: string}[] = [
   {id: "library", href: "/admin", label: "Bibliothèque", icon: "folder"},
   {id: "atelier", href: "/admin/atelier", label: "Atelier", icon: "chat-bubble"},
+  {id: "resources", href: "/admin/ressources", label: "Ressources", icon: "folder"},
   {id: "account", href: "/cloud", label: "Compte", icon: "user"},
 ];
 
@@ -360,13 +362,13 @@ export class ArtifactShell extends LitElement {
   render() {
     const current = sectionOf(this.path);
     const bleed = current === "atelier";
-    const [library, atelier, account] = NAV;
+    const [library, atelier, resources, account] = NAV;
     return html`
       <div class="app">
         <header>
           <artifact-logo wordmark size="1.75rem" href="/"></artifact-logo>
           <nav class="nav-top" aria-label="Principal">
-            ${this.link(library, current)} ${this.link(atelier, current)}
+            ${this.link(library, current)} ${this.link(atelier, current)} ${this.link(resources, current)}
           </nav>
           <span class="spacer"></span>
           <div class="tools">
@@ -378,7 +380,7 @@ export class ArtifactShell extends LitElement {
           <div class="content"><slot></slot></div>
         </main>
         <nav class="nav-bottom" aria-label="Principal (mobile)">
-          ${this.link(library, current)} ${this.link(atelier, current)} ${this.link(account, current)}
+          ${this.link(library, current)} ${this.link(atelier, current)} ${this.link(resources, current)} ${this.link(account, current)}
         </nav>
       </div>
     `;
