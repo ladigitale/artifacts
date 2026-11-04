@@ -292,6 +292,34 @@ export async function updateResourceFromBase(r: ResourceSummary): Promise<void> 
   });
 }
 
+export type ResourceUpdate = {
+  file: string;
+  ref: string;
+  usedVersion: number;
+  latestVersion: number | null;
+  updateAvailable: boolean;
+  /** Le fichier a été modifié dans l’artefact depuis la copie. */
+  modified: boolean;
+  /** La ressource d’origine n’existe plus. */
+  missing: boolean;
+};
+
+/** Ressources copiées dans un artefact et état de mise à jour (propriétaire seulement). */
+export async function listResourceUpdates(slug: string): Promise<ResourceUpdate[]> {
+  const data = await apiFetch<{member?: ResourceUpdate[]}>(`/artifacts/${encodeURIComponent(slug)}/resource-updates`);
+  return data.member ?? [];
+}
+
+export async function applyResourceUpdates(
+  slug: string,
+  opts: {files?: string[]; force?: boolean} = {},
+): Promise<{updated: string[]; skipped: {file: string; reason: string}[]}> {
+  return apiFetch(`/artifacts/${encodeURIComponent(slug)}/resource-updates`, {
+    method: "POST",
+    body: JSON.stringify(opts),
+  });
+}
+
 export async function deleteResource(slug: string): Promise<void> {
   await apiFetch(`/resources/${encodeURIComponent(slug)}`, {method: "DELETE"});
 }

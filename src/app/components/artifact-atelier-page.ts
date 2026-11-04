@@ -5,14 +5,17 @@ import {css, html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
 import {relativeTime, fullDate, uiStyles} from "../styles/ui";
 import {
+  applyResourceUpdates,
   deleteAgentThread,
   fetchAgentSettingsStatus,
   getAgentThread,
   getArtifact,
   listAgentThreads,
+  listResourceUpdates,
   renameAgentThread,
   tadaaaAssistantSettingsUrl,
   type AgentThreadSummary,
+  type ResourceUpdate,
 } from "../cloud/client";
 import {getApiRoot, loadArtifactsAccount} from "../cloud/account";
 import {navigate} from "../navigate";
@@ -310,6 +313,9 @@ export class ArtifactAtelierPage extends LitElement {
   /** Kits de l'agent (quiz, jeux, shader…) : décochés, l'agent compose tout librement. */
   @state() private useKits = readUseKits();
   /** Dernière publication faite par l'agent dans cette conversation (`publish_preview`). */
+  /** Ressources de la bibliothèque copiées dans l'artefact ouvert et ayant une version plus récente. */
+  @state() private resourceUpdates: ResourceUpdate[] = [];
+  @state() private updatingResources = false;
   @state() private published: {slug: string; url?: string; version?: number} | null = null;
   /** null : inconnu (API ancienne ou hors ligne) — on n'affiche alors rien. */
   @state() private agentReady: boolean | null = null;
@@ -410,6 +416,7 @@ export class ArtifactAtelierPage extends LitElement {
   }
 
   private onRunEnd = () => {
+    void this.refreshResourceUpdates();
     this.setThreadParam(this.threadId);
     void this.refreshThreads();
   };
@@ -517,6 +524,59 @@ export class ArtifactAtelierPage extends LitElement {
     } catch {
       /* l'agent relira l'artefact lui-même */
     }
+    void this.refreshResourceUpdates();
+  }
+
+  /** Silencieux : une API ancienne (404) ou hors ligne n'affiche simplement aucun bandeau. */
+  private async refreshResourceUpdates() {
+    if (!this.slug) return;
+    const slug = this.slug;
+    try {
+      const rows = await listResourceUpdates(slug);
+      if (slug === this.slug) this.resourceUpdates = rows.filter((r) => r.updateAvailable);
+    } catch {
+      if (slug === this.slug) this.resourceUpdates = [];
+    }
+  }
+
+  private async applyResources(force = false) {
+    if (!this.slug || this.updatingResources) return;
+    this.updatingResources = true;
+    this.error = "";
+    try {
+      const res = await applyResourceUpdates(this.slug, {force});
+      if (res.skipped.length && !res.updated.length) {
+        this.error = `Mise à jour non appliquée : ${res.skipped.map((s) => `${s.file} (${s.reason})`).join(", ")}.`;
+      }
+      await this.loadCurrent();
+    } catch (e) {
+      this.error = e instanceof Error ? e.message : "Mise à jour impossible.";
+    } finally {
+      this.updatingResources = false;
+    }
+  }
+
+  private renderResourceUpdates() {
+    if (!this.resourceUpdates.length) return nothing;
+    const names = this.resourceUpdates.map((r) => r.file).join(", ");
+    const modified = this.resourceUpdates.some((r) => r.modified);
+    return html`<div class="notice" data-tone="warning" data-resource-updates>
+      <sonic-icon library="custom" name="refresh" size="sm"></sonic-icon>
+      <span class="grow">
+        ${this.resourceUpdates.length > 1 ? "Des ressources de la bibliothèque ont" : "Une ressource de la bibliothèque a"}
+        une version plus récente : <code>${names}</code>.${modified
+          ? " Certains fichiers ont été modifiés dans l’artefact : ils ne sont pas écrasés par défaut."
+          : ""}
+      </span>
+      <sonic-button size="sm" ?disabled=${this.updatingResources} @click=${() => void this.applyResources()}>
+        Mettre à jour
+      </sonic-button>
+      ${modified
+        ? html`<sonic-button size="sm" variant="outline" ?disabled=${this.updatingResources} @click=${() => void this.applyResources(true)}>
+            Tout écraser
+          </sonic-button>`
+        : nothing}
+    </div>`;
   }
 
   private showPreview(document: Record<string, unknown>) {
@@ -634,7 +694,7 @@ export class ArtifactAtelierPage extends LitElement {
               <span class="grow">${this.error}</span>
             </div>`
           : nothing}
-        ${this.renderAgentBanner()}
+        ${this.renderAgentBanner()} ${this.renderResourceUpdates()}
 
         <div class="tabs" role="group" aria-label="Panneau affiché">
           <button
