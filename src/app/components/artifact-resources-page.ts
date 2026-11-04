@@ -204,7 +204,7 @@ export class ArtifactResourcesPage extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     const wanted = new URLSearchParams(location.search).get("ref");
-    if (wanted) void this.select(wanted);
+    if (wanted) void this.openResource(wanted);
     void this.refresh();
   }
 
@@ -262,7 +262,7 @@ export class ArtifactResourcesPage extends LitElement {
     void this.refresh();
   }
 
-  private async select(ref: string) {
+  private async openResource(ref: string) {
     const seq = ++this.detailSeq;
     this.selectedRef = ref;
     this.detail = null;
@@ -287,7 +287,7 @@ export class ArtifactResourcesPage extends LitElement {
     navigate(`/admin/atelier?resource=${encodeURIComponent(r.ref)}`);
   }
 
-  private async copy() {
+  private async copyContent() {
     if (!this.content) return;
     try {
       await navigator.clipboard.writeText(this.content);
@@ -298,7 +298,7 @@ export class ArtifactResourcesPage extends LitElement {
     }
   }
 
-  private async download(r: ResourceSummary) {
+  private async downloadContent(r: ResourceSummary) {
     try {
       const text = await getResourceContent(r.ref, undefined, Number.MAX_SAFE_INTEGER);
       if (text === null) {
@@ -317,14 +317,14 @@ export class ArtifactResourcesPage extends LitElement {
     }
   }
 
-  private async update(r: ResourceSummary) {
+  private async updateFromBase(r: ResourceSummary) {
     this.busy = true;
     this.error = "";
     try {
       await updateResourceFromBase(r);
       this.notice = "Ressource mise à jour depuis la base.";
       await this.refresh();
-      await this.select(r.ref);
+      await this.openResource(r.ref);
     } catch (e) {
       this.error = explainFetchError(e, loadApiBaseUrl());
     } finally {
@@ -332,7 +332,7 @@ export class ArtifactResourcesPage extends LitElement {
     }
   }
 
-  private async remove(r: ResourceSummary) {
+  private async deleteResourceItem(r: ResourceSummary) {
     if (!confirm(`Supprimer « ${r.name} » ? Les artefacts qui l’ont déjà copiée ne changent pas.`)) return;
     this.busy = true;
     try {
@@ -361,7 +361,7 @@ export class ArtifactResourcesPage extends LitElement {
           type="button"
           class="row"
           aria-current=${r.ref === this.selectedRef ? "true" : "false"}
-          @click=${() => void this.select(r.ref)}
+          @click=${() => void this.openResource(r.ref)}
         >
           <span class="name">
             ${r.name}
@@ -410,20 +410,20 @@ export class ArtifactResourcesPage extends LitElement {
             Reprompter
           </sonic-button>
           ${r.updateAvailable && r.base
-            ? html`<sonic-button size="sm" ?disabled=${this.busy} @click=${() => void this.update(r)}>
+            ? html`<sonic-button size="sm" ?disabled=${this.busy} @click=${() => void this.updateFromBase(r)}>
                 <sonic-icon slot="prefix" library="custom" name="refresh" size="sm"></sonic-icon>
                 Mettre à jour depuis la base
               </sonic-button>`
             : nothing}
-          <sonic-button size="sm" variant="outline" ?disabled=${!this.content} @click=${() => void this.copy()}>
+          <sonic-button size="sm" variant="outline" ?disabled=${!this.content} @click=${() => void this.copyContent()}>
             <sonic-icon slot="prefix" library="custom" name=${this.copied ? "check" : "copy"} size="sm"></sonic-icon>
             ${this.copied ? "Copié" : "Copier"}
           </sonic-button>
-          <sonic-button size="sm" variant="outline" @click=${() => void this.download(r)}>
+          <sonic-button size="sm" variant="outline" @click=${() => void this.downloadContent(r)}>
             Télécharger
           </sonic-button>
           ${r.source === "mine"
-            ? html`<sonic-button size="sm" variant="ghost" ?disabled=${this.busy} @click=${() => void this.remove(r)}>
+            ? html`<sonic-button size="sm" variant="ghost" ?disabled=${this.busy} @click=${() => void this.deleteResourceItem(r)}>
                 <sonic-icon slot="prefix" library="custom" name="trash" size="sm"></sonic-icon>
                 Supprimer
               </sonic-button>`
