@@ -65,7 +65,7 @@ function collectTags(value: unknown, out: Set<string>, depth = 0): void {
 }
 
 /** Composants de suivi ML (addon `vision`) qui téléchargent un modèle : ils partagent la même politique de confiance. */
-const ML_TRACKERS = ["sonic-hand-tracker", "sonic-face-tracker", "sonic-pose-tracker", "sonic-object-detector", "sonic-segmenter"];
+const ML_TRACKERS = ["sonic-hand-tracker", "sonic-face-tracker", "sonic-pose-tracker", "sonic-object-detector", "sonic-segmenter", "sonic-click-segmenter", "sonic-image-embedder"];
 
 /** Charge les addons nécessaires au document (et seulement ceux-là). */
 export async function ensureAddonsFor(doc: unknown): Promise<void> {
