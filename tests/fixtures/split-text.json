@@ -1,0 +1,92 @@
+{
+ "schema": "artifacts/1",
+ "title": "Texte cinétique",
+ "theme": "default",
+ "defaultView": "main",
+ "views": [
+  {
+   "id": "main",
+   "title": "Texte",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "sonic-scroll",
+      "attributes": {
+       "smooth": "0.5",
+       "out-data-provider": "defil"
+      }
+     },
+     {
+      "tagName": "div",
+      "attributes": {
+       "style": "height:60vh;display:flex;align-items:center;justify-content:center"
+      },
+      "nodes": [
+       {
+        "tagName": "sonic-split-text",
+        "attributes": {
+         "id": "auto",
+         "text": "Bienvenue",
+         "split": "chars",
+         "effect": "blur",
+         "play": "",
+         "duration": "0.6",
+         "style": "font-size:48px",
+         "out-data-provider": "auto"
+        }
+       }
+      ]
+     },
+     {
+      "tagName": "div",
+      "attributes": {
+       "style": "height:200vh"
+      },
+      "nodes": [
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "position:sticky;top:0;height:100vh;display:flex;align-items:center;justify-content:center;padding:0 40px"
+        },
+        "nodes": [
+         {
+          "tagName": "sonic-split-text",
+          "attributes": {
+           "id": "defile",
+           "text": "Chaque mot apparaît au rythme du défilement de la page",
+           "split": "words",
+           "effect": "rise",
+           "progress-source": "defil.progress",
+           "spread": "0.7",
+           "style": "font-size:40px;max-width:520px",
+           "out-data-provider": "defile"
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "tagName": "div",
+      "attributes": {
+       "style": "height:60vh;display:flex;align-items:center;justify-content:center"
+      },
+      "nodes": [
+       {
+        "tagName": "sonic-split-text",
+        "attributes": {
+         "id": "lignes",
+         "text": "Une phrase assez longue pour passer sur plusieurs lignes dans un conteneur étroit",
+         "split": "lines",
+         "effect": "wipe",
+         "progress": "1",
+         "style": "font-size:28px;width:260px"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}
