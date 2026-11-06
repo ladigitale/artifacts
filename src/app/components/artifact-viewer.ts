@@ -18,7 +18,7 @@ import {applySafeTransforms} from "../jsonata-safe";
 import {loadScriptAssets} from "../script-loader";
 import {ensureAddonsFor} from "../addons";
 import {startSinks, type SinkDef} from "../sinks";
-import {applyDocFonts} from "../doc-fonts";
+import {applyDocFontFiles, applyDocFonts} from "../doc-fonts";
 import {claimNamespace, transformDocument, type NamespaceClaim} from "../doc-transform";
 import {withRoomContext} from "../room-context";
 import {declaredNames, nsName, nsTree, nsValue} from "../dp-namespace";
@@ -148,6 +148,7 @@ export class ArtifactViewer extends LitElement {
     this.clearLiveData();
     this.releaseNamespace();
     applyDocFonts(null);
+    applyDocFontFiles(null);
     super.disconnectedCallback();
   }
 
@@ -285,6 +286,7 @@ export class ArtifactViewer extends LitElement {
       this.ns = this.nsClaim.ns;
       this.guardErrors = guardDocument(this.data.document);
       applyDocFonts(this.guardErrors.length ? null : (this.data.document as {fonts?: unknown}).fonts);
+      applyDocFontFiles(this.guardErrors.length ? null : (this.data.document as {fontFiles?: unknown}).fontFiles);
       this.syncViewFromHash();
       const doc = this.data.document as {
         data?: {stores?: Record<string, StoreDef>};

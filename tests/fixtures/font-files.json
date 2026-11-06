@@ -1,0 +1,36 @@
+{
+ "schema": "artifacts/1",
+ "title": "Police fournie",
+ "theme": "default",
+ "defaultView": "main",
+ "fontFiles": [
+  {"family": "Mon Titre", "src": "@asset:titre.woff2", "weight": "100 900", "style": "normal"},
+  {"family": "Absente", "src": "@asset:absente.woff2"}
+ ],
+ "views": [
+  {
+   "id": "main",
+   "title": "Police",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "h1",
+      "attributes": {
+       "id": "titre",
+       "style": "font-family:'Mon Titre',monospace;font-size:48px;font-weight:500"
+      },
+      "textContent": "Typographie fournie"
+     },
+     {
+      "tagName": "p",
+      "attributes": {
+       "id": "repli",
+       "style": "font-family:'Absente',monospace;font-size:48px"
+      },
+      "textContent": "Typographie fournie"
+     }
+    ]
+   }
+  }
+ ]
+}
