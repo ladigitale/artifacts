@@ -20,3 +20,4 @@ SPA Lit + Concorde (modèle Ceintures / belts).
 - Carte : addon `map` de creative-stack (`sonic-map`, MapLibre 5, dépendance `maplibre-gl` chargée à la demande comme three).
 - Synchro image/effet d'un tracker ML : `sonic-frame-sync` (creative-stack, addon media) affiche l'image exacte analysée (les trackers publient `frameSeq`/`latencyMs`). Doc agent : `media.md` (modes sync / delay-ms / live), `shader.md` (recette visage + shader), `vision.md`. Limité à 2 par document (`sdui-guard.ts`).
 - Graphiques : `sonic-plot` (creative-stack, addon plot) — SVG aux tokens `--sc-*`, données par `data-provider`, descripteur validé (formats nommés, pas de fonction). Smoke : `node scripts/smoke-plot.mjs` (fixture `plot`).
+- Formes vectorielles : `sonic-vector-op` (union, intersect, difference, xor, offset, simplify, round, fit, clip sur chemins SVG) et `sonic-vector-library` (creative-stack, addon vector). Smoke : `node scripts/smoke-vector.mjs` (fixture `vector`).
