@@ -21,6 +21,7 @@
     "smoke:cursor": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-cursor.mjs",
     "smoke:split-text": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-split-text.mjs",
     "smoke:font-files": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-font-files.mjs",
+    "smoke:view-transition": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-view-transition.mjs",
     "smoke:predict": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-predict.mjs",
     "smoke:sketch": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-sketch.mjs",
     "smoke:paint": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-paint.mjs",
