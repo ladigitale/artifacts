@@ -30,12 +30,12 @@
       },
       "nodes": [
        {
-        "tagName": "button",
+        "tagName": "sonic-button",
         "attributes": {
          "id": "aimant",
          "data-magnetic": "",
          "data-cursor": "voir",
-         "style": "padding:18px 32px;font-size:18px"
+         "style": "display:inline-block"
         },
         "textContent": "Attirez-moi"
        },
