@@ -1,0 +1,86 @@
+{
+ "schema": "artifacts/1",
+ "title": "Histoire au défilement",
+ "theme": "default",
+ "defaultView": "main",
+ "views": [
+  {
+   "id": "main",
+   "title": "Histoire",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "sonic-scroll",
+      "attributes": {
+       "sections": "[data-etape]",
+       "smooth": "0.08",
+       "out-data-provider": "defil"
+      }
+     },
+     {
+      "tagName": "sonic-timeline",
+      "attributes": {
+       "time-source": "defil.smoothProgress",
+       "descriptor": "{\"duration\": 1, \"root\": {\"type\": \"par\", \"nodes\": [{\"type\": \"tween\", \"targets\": [\"titre\"], \"props\": {\"opacity\": [0, 1], \"x\": [-60, 0]}, \"duration\": 1, \"ease\": \"linear\"}]}}"
+      }
+     },
+     {
+      "tagName": "div",
+      "attributes": {
+       "id": "etape1",
+       "data-etape": "",
+       "style": "height:100vh;display:flex;align-items:center;justify-content:center"
+      },
+      "nodes": [
+       {
+        "tagName": "h1",
+        "attributes": {
+         "id": "titre"
+        },
+        "textContent": "Défilez"
+       }
+      ]
+     },
+     {
+      "tagName": "div",
+      "attributes": {
+       "id": "etape2",
+       "data-etape": "",
+       "style": "height:300vh;position:relative"
+      },
+      "nodes": [
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "position:sticky;top:0;height:100vh;display:flex;align-items:center;justify-content:center"
+        },
+        "nodes": [
+         {
+          "tagName": "p",
+          "attributes": {},
+          "textContent": "Scène épinglée"
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "tagName": "div",
+      "attributes": {
+       "id": "etape3",
+       "data-etape": "",
+       "style": "height:100vh;display:flex;align-items:center;justify-content:center"
+      },
+      "nodes": [
+       {
+        "tagName": "p",
+        "attributes": {},
+        "textContent": "Fin"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}
