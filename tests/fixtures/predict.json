@@ -1,0 +1,70 @@
+{
+ "schema": "artifacts/1",
+ "title": "Prédire un prix",
+ "theme": "default",
+ "defaultView": "main",
+ "views": [
+  {
+   "id": "main",
+   "title": "Prédiction",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "div",
+      "attributes": {
+       "style": "padding:1rem;max-width:40rem"
+      },
+      "nodes": [
+       {
+        "tagName": "sonic-store",
+        "attributes": {
+         "id": "donnees",
+         "initial": "{\"csv\": \"surface;pieces;ville;prix\\n50;3;Tours;115000\\n112;4;Paris;344000\\n39;1;Tours;83000\\n22;4;Paris;164000\\n117;1;Tours;239000\\n86;5;Paris;297000\\n55;2;Tours;120000\\n53;2;Tours;116000\\n102;3;Paris;319000\\n44;2;Paris;198000\\n57;3;Tours;129000\\n97;3;Paris;309000\\n84;2;Tours;178000\\n51;4;Paris;222000\\n31;5;Paris;187000\\n20;3;Paris;155000\\n117;5;Tours;259000\\n72;4;Paris;264000\\n75;4;Tours;170000\\n49;3;Paris;213000\\n25;1;Tours;55000\\n79;3;Paris;273000\\n109;3;Tours;233000\\n106;2;Tours;222000\\n72;2;Paris;254000\\n55;2;Paris;220000\\n75;5;Paris;275000\\n101;5;Tours;227000\\n61;1;Tours;127000\\n110;2;Paris;330000\\n117;5;Tours;259000\\n35;3;Tours;85000\\n57;4;Tours;134000\\n25;3;Tours;65000\\n56;3;Tours;127000\\n61;3;Paris;237000\\n39;4;Tours;98000\\n57;5;Tours;139000\\n76;3;Tours;167000\\n52;4;Tours;124000\\n62;5;Tours;149000\\n66;1;Paris;237000\\n41;3;Paris;197000\\n57;5;Tours;139000\\n76;2;Paris;262000\\n46;1;Tours;97000\\n27;1;Tours;59000\\n96;2;Tours;202000\\n89;4;Tours;198000\\n61;1;Tours;127000\\n87;3;Paris;289000\\n103;2;Paris;316000\\n45;2;Paris;200000\\n72;4;Tours;164000\\n48;4;Paris;216000\\n51;4;Tours;122000\\n83;2;Tours;176000\\n24;3;Paris;163000\\n51;5;Tours;127000\\n118;2;Paris;346000\\n53;2;Paris;216000\\n26;3;Tours;67000\\n92;4;Tours;204000\\n83;4;Tours;186000\\n75;2;Tours;160000\\n63;3;Paris;241000\\n102;3;Paris;319000\\n87;2;Paris;284000\\n63;4;Paris;246000\\n29;3;Tours;73000\\n25;4;Tours;70000\\n118;3;Tours;251000\\n41;4;Paris;202000\\n115;4;Paris;350000\\n47;1;Tours;99000\\n40;1;Paris;185000\\n34;4;Paris;188000\\n48;5;Tours;121000\\n45;2;Paris;200000\\n91;4;Paris;302000\\n23;1;Tours;51000\\n109;5;Tours;243000\\n82;5;Paris;289000\\n97;2;Tours;204000\\n66;1;Tours;137000\\n58;3;Tours;131000\\n30;5;Paris;185000\\n68;2;Paris;246000\\n69;2;Paris;248000\\n71;1;Tours;147000\\n34;5;Paris;193000\\n85;4;Paris;290000\\n111;4;Tours;242000\\n100;2;Paris;310000\\n81;4;Tours;182000\\n91;2;Paris;292000\\n40;2;Tours;90000\\n61;4;Paris;242000\\n53;5;Tours;131000\\n110;2;Tours;230000\\n102;3;Tours;219000\\n89;1;Paris;283000\\n111;5;Paris;347000\\n87;1;Tours;179000\\n72;3;Paris;259000\\n49;2;Tours;108000\\n106;1;Paris;317000\\n89;4;Paris;298000\\n84;4;Paris;288000\\n70;2;Paris;250000\\n118;5;Paris;361000\\n104;3;Tours;223000\\n75;1;Tours;155000\\n106;5;Tours;237000\\n56;3;Tours;127000\\n93;3;Tours;201000\\n29;4;Tours;78000\\n62;3;Paris;239000\\n42;3;Tours;99000\\n97;1;Tours;199000\\n65;1;Tours;135000\\n43;5;Paris;211000\\n104;5;Tours;233000\\n117;1;Tours;239000\\n103;4;Tours;226000\\n99;3;Paris;313000\\n96;2;Paris;302000\\n110;2;Paris;330000\\n67;2;Paris;244000\\n88;5;Paris;301000\\n71;5;Paris;267000\\n60;3;Paris;235000\\n72;5;Tours;169000\\n52;2;Paris;214000\\n108;5;Paris;341000\\n71;4;Tours;162000\\n39;5;Tours;103000\\n78;3;Paris;271000\\n31;3;Paris;177000\\n48;4;Tours;116000\\n39;2;Tours;88000\\n58;2;Tours;126000\\n40;4;Paris;200000\\n22;5;Tours;69000\\n40;1;Tours;85000\\n24;3;Tours;63000\\n35;3;Tours;85000\\n102;3;Tours;219000\\n113;2;Paris;336000\\n36;1;Paris;177000\"}"
+        }
+       },
+       {
+        "tagName": "sonic-store",
+        "attributes": {
+         "id": "saisie",
+         "initial": "{\"surface\": 50, \"pieces\": 3, \"ville\": \"Paris\"}"
+        }
+       },
+       {
+        "tagName": "sonic-train",
+        "attributes": {
+         "data-provider": "donnees.csv",
+         "target": "prix",
+         "kind": "linear",
+         "epochs": "200",
+         "learning-rate": "0.05",
+         "auto-train": "",
+         "model-data-provider": "modele",
+         "out-data-provider": "entr"
+        }
+       },
+       {
+        "tagName": "sonic-predict",
+        "attributes": {
+         "model-from": "modele",
+         "input-from": "saisie",
+         "out-data-provider": "pred"
+        }
+       },
+       {
+        "tagName": "sonic-plot",
+        "attributes": {
+         "id": "courbe",
+         "data-provider": "entr.curve",
+         "type": "line",
+         "x": "epoch",
+         "y": "train,test",
+         "heading": "Courbe d'apprentissage"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}
