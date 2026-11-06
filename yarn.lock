@@ -503,9 +503,9 @@
     jsonata "^2.2.2"
     url-pattern "^1.0.3"
 
-"@supersoniks/creative-stack@github:ladigitale/creative-stack#c0cc0f7354552159dd0ac3b3bd0f40b34c8bff45":
+"@supersoniks/creative-stack@github:ladigitale/creative-stack#d8ab7b197fa06fb5c856c299a086d114e6a7c4ca":
   version "0.1.0"
-  resolved "https://codeload.github.com/ladigitale/creative-stack/tar.gz/c0cc0f7354552159dd0ac3b3bd0f40b34c8bff45"
+  resolved "https://codeload.github.com/ladigitale/creative-stack/tar.gz/d8ab7b197fa06fb5c856c299a086d114e6a7c4ca"
   dependencies:
     jsonata "^2.2.2"
     planck "1.4.2"
