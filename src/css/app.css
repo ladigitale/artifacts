@@ -157,3 +157,22 @@ artifact-viewer {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
 }
+
+/* Transitions entre vues (document.viewTransition = fade | slide | zoom) : voir artifact-viewer.setView. */
+@keyframes vt-fade-out { to { opacity: 0; } }
+@keyframes vt-fade-in { from { opacity: 0; } }
+@keyframes vt-slide-out-forward { to { opacity: 0; transform: translateX(-6%); } }
+@keyframes vt-slide-in-forward { from { opacity: 0; transform: translateX(6%); } }
+@keyframes vt-slide-out-back { to { opacity: 0; transform: translateX(6%); } }
+@keyframes vt-slide-in-back { from { opacity: 0; transform: translateX(-6%); } }
+@keyframes vt-zoom-out { to { opacity: 0; transform: scale(0.96); } }
+@keyframes vt-zoom-in { from { opacity: 0; transform: scale(1.04); } }
+
+html[data-view-transition="fade"]::view-transition-old(root) { animation: vt-fade-out 0.3s ease both; }
+html[data-view-transition="fade"]::view-transition-new(root) { animation: vt-fade-in 0.3s ease both; }
+html[data-view-transition="slide"][data-view-direction="forward"]::view-transition-old(root) { animation: vt-slide-out-forward 0.35s cubic-bezier(0.4, 0, 0.2, 1) both; }
+html[data-view-transition="slide"][data-view-direction="forward"]::view-transition-new(root) { animation: vt-slide-in-forward 0.35s cubic-bezier(0.4, 0, 0.2, 1) both; }
+html[data-view-transition="slide"][data-view-direction="back"]::view-transition-old(root) { animation: vt-slide-out-back 0.35s cubic-bezier(0.4, 0, 0.2, 1) both; }
+html[data-view-transition="slide"][data-view-direction="back"]::view-transition-new(root) { animation: vt-slide-in-back 0.35s cubic-bezier(0.4, 0, 0.2, 1) both; }
+html[data-view-transition="zoom"]::view-transition-old(root) { animation: vt-zoom-out 0.3s ease both; }
+html[data-view-transition="zoom"]::view-transition-new(root) { animation: vt-zoom-in 0.3s ease both; }

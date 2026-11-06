@@ -325,7 +325,7 @@ export class ArtifactViewer extends LitElement {
     const hash = this.embedded ? this.viewId || this.view : location.hash.replace(/^#/, "");
     const match = doc.views.find((v) => v.id === hash);
     if (match) {
-      this.viewId = match.id;
+      this.setView(match.id);
       return;
     }
     // Hash qui n'est pas une vue (`/slug#tarifs`, lien partagé vers une section) : on garde la vue
@@ -514,7 +514,7 @@ export class ArtifactViewer extends LitElement {
 
   private goView(id: string) {
     if (this.embedded) {
-      this.viewId = id;
+      this.setView(id);
       this.dispatchEvent(new CustomEvent("artifact-view", {detail: {view: id}, bubbles: true, composed: true}));
       return;
     }
@@ -525,7 +525,65 @@ export class ArtifactViewer extends LitElement {
     if (rk) params.set("rk", rk);
     const q = params.toString() ? `?${params}` : "";
     history.replaceState({}, "", `/${this.slug}/${q}#${id}`);
-    this.viewId = id;
+    this.setView(id);
+  }
+
+  /**
+   * Le contenu d'une vue (`sonic-sdui`) se construit après le rendu du viewer : la nouvelle image d'une transition ne doit
+   * être prise qu'une fois le DOM calmé (40 ms sans mutation, 600 ms au plus), sinon la nouvelle vue serait capturée vide.
+   */
+  private settleRender(): Promise<void> {
+    return new Promise((resolve) => {
+      let quiet: ReturnType<typeof setTimeout>;
+      const done = () => {
+        clearTimeout(quiet);
+        clearTimeout(cap);
+        mo.disconnect();
+        resolve();
+      };
+      const mo = new MutationObserver(() => {
+        clearTimeout(quiet);
+        quiet = setTimeout(done, 40);
+      });
+      mo.observe(this.renderRoot, {childList: true, subtree: true, attributes: true});
+      quiet = setTimeout(done, 40);
+      const cap = setTimeout(done, 600);
+    });
+  }
+
+  /**
+   * Change de vue ; avec `viewTransition` ("fade", "slide" ou "zoom") dans le document, la bascule passe par l'API
+   * View Transitions (transition de la page entière). Sans API, avec « moins d'animations » ou à l'ouverture :
+   * changement immédiat. Les éléments partagés (`view-transition-name`) ne sont pas pris en charge : le contenu des
+   * vues vit dans un shadow DOM, que Chrome ignore pour les groupes nommés.
+   */
+  private setView(id: string) {
+    if (id === this.viewId) return;
+    const doc = this.data?.document as {viewTransition?: unknown; views?: ViewDef[]} | undefined;
+    const kind = doc?.viewTransition;
+    const start = (document as Document & {startViewTransition?: (cb: () => Promise<void>) => {ready: Promise<void>; finished: Promise<void>}}).startViewTransition;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (!this.viewId || typeof start !== "function" || reduce || (kind !== "fade" && kind !== "slide" && kind !== "zoom")) {
+      this.viewId = id;
+      return;
+    }
+    const views = doc?.views ?? [];
+    const forward = views.findIndex((v) => v.id === id) >= views.findIndex((v) => v.id === this.viewId);
+    const root = document.documentElement;
+    root.dataset.viewTransition = kind;
+    root.dataset.viewDirection = forward ? "forward" : "back";
+    const t = start.call(document, async () => {
+      this.viewId = id;
+      await this.updateComplete;
+      await this.settleRender();
+    });
+    t.ready.catch(() => {});
+    t.finished
+      .catch(() => {})
+      .finally(() => {
+        delete root.dataset.viewTransition;
+        delete root.dataset.viewDirection;
+      });
   }
 
   private renderDocStores() {
