@@ -1,0 +1,55 @@
+{
+ "schema": "artifacts/1",
+ "title": "Curseur magnétique",
+ "theme": "default",
+ "defaultView": "main",
+ "views": [
+  {
+   "id": "main",
+   "title": "Curseur",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "sonic-cursor",
+      "attributes": {
+       "follower": "ring",
+       "size": "36",
+       "smooth": "0.3",
+       "blend": "difference",
+       "hide-native": "",
+       "magnetic": "[data-magnetic]",
+       "magnetic-strength": "0.5",
+       "magnetic-max": "20",
+       "out-data-provider": "pointeur"
+      }
+     },
+     {
+      "tagName": "div",
+      "attributes": {
+       "style": "min-height:80vh;display:flex;align-items:center;justify-content:center;gap:120px"
+      },
+      "nodes": [
+       {
+        "tagName": "button",
+        "attributes": {
+         "id": "aimant",
+         "data-magnetic": "",
+         "data-cursor": "voir",
+         "style": "padding:18px 32px;font-size:18px"
+        },
+        "textContent": "Attirez-moi"
+       },
+       {
+        "tagName": "p",
+        "attributes": {
+         "id": "loin"
+        },
+        "textContent": "Zone neutre"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}
