@@ -1,0 +1,43 @@
+{
+ "schema": "artifacts/1",
+ "title": "Dessin à zoom infini",
+ "theme": "default",
+ "defaultView": "main",
+ "views": [
+  {
+   "id": "main",
+   "title": "Dessin",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "div",
+      "attributes": {
+       "style": "padding:1rem;max-width:40rem"
+      },
+      "nodes": [
+       {
+        "tagName": "sonic-store",
+        "attributes": {
+         "id": "pinceau",
+         "initial": "{\"color\": \"#e11d48\", \"size\": 20, \"hardness\": 1}"
+        }
+       },
+       {
+        "tagName": "sonic-sketch",
+        "attributes": {
+         "id": "dessin",
+         "width": "600",
+         "height": "400",
+         "brush-from": "pinceau",
+         "smoothing": "0",
+         "pressure": "false",
+         "out-data-provider": "dessinState"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}

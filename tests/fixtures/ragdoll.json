@@ -1,0 +1,60 @@
+{
+ "schema": "artifacts/1",
+ "title": "Pantin",
+ "theme": "default",
+ "defaultView": "main",
+ "views": [
+  {
+   "id": "main",
+   "title": "Pantin",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "div",
+      "attributes": {
+       "style": "padding:1rem;max-width:48rem"
+      },
+      "nodes": [
+       {
+        "tagName": "sonic-physics",
+        "attributes": {
+         "id": "monde",
+         "width": "800",
+         "height": "500",
+         "drag": "",
+         "debug": "",
+         "background": "#f4f4f5"
+        },
+        "nodes": [
+         {
+          "tagName": "sonic-body",
+          "attributes": {
+           "name": "marche",
+           "type": "static",
+           "shape": "box",
+           "w": "300",
+           "h": "20",
+           "x": "400",
+           "y": "380"
+          }
+         },
+         {
+          "tagName": "sonic-ragdoll",
+          "attributes": {
+           "name": "pantin",
+           "preset": "humain",
+           "x": "400",
+           "y": "200",
+           "angle": "25",
+           "nodes-out": "pose"
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}
