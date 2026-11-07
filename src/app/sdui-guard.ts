@@ -39,6 +39,8 @@ const MAX_AUDIO: Record<string, number> = {
   "sonic-video": 6,
   // Chaque synchroniseur garde `history` copies de la source (mémoire) : deux suffisent.
   "sonic-frame-sync": 2,
+  // Mesure le squelette et lit les pixels de la personne à la prise : un seul par page.
+  "sonic-puppet": 1,
   "sonic-audio-recorder": 4,
   "sonic-media-recorder": 2,
   "sonic-midi": 2,
