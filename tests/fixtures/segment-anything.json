@@ -1,0 +1,44 @@
+{
+ "schema": "artifacts/1",
+ "title": "Détourage SAM 2",
+ "theme": "default",
+ "defaultView": "main",
+ "views": [
+  {
+   "id": "main",
+   "title": "Détourage",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "sonic-still",
+      "attributes": {
+       "id": "photo",
+       "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAxUlEQVR4nO3ZsRGDQAxEUSq5/kuhCFfiiIzEHjDSyou4/+cK2BcBxzLGenreN24BYA6AOwDuALgD4A6AOwDuqgCvMT5PwX414OvuUokM8ON0OUMACEwXMrKA5Pq8IQWQrE8a4gDh+owhCJCvDxumBBStjxnmA5SuDxgA9AL8Yf1VAwAAAAB0ArR/DgC4AaD92+gTAO2/yJ4AaH8rITfE1k9/MycxZNZzOx1lSKaXAI4lwt17/CNzB8AdAHcA3AFwB8AdAHcbxHNVsd80/TIAAAAASUVORK5CYII=",
+       "style": "display:block;width:400px;height:400px"
+      }
+     },
+     {
+      "tagName": "sonic-segment-anything",
+      "attributes": {
+       "id": "objet",
+       "for": "photo",
+       "click-on": "photo",
+       "consent-provider": "ok.sam",
+       "out-data-provider": "objet"
+      }
+     },
+     {
+      "tagName": "sonic-mask-replace",
+      "attributes": {
+       "id": "rendu",
+       "source": "photo",
+       "mask": "objet",
+       "effect": "blur",
+       "style": "display:block;width:400px;height:400px"
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

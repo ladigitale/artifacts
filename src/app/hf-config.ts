@@ -34,6 +34,18 @@ const MAX_MODEL_MB = 600;
 
 /** Raccourcis : alias court → modèle figé (révision épinglée). Facultatifs, `org/nom` marche aussi. */
 export const HF_SHORTCUTS = defineHuggingFaceModels({
+  /** Segment Anything 2.1 (tiny) pour `sonic-segment-anything` : encodeur q4f16 (28,5 Mo) + décodeur fp16 (10,5 Mo). */
+  "sam2-tiny": {
+    task: "image-segmentation",
+    engine: "sam",
+    repo: "onnx-community/sam2.1-hiera-tiny-ONNX",
+    revision: "814a066640debee5a91e70aa401fb8e17e030503",
+    options: {dtype: {vision_encoder: "q4f16", prompt_encoder_mask_decoder: "fp16"}},
+    sizeBytes: 39_544_000,
+    license: "apache-2.0",
+    label: "Détourage d'objet (SAM 2)",
+    description: "Détoure l'objet que tu désignes dans l'image, localement dans ton navigateur.",
+  },
   "depth-small": {
     task: "depth-estimation",
     repo: "Xenova/depth-anything-small-hf",
@@ -183,6 +195,7 @@ function collectModels(value: unknown, out: Set<string>, depth = 0): void {
     return;
   }
   const node = value as Record<string, unknown>;
+  // sonic-segment-anything n'utilise que les raccourcis `engine: "sam"` (pas de résolution libre sur le Hub).
   if (typeof node.tagName === "string" && node.tagName.toLowerCase() === "sonic-hugging-face-infer") {
     const model = (node.attributes as Record<string, unknown> | undefined)?.model;
     if (typeof model === "string") out.add(model);

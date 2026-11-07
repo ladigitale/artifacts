@@ -11,6 +11,7 @@
  */
 type HfModelDef = {
   task: string;
+  engine?: "pipeline" | "sam";
   repo: string;
   revision: string;
   options?: Record<string, unknown>;
