@@ -33,6 +33,7 @@ const MAX_AUDIO: Record<string, number> = {
   "sonic-object-detector": 1,
   "sonic-segmenter": 1,
   "sonic-click-segmenter": 1,
+  "sonic-segment-anything": 1,
   "sonic-image-embedder": 1,
   "sonic-example-classifier": 2,
   "sonic-landmarks-overlay": 4,
