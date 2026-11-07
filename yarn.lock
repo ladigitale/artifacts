@@ -503,12 +503,13 @@
     jsonata "^2.2.2"
     url-pattern "^1.0.3"
 
-"@supersoniks/creative-stack@github:ladigitale/creative-stack#c645531c9e33436848e159542ac20c79890a1dfe":
+"@supersoniks/creative-stack@github:ladigitale/creative-stack#9b3d38b5b8fcd95ab6b55f096ffb86e53b6ea420":
   version "0.1.0"
-  resolved "https://codeload.github.com/ladigitale/creative-stack/tar.gz/c645531c9e33436848e159542ac20c79890a1dfe"
+  resolved "https://codeload.github.com/ladigitale/creative-stack/tar.gz/9b3d38b5b8fcd95ab6b55f096ffb86e53b6ea420"
   dependencies:
     jsonata "^2.2.2"
     planck "1.4.2"
+    polygon-clipping "0.15.7"
 
 "@tailwindcss/container-queries@^0.1.1":
   version "0.1.1"
@@ -1332,6 +1333,14 @@ playwright@^1.55.0:
   dependencies:
     playwright-core "1.63.0"
 
+polygon-clipping@0.15.7:
+  version "0.15.7"
+  resolved "https://registry.yarnpkg.com/polygon-clipping/-/polygon-clipping-0.15.7.tgz#3823ca1e372566f350795ce9dd9a7b19e97bdaad"
+  integrity sha512-nhfdr83ECBg6xtqOAJab1tbksbBAOMUltN60bU+llHVOL0e5Onm1WpAXXWXVB39L8AJFssoIhEVuy/S90MmotA==
+  dependencies:
+    robust-predicates "^3.0.2"
+    splaytree "^3.1.0"
+
 postcss-import@^15.1.0:
   version "15.1.0"
   resolved "https://registry.yarnpkg.com/postcss-import/-/postcss-import-15.1.0.tgz#41c64ed8cc0e23735a9698b3249ffdbf704adc70"
@@ -1463,6 +1472,11 @@ reusify@^1.0.4:
   resolved "https://registry.yarnpkg.com/reusify/-/reusify-1.1.0.tgz#0fe13b9522e1473f51b558ee796e08f11f9b489f"
   integrity sha512-g6QUff04oZpHs0eG5p83rFLhHeV00ug/Yf9nZM6fLeUrPguBTkTQOdpAWWspMh55TZfVQDPaN3NQJfbVRAxdIw==
 
+robust-predicates@^3.0.2:
+  version "3.0.3"
+  resolved "https://registry.yarnpkg.com/robust-predicates/-/robust-predicates-3.0.3.tgz#1099061b3349e2c5abec6c2ab0acd440d24d4062"
+  integrity sha512-NS3levdsRIUOmiJ8FZWCP7LG3QpJyrs/TE0Zpf1yvZu8cAJJ6QMW92H1c7kWpdIHo8RvmLxN/o2JXTKHp74lUA==
+
 rollup-plugin-postcss-lit@^2.1.0:
   version "2.2.0"
   resolved "https://registry.yarnpkg.com/rollup-plugin-postcss-lit/-/rollup-plugin-postcss-lit-2.2.0.tgz#4850b27ecb9b488d450ca7544ebe046971ef7fbc"
@@ -1532,6 +1546,11 @@ sourcemap-codec@^1.4.1:
   version "1.4.8"
   resolved "https://registry.yarnpkg.com/sourcemap-codec/-/sourcemap-codec-1.4.8.tgz#ea804bd94857402e6992d05a38ef1ae35a9ab4c4"
   integrity sha512-9NykojV5Uih4lgo5So5dtw+f0JgJX30KCNI8gwhz2J9A15wD0Ml6tjHKwf6fTSa6fAdVBdZeNOs9eJ71qCk8vA==
+
+splaytree@^3.1.0:
+  version "3.2.3"
+  resolved "https://registry.yarnpkg.com/splaytree/-/splaytree-3.2.3.tgz#5e4836bc54cc939344bba8dc826f82fbde453106"
+  integrity sha512-7OXrNWzy6CK+r7Ch9OLPBDTKfB6XlWHjX4P0RU5B3IgFuWPeYN0XtRtlexGRjgbQxpfaUve6jTAwBGWuGntz/w==
 
 stack-utils@^2.0.6:
   version "2.0.6"
