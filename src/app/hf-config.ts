@@ -55,6 +55,42 @@ export const HF_SHORTCUTS = defineHuggingFaceModels({
     label: "Détourage d'objet (SAM 2)",
     description: "Détoure l'objet que tu désignes dans l'image, localement dans ton navigateur.",
   },
+  /** SAM 2.1 small : contours plus fins que tiny. GPU fp16 92 Mo, processeur 8 bits 69 Mo. */
+  "sam2-small": {
+    task: "image-segmentation",
+    engine: "sam",
+    repo: "onnx-community/sam2.1-hiera-small-ONNX",
+    revision: "a7df49d8de14b9d2e4504d1687b0d568f905fd8d",
+    options: {
+      dtype: {vision_encoder: "fp16", prompt_encoder_mask_decoder: "fp16"},
+      dtypeByDevice: {
+        webgpu: {vision_encoder: "fp16", prompt_encoder_mask_decoder: "fp16"},
+        wasm: {vision_encoder: "q8", prompt_encoder_mask_decoder: "q8"},
+      },
+    },
+    sizeBytes: 92_289_000,
+    license: "apache-2.0",
+    label: "Détourage d'objet (SAM 2, précis)",
+    description: "Détoure l'objet que tu désignes, avec des contours plus fins, localement dans ton navigateur.",
+  },
+  /** SAM 2.1 base-plus : le plus précis des trois. GPU fp16 164 Mo, processeur 8 bits 109 Mo. */
+  "sam2-base-plus": {
+    task: "image-segmentation",
+    engine: "sam",
+    repo: "onnx-community/sam2.1-hiera-base-plus-ONNX",
+    revision: "bab18593f44e652f04cf18b60b3690f60e8996b0",
+    options: {
+      dtype: {vision_encoder: "fp16", prompt_encoder_mask_decoder: "fp16"},
+      dtypeByDevice: {
+        webgpu: {vision_encoder: "fp16", prompt_encoder_mask_decoder: "fp16"},
+        wasm: {vision_encoder: "q8", prompt_encoder_mask_decoder: "q8"},
+      },
+    },
+    sizeBytes: 164_108_000,
+    license: "apache-2.0",
+    label: "Détourage d'objet (SAM 2, très précis)",
+    description: "Détoure l'objet que tu désignes, avec les contours les plus fins, localement dans ton navigateur.",
+  },
   "depth-small": {
     task: "depth-estimation",
     repo: "Xenova/depth-anything-small-hf",
