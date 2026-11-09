@@ -64,7 +64,7 @@ export const AutoProcessor = { from_pretrained: async (repo, o) => {
   };
   const proc = async (img) => ({ pixel_values: { dims: [1, 3, 1024, 1024] }, original_sizes: [[img.height, img.width]], reshaped_input_sizes: [[1024, 1024]], _img: img });
   proc.image_processor = ip;
-  proc.post_process_masks = async (m, sizes) => [m];
+  proc.post_process_masks = async (m) => [{ dims: m.dims.slice(1), data: m.data }];
   return proc;
 } };
 export const AutoModelForMaskGeneration = { from_pretrained: async (repo, o) => {
@@ -81,7 +81,11 @@ export const AutoModelForMaskGeneration = { from_pretrained: async (repo, o) => 
       const inside = box ? (x >= box[0] && x < box[2] && y >= box[1] && y < box[3]) : (Math.hypot(x + 0.5 - cx, y + 0.5 - cy) <= r);
       if (inside) data[w * h + y * w + x] = 1;
     }
-    return { pred_masks: { dims: [1, 3, h, w], data }, iou_scores: { data: new Float32Array([0.3, 0.88, 0.5]) } };
+    // logits : +4 sur l'objet, -4 ailleurs ; seul le masque n°1 est rempli (meilleur score)
+    const logits = new Float32Array(data.length).fill(-4);
+    for (let i = 0; i < data.length; i++) if (data[i]) logits[i] = 4;
+    const pred_masks = { dims: [1, 1, 3, h, w], data: logits, slice: (_a, _b, [k0, k1]) => ({ dims: [1, 1, k1 - k0, h, w], data: logits.subarray(k0 * w * h, k1 * w * h) }) };
+    return { pred_masks, iou_scores: { data: new Float32Array([0.3, 0.88, 0.5]) } };
   };
   model.get_image_embeddings = async (inputs) => { self.__calls.encode++; size = inputs.original_sizes[0]; console.log("fake-encode"); return { "image_embeddings.0": {} }; };
   model.dispose = async () => {};
