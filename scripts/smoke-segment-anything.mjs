@@ -145,7 +145,7 @@ check("masque : opaque au point cliqué, transparent loin", (await alphaAt(0.3, 
 
 const load = workerMsgs.find((t) => t.startsWith("fake-load "));
 const lo = load ? JSON.parse(load.slice(10)) : null;
-check("modèle chargé : dépôt, révision figée et dtype du raccourci", lo && lo.repo === "onnx-community/sam2.1-hiera-tiny-ONNX" && lo.revision === "814a066640debee5a91e70aa401fb8e17e030503" && lo.dtype.vision_encoder === "q4f16", load);
+check("modèle chargé : dépôt, révision figée et dtype du raccourci", lo && lo.repo === "onnx-community/sam2.1-hiera-tiny-ONNX" && lo.revision === "814a066640debee5a91e70aa401fb8e17e030503" && lo.dtype.vision_encoder === "q8", load);
 
 // Maj+clic : ajout d'un point, pas de ré-encodage
 await page.keyboard.down("Shift");

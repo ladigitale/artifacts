@@ -34,13 +34,22 @@ const MAX_MODEL_MB = 600;
 
 /** Raccourcis : alias court → modèle figé (révision épinglée). Facultatifs, `org/nom` marche aussi. */
 export const HF_SHORTCUTS = defineHuggingFaceModels({
-  /** Segment Anything 2.1 (tiny) pour `sonic-segment-anything` : encodeur q4f16 (28,5 Mo) + décodeur fp16 (10,5 Mo). */
+  /**
+   * Segment Anything 2.1 (tiny) pour `sonic-segment-anything`. GPU : encodeur q4f16 (28,5 Mo) + décodeur fp16
+   * (10,5 Mo). Sans GPU, ou si le GPU lâche en cours de calcul : version 8 bits (environ 61 Mo), faite pour le processeur.
+   */
   "sam2-tiny": {
     task: "image-segmentation",
     engine: "sam",
     repo: "onnx-community/sam2.1-hiera-tiny-ONNX",
     revision: "814a066640debee5a91e70aa401fb8e17e030503",
-    options: {dtype: {vision_encoder: "q4f16", prompt_encoder_mask_decoder: "fp16"}},
+    options: {
+      dtype: {vision_encoder: "q4f16", prompt_encoder_mask_decoder: "fp16"},
+      dtypeByDevice: {
+        webgpu: {vision_encoder: "q4f16", prompt_encoder_mask_decoder: "fp16"},
+        wasm: {vision_encoder: "q8", prompt_encoder_mask_decoder: "q8"},
+      },
+    },
     sizeBytes: 39_544_000,
     license: "apache-2.0",
     label: "Détourage d'objet (SAM 2)",
