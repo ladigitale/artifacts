@@ -417,11 +417,21 @@ export async function postIntakeRecord(
 ): Promise<{id: string}> {
   const q = linkToken ? `?k=${encodeURIComponent(linkToken)}` : "";
   const base = `${normalizeApiBase(loadApiBaseUrl())}/api`;
+  const headers = new Headers({Accept: "application/json", "Content-Type": "application/json"});
+  // Membre connecté (artefact ouvert sans `?k=`) : le jeton n'est joint que vers l'hôte de l'API.
+  const acc = loadArtifactsAccount();
+  try {
+    if (acc?.token && new URL(getApiRoot(acc), location.href).origin === new URL(base, location.href).origin) {
+      headers.set("Authorization", `Bearer ${acc.token}`);
+    }
+  } catch {
+    /* URL illisible : envoi anonyme */
+  }
   const res = await fetch(
     `${base}/public/artifacts/${encodeURIComponent(slug)}/collections/${encodeURIComponent(collection)}/records${q}`,
     {
       method: "POST",
-      headers: {Accept: "application/json", "Content-Type": "application/json"},
+      headers,
       body: JSON.stringify(code ? {data, code} : {data}),
     },
   );
