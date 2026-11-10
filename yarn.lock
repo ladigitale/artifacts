@@ -217,9 +217,9 @@
     "@jridgewell/resolve-uri" "^3.1.0"
     "@jridgewell/sourcemap-codec" "^1.4.14"
 
-"@ladigitale/agent-stack@github:ladigitale/agent-stack#b9c263cdef4a2fbbe9aa050ffa65d90495801624":
+"@ladigitale/agent-stack@github:ladigitale/agent-stack#a3274d5ce7e228bbfc737128534b79b4cdad7955":
   version "0.1.0"
-  resolved "https://codeload.github.com/ladigitale/agent-stack/tar.gz/b9c263cdef4a2fbbe9aa050ffa65d90495801624"
+  resolved "https://codeload.github.com/ladigitale/agent-stack/tar.gz/a3274d5ce7e228bbfc737128534b79b4cdad7955"
 
 "@lit-labs/motion@^1.0.7":
   version "1.1.0"

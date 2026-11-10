@@ -49,7 +49,7 @@
     "vite": "^5.4.11"
   },
   "dependencies": {
-    "@ladigitale/agent-stack": "github:ladigitale/agent-stack#b9c263cdef4a2fbbe9aa050ffa65d90495801624",
+    "@ladigitale/agent-stack": "github:ladigitale/agent-stack#a3274d5ce7e228bbfc737128534b79b4cdad7955",
     "@supersoniks/creative-stack": "github:ladigitale/creative-stack#e2dfcebe9f96958f8700d702c855199402a56a7c",
     "pixi.js": "8.19.0",
     "three": "0.180.0",

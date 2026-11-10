@@ -21,6 +21,7 @@ import {getApiRoot, loadArtifactsAccount} from "../cloud/account";
 import {navigate} from "../navigate";
 import "./artifact-viewer";
 import {atelierToolLabels} from "../atelier-tool-labels";
+import {ensureAddonsFor} from "../addons";
 
 /**
  * Atelier : création / modification d'un artefact en conversation avec l'agent de
@@ -343,6 +344,8 @@ export class ArtifactAtelierPage extends LitElement {
     else if (this.slug) void this.loadCurrent();
     void this.checkAgent();
     void this.refreshThreads();
+    // Réponses de l'agent en Markdown : sonic-markdown (addon markdown, chargé à la demande).
+    void ensureAddonsFor({tagName: "sonic-markdown"}).then(() => this.renderRoot.querySelector("sonic-chat")?.requestUpdate?.());
   }
 
   disconnectedCallback() {
@@ -745,6 +748,7 @@ export class ArtifactAtelierPage extends LitElement {
                 .headers=${this.chatHeaders}
                 .forwardedProps=${this.chatContext}
                 .toolLabels=${atelierToolLabels}
+                markdown
                 @chat-custom=${this.onCustom}
                 @chat-run-error=${this.onRunError}
                 @chat-run-end=${this.onRunEnd}
