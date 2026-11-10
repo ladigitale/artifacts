@@ -17,7 +17,7 @@ const ROOT = process.cwd();
 const DIST = path.join(ROOT, "dist");
 const PORT = 4455;
 const doc = JSON.parse(fs.readFileSync(path.join(ROOT, "tests/fixtures/vectorize.json"), "utf8"));
-const CSP = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:; img-src 'self' https: data: blob:; connect-src 'self' http://localhost:4455 https:; object-src 'none'; base-uri 'self'";
+const CSP = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:; img-src 'self' https: data: blob:; connect-src 'self' http://localhost:4455 https:; worker-src 'self' blob: https://cdn.jsdelivr.net; object-src 'none'; base-uri 'self'";
 
 const server = http.createServer((q, r) => {
   const u = new URL(q.url, "http://x");
