@@ -5,8 +5,8 @@
  * Lancer   : node scripts/smoke-sketch.mjs
  *
  * Vérifie : trait à la souris, zoom à la molette (trait redessiné net), déplacement (Espace + glisser),
- * zoom extrême et retour, pointe personnalisée, gomme de traits, annuler / rétablir, export SVG valide,
- * fusion vectorielle des traits pleins, compaction, mode de fusion multiply, aucune erreur JS / CSP.
+ * zoom extrême et retour, pointe personnalisée, vraie gomme (trou, masque), annuler / rétablir, export SVG valide,
+ * aplatissement des traits pleins (régions de vraies couleurs, multiply calculé), compaction, aucune erreur JS / CSP.
  */
 import http from "node:http";
 import fs from "node:fs";
@@ -115,7 +115,8 @@ check("zoom borné à 10 000 000", st.zoom === 1e7, String(st.zoom));
 check("au zoom maximal, le trait remplit l'écran", isRed(await pixel(300, 200)) && isRed(await pixel(10, 390)));
 await drag(250, 200, 350, 200);
 st = await state();
-check("trait minuscule dessiné à zoom extrême", st.strokes === 2 && st.bbox.w > 400 && st.zoom === 1e7, JSON.stringify(st.bbox));
+// Dessiné dans le rouge, de la même couleur : aplati, il est recouvert et ne change rien à la carte.
+check("trait minuscule dessiné à zoom extrême : aplati dans la carte", st.strokes === 1 && st.regions === 1 && st.flattened >= 2 && st.bbox.w > 400 && st.zoom === 1e7, JSON.stringify({s: st.strokes, r: st.regions, f: st.flattened}));
 await get((el) => el.fit());
 st = await state();
 check("cadrer ramène une échelle lisible", st.zoom > 0.5 && st.zoom < 3, String(st.zoom));
@@ -147,12 +148,22 @@ await page.mouse.down();
 await page.mouse.up();
 await page.waitForTimeout(150);
 st = await state();
-check("la gomme retire le trait touché, pas l'autre", st.strokes === 1, String(st.strokes));
-check("… le pixel redevient blanc", isWhite(await pixel(300, 100)));
+check("la gomme troue le trait touché sans le retirer, l'autre intact", st.strokes === 2 && st.masks === 0 && isRed(await pixel(330, 100)) && isRed(await pixel(300, 208)), JSON.stringify({s: st.strokes, m: st.masks}));
+check("… le pixel redevient blanc (vrai trou)", isWhite(await pixel(300, 100)));
 await get((el) => { el.tool = "paint"; });
 await get((el) => el.undo());
 st = await state();
-check("annuler la gomme rend le trait", st.strokes === 2 && isRed(await pixel(300, 100)), String(st.strokes));
+check("annuler la gomme rebouche le trou", st.strokes === 2 && isRed(await pixel(300, 100)), String(st.strokes));
+// Gomme sur un trait non aplati (pointe en barre) : un masque le troue.
+await get((el) => { el.tool = "erase"; });
+await page.mouse.move(...at(300, 200));
+await page.mouse.down();
+await page.mouse.up();
+await page.waitForTimeout(150);
+st = await state();
+check("gomme sur un trait non aplati : masque posé, trou net", st.masks === 1 && isWhite(await pixel(300, 208)) && isRed(await pixel(300, 100)), JSON.stringify({m: st.masks}));
+await get((el) => { el.tool = "paint"; });
+await get((el) => el.undo());
 
 // Export SVG.
 await get((el) => el.save());
@@ -163,30 +174,32 @@ const svg = await get((el) => el.toSvg());
 const parsed = await page.evaluate((t) => { const d = new DOMParser().parseFromString(t, "image/svg+xml"); return {err: !!d.querySelector("parsererror"), paths: d.querySelectorAll("path").length, uses: d.querySelectorAll("use").length, vb: d.documentElement.getAttribute("viewBox")}; }, svg);
 check("SVG valide avec un tracé par trait net et les <use> de la pointe", !parsed.err && parsed.paths >= 2 && parsed.uses > 10 && !!parsed.vb, JSON.stringify(parsed));
 
-// Fusion vectorielle : deux traits pleins qui se croisent deviennent une seule forme (découpage polygonal).
+// Aplatissement : deux traits pleins de même couleur qui se croisent deviennent une seule région (découpage polygonal).
 await get((el) => { el.reset(); el.clear(); });
 await drag(100, 300, 500, 300);
 await drag(300, 250, 300, 380);
 st = await state();
-check("fusion : deux traits pleins qui se croisent → une seule forme", st.strokes === 1 && st.shapes === 1 && st.merges >= 1, JSON.stringify({s: st.strokes, sh: st.shapes, m: st.merges}));
+check("aplatissement : deux traits qui se croisent → une carte, une région", st.strokes === 1 && st.flats === 1 && st.regions === 1 && st.colors === 1, JSON.stringify({s: st.strokes, f: st.flats, r: st.regions}));
 check("… dessinée : croisement et bras rouges, dehors blanc", isRed(await pixel(300, 300)) && isRed(await pixel(300, 370)) && isRed(await pixel(120, 300)) && isWhite(await pixel(200, 350)));
 check("… compaction : le dernier trait a perdu des points", st.lastStroke.after < st.lastStroke.before, JSON.stringify(st.lastStroke));
 await get((el) => el.undo());
 st = await state();
-check("annuler la fusion rend le premier trait seul", st.strokes === 1 && st.shapes === 0 && isWhite(await pixel(300, 370)), JSON.stringify({s: st.strokes, sh: st.shapes}));
+check("annuler rend la carte du premier trait seul", st.strokes === 1 && st.regions === 1 && isWhite(await pixel(300, 370)), JSON.stringify({s: st.strokes, r: st.regions}));
 await get((el) => el.redo());
 const svg2 = await page.evaluate((t) => { const d = new DOMParser().parseFromString(t, "image/svg+xml"); return {err: !!d.querySelector("parsererror"), paths: d.querySelectorAll("path").length, evenodd: d.querySelectorAll('path[fill-rule="evenodd"]').length}; }, await get((el) => el.toSvg()));
-check("export : la forme fusionnée est un seul chemin rempli", !svg2.err && svg2.paths === 1 && svg2.evenodd === 1, JSON.stringify(svg2));
+check("export : la région est un seul chemin rempli", !svg2.err && svg2.paths === 1 && svg2.evenodd === 1, JSON.stringify(svg2));
 
-// Mode de fusion multiply : rouge sur rouge s'assombrit, rouge sur blanc reste rouge ; pas fusionné avec la forme normale.
+// Mode de fusion multiply aplati : rouge × rouge devient une vraie couleur, rouge sur blanc reste du rouge (même région).
 await get((el) => { el.blend = "multiply"; });
 await drag(200, 250, 200, 380);
 st = await state();
 const dark = await pixel(200, 300);
 check("multiply : rouge × rouge assombrit (≈ 198, 3, 20)", Math.abs(dark[0] - 198) < 10 && dark[1] < 12 && Math.abs(dark[2] - 20) < 10, JSON.stringify(dark));
 check("… sur le blanc, la couleur du trait", isRed(await pixel(200, 360)), JSON.stringify(await pixel(200, 360)));
-check("… trait gardé à part (autre mode), état blend", st.strokes === 2 && st.blend === "multiply", JSON.stringify({s: st.strokes, b: st.blend}));
-check("… export : groupe mix-blend-mode", (await get((el) => el.toSvg())).includes("mix-blend-mode:multiply"));
+// Le trait « produit » coupe le rouge : plusieurs morceaux d'un seul tenant, mais deux couleurs seulement.
+check("… aplati : une carte, deux couleurs réelles", st.strokes === 1 && st.colors === 2 && st.regions >= 2 && st.blend === "multiply", JSON.stringify({s: st.strokes, c: st.colors, r: st.regions}));
+const svg3 = await get((el) => el.toSvg());
+check("… export : un chemin par région, aucune fusion au rendu", !svg3.includes("mix-blend-mode") && (svg3.match(/fill-rule="evenodd"/g) ?? []).length === st.regions, String(st.regions));
 await get((el) => { el.blend = "normal"; });
 
 await page.screenshot({path: "/tmp/smoke-sketch.png"});
