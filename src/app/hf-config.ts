@@ -32,12 +32,8 @@ const ID_RE = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
 /** Au-delà, un modèle d'artefact est refusé (poids des fichiers ONNX retenus). */
 const MAX_MODEL_MB = 600;
 
-/** Raccourcis : alias court → modèle figé (révision épinglée). Facultatifs, `org/nom` marche aussi. */
-export const HF_SHORTCUTS = defineHuggingFaceModels({
-  /**
-   * Segment Anything 2.1 (tiny) pour `sonic-segment-anything`. GPU : encodeur fp16 (67 Mo) + décodeur fp32 (21 Mo ; en fp16 il
-   * débordait sur des GPU mobiles et produisait un masque bruité ; le q4f16 dégradait les contours). Sans GPU, ou si le GPU lâche en cours de calcul : 8 bits (61 Mo), fait pour le processeur.
-   */
+/** Raccourcis SAM 2.1 (moteur GPU d'abord, WASM en secours). */
+const SAM_BASE = {
   "sam2-tiny": {
     task: "image-segmentation",
     engine: "sam",
@@ -91,6 +87,15 @@ export const HF_SHORTCUTS = defineHuggingFaceModels({
     label: "Détourage d'objet (SAM 2, très précis)",
     description: "Détoure l'objet que tu désignes, avec les contours les plus fins, localement dans ton navigateur.",
   },
+} as const;
+
+/** Raccourcis : alias court → modèle figé (révision épinglée). Facultatifs, `org/nom` marche aussi. */
+export const HF_SHORTCUTS = defineHuggingFaceModels({
+  /**
+   * Segment Anything 2.1 (tiny) pour `sonic-segment-anything`. GPU : encodeur fp16 (67 Mo) + décodeur fp32 (21 Mo ; en fp16 il
+   * débordait sur des GPU mobiles et produisait un masque bruité ; le q4f16 dégradait les contours). Sans GPU, ou si le GPU lâche en cours de calcul : 8 bits (61 Mo), fait pour le processeur.
+   */
+  ...SAM_BASE,
   "depth-small": {
     task: "depth-estimation",
     repo: "Xenova/depth-anything-small-hf",
@@ -109,7 +114,26 @@ export const HF_SHORTCUTS = defineHuggingFaceModels({
     label: "Classement de texte",
     description: "Classe un texte (anglais) parmi les étiquettes proposées, localement.",
   },
+  /**
+   * Variantes « processeur » des modèles SAM : WASM seulement, en 8 bits. Utiles quand le GPU de l'appareil produit un
+   * masque faux sans signaler d'erreur (débordement en précision réduite sur certains GPU mobiles).
+   */
+  "sam2-tiny-cpu": samCpu("sam2-tiny", 61_200_000),
+  "sam2-small-cpu": samCpu("sam2-small", 68_400_000),
+  "sam2-base-plus-cpu": samCpu("sam2-base-plus", 107_600_000),
 });
+
+/** Variante WASM d'un raccourci SAM (même dépôt, même révision). */
+function samCpu(alias: "sam2-tiny" | "sam2-small" | "sam2-base-plus", sizeBytes: number) {
+  const base = SAM_BASE[alias];
+  return {
+    ...base,
+    devices: ["wasm"] as const,
+    options: {dtype: {vision_encoder: "q8", prompt_encoder_mask_decoder: "q8"}},
+    sizeBytes,
+    label: `${base.label} — processeur`,
+  };
+}
 
 /**
  * `pipeline_tag` du Hub → tâche du composant. Les tâches absentes (text-generation,
