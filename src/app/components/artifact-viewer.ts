@@ -1,4 +1,6 @@
 import "@supersoniks/concorde/button";
+import "@supersoniks/concorde/menu";
+import "@supersoniks/concorde/menu-item";
 import "@supersoniks/concorde/sdui";
 import "./artifact-a2ui-view";
 import {agentStackLibrary, injectAgentStackStyles} from "@ladigitale/agent-stack/libraries";
@@ -21,7 +23,7 @@ import {startSinks, type SinkDef} from "../sinks";
 import {applyDocFontFiles, applyDocFonts} from "../doc-fonts";
 import {claimNamespace, transformDocument, type NamespaceClaim} from "../doc-transform";
 import {withRoomContext} from "../room-context";
-import {declaredNames, nsName, nsTree, nsValue} from "../dp-namespace";
+import {VIEW_DP, declaredNames, nsName, nsTree, nsValue} from "../dp-namespace";
 import {dp, set} from "@supersoniks/concorde/utils";
 import DataBindObserver from "@supersoniks/concorde/core/utils/DataBindObserver";
 import tailwind from "../../css/tailwind";
@@ -115,6 +117,8 @@ export class ArtifactViewer extends LitElement {
 
   private sourceData: Record<string, unknown> = {};
   private transformUnsubs: Array<() => void> = [];
+  /** Désabonnement du DataProvider des vues (`artifactView`). */
+  private viewUnsub: (() => void) | null = null;
   private refreshTimers: number[] = [];
   private stopSinks: (() => void) | null = null;
   /** Préfixe des DataProviders (vide sauf collision entre artefacts intégrés). */
@@ -145,6 +149,8 @@ export class ArtifactViewer extends LitElement {
     this.removeEventListener("click", this.onAnchorClick);
     this.removeEventListener("click", this.onEmbeddedClick);
     this.clearTransformWatchers();
+    this.viewUnsub?.();
+    this.viewUnsub = null;
     this.clearLiveData();
     this.releaseNamespace();
     applyDocFonts(null);
@@ -251,6 +257,39 @@ export class ArtifactViewer extends LitElement {
 
   protected updated(changed: Map<PropertyKey, unknown>) {
     if (changed.has("previewDocument") && changed.get("previewDocument") !== undefined) void this.load();
+    if (changed.has("viewId") && this.viewId) this.publishView(this.viewId);
+  }
+
+  /**
+   * Vue courante publiée dans le DataProvider `artifactView` ({view}) : les onglets du viewer (et ceux qu'un document
+   * dessine lui-même) sont des `sonic-menu-item radio name="view"` dont l'état actif se déduit de cette valeur.
+   */
+  private publishView(id: string) {
+    try {
+      const view = (dp(this.n(VIEW_DP)) as unknown as {view: {get: () => unknown; set: (v: unknown) => void}}).view;
+      if (view.get() !== id) view.set(id);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  /** Un clic sur un onglet (radio) écrit `artifactView.view` : on change de vue. */
+  private watchView() {
+    this.viewUnsub?.();
+    this.viewUnsub = null;
+    try {
+      const view = (dp(this.n(VIEW_DP)) as unknown as {
+        view: {onAssign?: (cb: (v: unknown) => void) => void; offAssign?: (cb: (v: unknown) => void) => void};
+      }).view;
+      const cb = (v: unknown) => {
+        const views = (this.data?.document as {views?: ViewDef[]} | undefined)?.views ?? [];
+        if (typeof v === "string" && v && v !== this.viewId && views.some((x) => x.id === v)) this.goView(v);
+      };
+      view.onAssign?.(cb);
+      this.viewUnsub = () => view.offAssign?.(cb);
+    } catch {
+      /* ignore */
+    }
   }
 
   private async load() {
@@ -288,6 +327,8 @@ export class ArtifactViewer extends LitElement {
       applyDocFonts(this.guardErrors.length ? null : (this.data.document as {fonts?: unknown}).fonts);
       applyDocFontFiles(this.guardErrors.length ? null : (this.data.document as {fontFiles?: unknown}).fontFiles);
       this.syncViewFromHash();
+      this.watchView();
+      if (this.viewId) this.publishView(this.viewId);
       const doc = this.data.document as {
         data?: {stores?: Record<string, StoreDef>};
       };
@@ -727,23 +768,18 @@ export class ArtifactViewer extends LitElement {
             </p>`
           : nothing}
         ${this.renderDocStores()}
-        ${views.length > 1
+        ${views.length > 1 && frame.nav !== "none"
           ? html`
-              <nav
-                class="artifact-nav flex flex-wrap gap-2 p-3 print:hidden"
-                aria-label="Vues"
-              >
-                ${views.map(
-                  (v) => html`
-                    <sonic-button
-                      type="default"
-                      size="sm"
-                      variant=${v.id === this.viewId ? "default" : "outline"}
-                      @click=${() => this.goView(v.id)}
-                      >${v.title}</sonic-button
-                    >
-                  `,
-                )}
+              <nav class="artifact-nav px-3 pt-3 sm:px-4 print:hidden" aria-label="Vues">
+                <sonic-menu direction="row" scrollable size="sm">
+                  ${views.map(
+                    (v) => html`
+                      <sonic-menu-item radio formDataProvider=${this.n(VIEW_DP)} name="view" value=${v.id}
+                        >${v.title}</sonic-menu-item
+                      >
+                    `,
+                  )}
+                </sonic-menu>
               </nav>
             `
           : nothing}

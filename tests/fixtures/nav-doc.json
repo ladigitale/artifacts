@@ -1,0 +1,16 @@
+{
+  "schema": "artifacts/1",
+  "title": "Onglets du document",
+  "defaultView": "a",
+  "page": {"nav": "none"},
+  "views": [
+    {"id": "a", "title": "Alpha", "root": {"nodes": [
+      {"tagName": "sonic-menu", "attributes": {"direction": "row"}, "nodes": [
+        {"tagName": "sonic-menu-item", "attributes": {"id": "doc-a", "radio": true, "formDataProvider": "artifactView", "name": "view", "value": "a"}, "textContent": "Alpha"},
+        {"tagName": "sonic-menu-item", "attributes": {"id": "doc-b", "radio": true, "formDataProvider": "artifactView", "name": "view", "value": "b"}, "textContent": "Bravo"}
+      ]},
+      {"tagName": "h1", "attributes": {"id": "titre-a"}, "textContent": "Alpha"}
+    ]}},
+    {"id": "b", "title": "Bravo", "root": {"nodes": [{"tagName": "h1", "attributes": {"id": "titre-b"}, "textContent": "Bravo"}]}}
+  ]
+}

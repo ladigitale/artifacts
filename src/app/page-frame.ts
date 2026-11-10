@@ -3,11 +3,14 @@
  *
  * - `padding` : `none` (plein cadre), `compact`, `normal` (défaut : marge du viewer).
  * - `background` : couleur CSS du fond de la page (hex, rgb/rgba/hsl/hsla, nom, ou var(--sc-…)).
+ * - `nav` : `tabs` (défaut : barre d'onglets du viewer quand il y a plusieurs vues) ou `none` (le document dessine
+ *   ses propres onglets, en `sonic-menu-item radio formDataProvider="artifactView" name="view" value="<id>"`).
  *   Jamais d'url(), de dégradé ni d'expression : la valeur est écrite telle quelle dans un style.
  * Toute valeur hors de ces formes est ignorée (le viewer garde son cadre habituel).
  */
 export type PagePadding = "none" | "compact" | "normal";
-export type PageFrame = {padding: PagePadding; background: string};
+export type PageNav = "tabs" | "none";
+export type PageFrame = {padding: PagePadding; background: string; nav: PageNav};
 
 const PADDINGS: Record<PagePadding, string> = {
   none: "p-0",
@@ -27,7 +30,8 @@ export function pageFrame(doc: unknown): PageFrame {
   const p = page && typeof page === "object" && !Array.isArray(page) ? (page as Record<string, unknown>) : {};
   const padding = typeof p.padding === "string" && p.padding in PADDINGS ? (p.padding as PagePadding) : "normal";
   const background = isPageColor(p.background) ? p.background.trim() : "";
-  return {padding, background};
+  const nav: PageNav = p.nav === "none" ? "none" : "tabs";
+  return {padding, background, nav};
 }
 
 export function paddingClass(padding: PagePadding): string {
