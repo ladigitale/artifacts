@@ -1,0 +1,78 @@
+{
+  "schema": "artifacts/1",
+  "title": "Calques vectoriel et pixel",
+  "theme": "default",
+  "defaultView": "main",
+  "views": [
+    {
+      "id": "main",
+      "title": "Calques",
+      "root": {
+        "nodes": [
+          {
+            "tagName": "div",
+            "attributes": {
+              "style": "padding:1rem"
+            },
+            "nodes": [
+              {
+                "tagName": "sonic-store",
+                "attributes": {
+                  "id": "pinceauP",
+                  "initial": "{\"color\": \"#1d4ed8\", \"size\": 20, \"hardness\": 1}"
+                }
+              },
+              {
+                "tagName": "sonic-store",
+                "attributes": {
+                  "id": "pinceauV",
+                  "initial": "{\"color\": \"#16a34a\", \"size\": 20, \"hardness\": 1}"
+                }
+              },
+              {
+                "tagName": "div",
+                "attributes": {
+                  "id": "pile",
+                  "style": "position:relative;width:600px;height:400px"
+                },
+                "nodes": [
+                  {
+                    "tagName": "sonic-paint",
+                    "attributes": {
+                      "id": "pixels",
+                      "navigable": "",
+                      "width": "600",
+                      "height": "400",
+                      "view-sync": "vue",
+                      "brush-from": "pinceauP",
+                      "smoothing": "0",
+                      "pressure": "false",
+                      "out-data-provider": "pixState",
+                      "stamp-from": "#vecteurs",
+                      "style": "position:absolute;inset:0;width:600px;height:400px"
+                    }
+                  },
+                  {
+                    "tagName": "sonic-sketch",
+                    "attributes": {
+                      "id": "vecteurs",
+                      "width": "600",
+                      "height": "400",
+                      "background": "transparent",
+                      "view-sync": "vue",
+                      "brush-from": "pinceauV",
+                      "smoothing": "0",
+                      "pressure": "false",
+                      "out-data-provider": "vecState",
+                      "style": "position:absolute;inset:0;width:600px;height:400px"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

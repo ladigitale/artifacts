@@ -25,6 +25,7 @@
     "smoke:segment-anything": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-segment-anything.mjs",
     "smoke:predict": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-predict.mjs",
     "smoke:sketch": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-sketch.mjs",
+    "smoke:layers": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-layers.mjs",
     "smoke:paint": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-paint.mjs",
     "smoke:ragdoll": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-ragdoll.mjs",
     "smoke:ocr": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-ocr.mjs",
@@ -49,7 +50,7 @@
   },
   "dependencies": {
     "@ladigitale/agent-stack": "github:ladigitale/agent-stack#97be9bf6e4af22a7892dd0911246b68daab727f1",
-    "@supersoniks/creative-stack": "github:ladigitale/creative-stack#b4c17da962ccffac705045ce4bd9fe4793e1b07c",
+    "@supersoniks/creative-stack": "github:ladigitale/creative-stack#865d608d3d0e685e159f8fcee78bd5931d78d8ec",
     "pixi.js": "8.19.0",
     "three": "0.180.0",
     "maplibre-gl": "5.24.0"

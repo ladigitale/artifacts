@@ -6,7 +6,7 @@
  *
  * Vérifie : trait à la souris, zoom à la molette (trait redessiné net), déplacement (Espace + glisser),
  * zoom extrême et retour, pointe personnalisée, vraie gomme (trou, masque), annuler / rétablir, export SVG valide,
- * aplatissement des traits pleins (régions de vraies couleurs, multiply calculé), compaction, aucune erreur JS / CSP.
+ * aplatissement des traits pleins (régions de vraies couleurs, multiply calculé), compaction, pipette, aucune erreur JS / CSP.
  */
 import http from "node:http";
 import fs from "node:fs";
@@ -201,6 +201,24 @@ check("… aplati : une carte, deux couleurs réelles", st.strokes === 1 && st.c
 const svg3 = await get((el) => el.toSvg());
 check("… export : un chemin par région, aucune fusion au rendu", !svg3.includes("mix-blend-mode") && (svg3.match(/fill-rule="evenodd"/g) ?? []).length === st.regions, String(st.regions));
 await get((el) => { el.blend = "normal"; });
+
+// Pipette : la couleur née du produit (absente de la palette) devient celle du pinceau.
+const picked0 = "#" + dark.slice(0, 3).map((v) => v.toString(16).padStart(2, "0")).join("");
+await get((el) => { el.tool = "pick"; });
+await page.mouse.click(...at(200, 300));
+await page.waitForTimeout(100);
+st = await state();
+check("pipette : la couleur fusionnée est prélevée (exacte, depuis l'aplat)", st.picked === picked0 && st.color === picked0 && st.strokes === 1, JSON.stringify({p: st.picked, c: st.color, exp: picked0}));
+await get((el) => { el.tool = "paint"; });
+await drag(450, 250, 450, 380);
+const used = await pixel(450, 320);
+check("… et peint avec elle", Math.abs(used[0] - dark[0]) <= 2 && Math.abs(used[1] - dark[1]) <= 2 && Math.abs(used[2] - dark[2]) <= 2, JSON.stringify({used, dark}));
+// Alt + clic sur le fond : blanc.
+await page.keyboard.down("Alt");
+await page.mouse.click(...at(560, 120));
+await page.keyboard.up("Alt");
+st = await state();
+check("Alt + clic : pipette sans changer d'outil", st.picked === "#ffffff" && st.tool === "paint" && st.strokes === 1, JSON.stringify({p: st.picked, t: st.tool, s: st.strokes}));
 
 await page.screenshot({path: "/tmp/smoke-sketch.png"});
 check("aucune erreur JS / CSP", errors.length === 0, errors.join(" | ").slice(0, 400));
