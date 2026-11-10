@@ -65,6 +65,13 @@ await page.waitForTimeout(2500);
 
 const title = await q(page, '[data-sdui-node-id="title"]');
 check("titre lié au data model", title[0]?.tag === "h3" && title[0].text === "Orchestre d'harmonie", JSON.stringify(title));
+const notes = await page.evaluate(() => {
+  const all = (r, a = []) => { r.querySelectorAll("*").forEach((e) => { if (e.matches('[data-sdui-node-id="notes"]')) a.push(e); if (e.shadowRoot) all(e.shadowRoot, a); }); return a; };
+  const el = all(document)[0];
+  const root = el?.shadowRoot?.querySelector(".root");
+  return el ? {tag: el.tagName.toLowerCase(), strong: root?.querySelector("strong")?.textContent, li: root?.querySelectorAll("li").length, href: root?.querySelector("a")?.getAttribute("href")} : null;
+});
+check("Text en Markdown → sonic-markdown (gras, liste, lien)", notes?.tag === "sonic-markdown" && notes.strong === "libre" && notes.li === 2 && notes.href === "https://example.org/plan", JSON.stringify(notes));
 const card = await q(page, '[data-sdui-node-id="root"]');
 check("carte A2UI → sonic-card", card[0]?.tag === "sonic-card");
 check("aucun placeholder restant", (await q(page, "[data-sdui-placeholder]")).length === 0);
