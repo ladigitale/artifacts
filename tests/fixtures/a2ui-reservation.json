@@ -49,6 +49,11 @@
                 }
               },
               {
+                "id": "notes",
+                "component": "Text",
+                "text": "Placement **libre**, ouverture des portes 30 min avant.\n\n- Accès PMR\n- [Plan d'accès](https://example.org/plan)"
+              },
+              {
                 "id": "count",
                 "component": "Text",
                 "variant": "caption",
@@ -140,6 +145,7 @@
                 "children": [
                   "title",
                   "when",
+                  "notes",
                   "row",
                   "count",
                   "history"
