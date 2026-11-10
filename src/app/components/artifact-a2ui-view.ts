@@ -117,6 +117,8 @@ export class ArtifactA2uiView extends LitElement {
       styleTarget: root instanceof ShadowRoot ? root : document,
       dataProviderPrefix: this.prefix,
       mapTag,
+      // Text en Markdown → sonic-markdown (addon markdown, chargé par ensureAddonsFor pour toute vue A2UI).
+      markdown: true,
       onClientMessage: (msg) => this.onClientMessage(msg),
       onWarning: (w) => console.warn(`[artefacts] A2UI : ${w}`),
     });

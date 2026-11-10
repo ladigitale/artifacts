@@ -1,0 +1,60 @@
+{
+ "schema": "artifacts/1",
+ "title": "Markdown",
+ "theme": "default",
+ "defaultView": "main",
+ "data": {
+  "transforms": {
+   "md": {
+    "jsonata": "{\"prompt\": \"Réponds en {{langue}}, sur un ton {{ton|neutre}}.\\n\\n```\\n{{texte}}\\n```\\n\", \"vars\": {\"langue\": \"français\"}}"
+   }
+  }
+ },
+ "views": [
+  {
+   "id": "main",
+   "title": "Markdown",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "div",
+      "attributes": {
+       "style": "display:grid;gap:24px;padding:24px;max-width:760px;margin:auto"
+      },
+      "nodes": [
+       {
+        "tagName": "sonic-markdown",
+        "attributes": {
+         "id": "doc",
+         "text": "# Guide rapide\n\nUn paragraphe **gras**, *italique*, ~~barré~~, `code` et un [lien](https://concorde.supersoniks.org).\n\n## Liste\n\n- un\n- [x] fait\n- [ ] à faire\n\n| Nom | Valeur |\n| :-- | -----: |\n| a | 1 |\n\n```ts\nconst total: number = 1 + 2;\n```\n\nFormule $E = mc^2$.\n\n<script>alert(1)</script> [piège](javascript:alert(1))\n",
+         "features": "gfm highlight math copy anchors toc",
+         "out-data-provider": "docState"
+        }
+       },
+       {
+        "tagName": "sonic-markdown",
+        "attributes": {
+         "id": "prompt",
+         "source": "md.prompt",
+         "vars": "md.vars",
+         "features": "gfm vars copy",
+         "out-data-provider": "promptState"
+        }
+       },
+       {
+        "tagName": "sonic-markdown",
+        "attributes": {
+         "id": "flux",
+         "source": "flux.answer",
+         "streaming": "",
+         "features": "gfm",
+         "out-data-provider": "fluxState"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}

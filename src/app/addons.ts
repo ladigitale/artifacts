@@ -60,7 +60,11 @@ function collectTags(value: unknown, out: Set<string>, depth = 0): void {
   }
   for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
     if (k === "tagName" && typeof v === "string") out.add(v.toLowerCase());
-    else collectTags(v, out, depth + 1);
+    else {
+      // Vue A2UI : ses Text en Markdown sont rendus par sonic-markdown (option `markdown` du renderer).
+      if (k === "a2ui" && Array.isArray(v) && v.length) out.add("sonic-markdown");
+      collectTags(v, out, depth + 1);
+    }
   }
 }
 

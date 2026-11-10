@@ -220,6 +220,42 @@ await page.keyboard.up("Alt");
 st = await state();
 check("Alt + clic : pipette sans changer d'outil", st.picked === "#ffffff" && st.tool === "paint" && st.strokes === 1, JSON.stringify({p: st.picked, t: st.tool, s: st.strokes}));
 
+// Sélection des aplats : une forme = une région d'une seule couleur ; recoloration, suppression, annulation.
+// (la pipette Alt + clic a pris le blanc : on revient au rouge du store)
+await get((el) => { el.reset(); el.clear(); el.tool = "paint"; el.blend = "normal"; el.live = {...el.live, color: "#e11d48"}; });
+await drag(100, 120, 500, 120);
+await drag(100, 320, 250, 320);
+await get((el) => { el.tool = "select"; });
+await page.mouse.click(...at(200, 120));
+await page.waitForTimeout(100);
+st = await state();
+check("select : un clic sélectionne la région sous le point", st.selection.count === 1 && st.selection.colors[0] === "#e11d48" && st.regions === 2, JSON.stringify(st.selection));
+const ring = await get((el) => { const o = el.shadowRoot.querySelector("canvas.overlay"); const d = o.getContext("2d").getImageData(0, 0, o.width, o.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) n++; return n; });
+check("… contour de sélection sur la toile superposée", ring > 200, String(ring));
+check("… absent de l'image (source d'images / export)", isWhite(await pixel(300, 100)) && isRed(await pixel(300, 120)));
+await page.mouse.click(...at(560, 380));
+await page.waitForTimeout(100);
+check("clic dans le vide : sélection vidée", (await state()).selection.count === 0);
+await get((el) => { el.tool = "select-color"; });
+await page.mouse.click(...at(200, 120));
+await page.waitForTimeout(100);
+st = await state();
+check("select-color : toutes les régions de cette couleur", st.selection.count === 2, JSON.stringify(st.selection));
+await get((el) => el.recolor("#2563eb"));
+st = await state();
+const blue = await pixel(300, 120);
+check("recolorer : vraie couleur, une étape d'annulation", st.colors === 1 && st.regions === 2 && st.selection.colors[0] === "#2563eb" && st.canUndo && Math.abs(blue[0] - 37) < 4 && Math.abs(blue[2] - 235) < 4, JSON.stringify({c: st.colors, r: st.regions, sel: st.selection, blue}));
+await get((el) => { el.tool = "select"; });
+await page.mouse.click(...at(200, 320));
+await page.keyboard.press("Delete");
+await page.waitForTimeout(100);
+st = await state();
+check("Suppr : la région sélectionnée disparaît", st.regions === 1 && st.selection.count === 0 && isWhite(await pixel(200, 320)), JSON.stringify({r: st.regions}));
+await get((el) => el.undo());
+st = await state();
+check("annuler la rend", st.regions === 2 && Math.abs((await pixel(200, 320))[2] - 235) < 4, JSON.stringify({r: st.regions}));
+await get((el) => { el.tool = "paint"; });
+
 await page.screenshot({path: "/tmp/smoke-sketch.png"});
 check("aucune erreur JS / CSP", errors.length === 0, errors.join(" | ").slice(0, 400));
 await browser.close();

@@ -75,7 +75,7 @@ const server = http.createServer(async (q, r) => {
       {type: "CUSTOM", name: "artifact-preview", value: {document: doc}},
       {type: "TOOL_CALL_END", toolCallId: "p"},
       {type: "TEXT_MESSAGE_START", messageId: "m1", role: "assistant"},
-      {type: "TEXT_MESSAGE_CONTENT", messageId: "m1", delta: "Voici une page de réservation."},
+      {type: "TEXT_MESSAGE_CONTENT", messageId: "m1", delta: "Voici une page de **réservation**."},
       {type: "TEXT_MESSAGE_END", messageId: "m1"},
       {type: "CUSTOM", name: "a2ui", value: [
         {version: "v0.9", createSurface: {surfaceId: "ui-1", catalogId: "https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json"}},
@@ -171,7 +171,9 @@ const toolRow = await ev(`const t = all(document, "[data-chat-tool]")[0]; return
 check("ligne d'outil terminée", /Aperçu construit/.test(toolRow ?? ""), toolRow);
 
 check("jeton envoyé à l'agent", runs[0]?.auth === "Bearer tok-smoke", runs[0]?.auth);
-const msgs = await ev(`return all(document, "[data-chat-msg]").map((e) => e.getAttribute("data-chat-msg") + ":" + e.textContent);`);
+const msgs = await ev(`return all(document, "[data-chat-msg]").map((e) => e.getAttribute("data-chat-msg") + ":" + (e.querySelector("sonic-markdown")?.shadowRoot?.querySelector(".root")?.textContent ?? e.textContent).trim());`);
+const strong = await ev(`return all(document, "sonic-chat [data-chat-msg=assistant] sonic-markdown")[0]?.shadowRoot?.querySelector("strong")?.textContent ?? null;`);
+check("réponse de l'agent rendue en Markdown (sonic-markdown)", strong === "réservation", String(strong));
 check("messages affichés", msgs.includes("user:Une page de réservation") && msgs.includes("assistant:Voici une page de réservation."), msgs.join(" | "));
 const title = await ev(`return all(document, 'artifact-viewer [data-sdui-node-id="title"]')[0]?.textContent ?? all(document, '[data-sdui-node-id="title"]')[0]?.textContent;`);
 check("aperçu rendu par le viewer", title === "Orchestre d'harmonie", title);
@@ -184,7 +186,7 @@ await page.waitForTimeout(1200);
 check("clic « Publier » renvoyé comme action A2UI", runs[1]?.input?.forwardedProps?.a2uiAction?.action?.name === "publish", JSON.stringify(runs[1]?.input?.forwardedProps?.a2uiAction ?? null));
 check("kits proposés par défaut", runs[0]?.input?.forwardedProps?.atelier?.kits === true, JSON.stringify(runs[0]?.input?.forwardedProps?.atelier));
 check("historique conservé", (runs[1]?.input?.messages ?? []).map((m) => m.role).join(",") === "user,assistant");
-const msgs2 = await ev(`return all(document, "[data-chat-msg]").map((e) => e.textContent);`);
+const msgs2 = await ev(`return all(document, "[data-chat-msg]").map((e) => (e.querySelector("sonic-markdown")?.shadowRoot?.querySelector(".root")?.textContent ?? e.textContent).trim());`);
 check("réponse après publication", msgs2.at(-1) === "Publié.", msgs2.join(" | "));
 const pub = await ev(`const b = all(document, "[data-published]")[0]; return b ? {text: b.textContent.trim(), href: b.getAttribute("href")} : null;`);
 check("lien vers l'artefact publié", pub?.href === "https://artifacts.example/reservation-orchestre" && /reservation-orchestre/.test(pub?.text ?? ""), JSON.stringify(pub));
@@ -215,7 +217,7 @@ await ev(`all(document, "[data-history-toggle]")[0].click();`);
 await page.waitForTimeout(400);
 await ev(`all(document, "[data-thread] button")[0].click();`);
 await page.waitForTimeout(1000);
-const back = await ev(`return all(document, "sonic-chat [data-chat-msg]").map((e) => e.getAttribute("data-chat-msg") + ":" + e.textContent);`);
+const back = await ev(`return all(document, "sonic-chat [data-chat-msg]").map((e) => e.getAttribute("data-chat-msg") + ":" + (e.querySelector("sonic-markdown")?.shadowRoot?.querySelector(".root")?.textContent ?? e.textContent).trim());`);
 check("reprise : messages réaffichés", back.join("|") === "user:Une page de réservation|assistant:Voici une page de réservation.", back.join(" | "));
 check("reprise : adresse ?thread=", new URL(page.url()).searchParams.get("thread") === threadId, page.url());
 const backTitle = await ev(`return all(document, '[data-sdui-node-id="title"]')[0]?.textContent;`);

@@ -49,8 +49,8 @@
     "vite": "^5.4.11"
   },
   "dependencies": {
-    "@ladigitale/agent-stack": "github:ladigitale/agent-stack#97be9bf6e4af22a7892dd0911246b68daab727f1",
-    "@supersoniks/creative-stack": "github:ladigitale/creative-stack#796306f204fe1b59c839a6bf26b353f9089f658d",
+    "@ladigitale/agent-stack": "github:ladigitale/agent-stack#a3274d5ce7e228bbfc737128534b79b4cdad7955",
+    "@supersoniks/creative-stack": "github:ladigitale/creative-stack#25d0635bd819d343ab92dc6dcc4d16d6da499a14",
     "pixi.js": "8.19.0",
     "three": "0.180.0",
     "maplibre-gl": "5.24.0"
