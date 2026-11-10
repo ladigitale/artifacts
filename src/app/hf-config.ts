@@ -32,11 +32,16 @@ const ID_RE = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
 /** Au-delà, un modèle d'artefact est refusé (poids des fichiers ONNX retenus). */
 const MAX_MODEL_MB = 600;
 
-/** Raccourcis SAM 2.1 (moteur GPU d'abord, WASM en secours). */
+/**
+ * Raccourcis SAM 2.1. Par défaut sur le processeur (WASM, 8 bits) : l'encodeur fp16 sur WebGPU a produit un masque faux
+ * sans aucune erreur (Chrome Android), et rien ne garantit les autres GPU. Les variantes `-gpu` (expérimentales)
+ * essaient WebGPU d'abord, WASM en secours en cas de panne détectée.
+ */
 const SAM_BASE = {
   "sam2-tiny": {
     task: "image-segmentation",
     engine: "sam",
+    devices: ["wasm"],
     repo: "onnx-community/sam2.1-hiera-tiny-ONNX",
     revision: "814a066640debee5a91e70aa401fb8e17e030503",
     options: {
@@ -46,7 +51,7 @@ const SAM_BASE = {
         wasm: {vision_encoder: "q8", prompt_encoder_mask_decoder: "q8"},
       },
     },
-    sizeBytes: 88_500_000,
+    sizeBytes: 61_200_000,
     license: "apache-2.0",
     label: "Détourage d'objet (SAM 2)",
     description: "Détoure l'objet que tu désignes dans l'image, localement dans ton navigateur.",
@@ -55,6 +60,7 @@ const SAM_BASE = {
   "sam2-small": {
     task: "image-segmentation",
     engine: "sam",
+    devices: ["wasm"],
     repo: "onnx-community/sam2.1-hiera-small-ONNX",
     revision: "a7df49d8de14b9d2e4504d1687b0d568f905fd8d",
     options: {
@@ -64,7 +70,7 @@ const SAM_BASE = {
         wasm: {vision_encoder: "q8", prompt_encoder_mask_decoder: "q8"},
       },
     },
-    sizeBytes: 102_800_000,
+    sizeBytes: 68_400_000,
     license: "apache-2.0",
     label: "Détourage d'objet (SAM 2, précis)",
     description: "Détoure l'objet que tu désignes, avec des contours plus fins, localement dans ton navigateur.",
@@ -73,6 +79,7 @@ const SAM_BASE = {
   "sam2-base-plus": {
     task: "image-segmentation",
     engine: "sam",
+    devices: ["wasm"],
     repo: "onnx-community/sam2.1-hiera-base-plus-ONNX",
     revision: "bab18593f44e652f04cf18b60b3690f60e8996b0",
     options: {
@@ -82,7 +89,7 @@ const SAM_BASE = {
         wasm: {vision_encoder: "q8", prompt_encoder_mask_decoder: "q8"},
       },
     },
-    sizeBytes: 174_600_000,
+    sizeBytes: 107_600_000,
     license: "apache-2.0",
     label: "Détourage d'objet (SAM 2, très précis)",
     description: "Détoure l'objet que tu désignes, avec les contours les plus fins, localement dans ton navigateur.",
@@ -114,25 +121,20 @@ export const HF_SHORTCUTS = defineHuggingFaceModels({
     label: "Classement de texte",
     description: "Classe un texte (anglais) parmi les étiquettes proposées, localement.",
   },
-  /**
-   * Variantes « processeur » des modèles SAM : WASM seulement, en 8 bits. Utiles quand le GPU de l'appareil produit un
-   * masque faux sans signaler d'erreur (débordement en précision réduite sur certains GPU mobiles).
-   */
-  "sam2-tiny-cpu": samCpu("sam2-tiny", 61_200_000),
-  "sam2-small-cpu": samCpu("sam2-small", 68_400_000),
-  "sam2-base-plus-cpu": samCpu("sam2-base-plus", 107_600_000),
+  /** Variantes « carte graphique » des modèles SAM (expérimentales, voir SAM_BASE). */
+  "sam2-tiny-gpu": samGpu("sam2-tiny", 88_500_000),
+  "sam2-small-gpu": samGpu("sam2-small", 102_800_000),
+  "sam2-base-plus-gpu": samGpu("sam2-base-plus", 174_600_000),
+  // anciens noms (processeur), identiques aux raccourcis de base
+  "sam2-tiny-cpu": SAM_BASE["sam2-tiny"],
+  "sam2-small-cpu": SAM_BASE["sam2-small"],
+  "sam2-base-plus-cpu": SAM_BASE["sam2-base-plus"],
 });
 
-/** Variante WASM d'un raccourci SAM (même dépôt, même révision). */
-function samCpu(alias: "sam2-tiny" | "sam2-small" | "sam2-base-plus", sizeBytes: number) {
+/** Variante GPU (expérimentale) d'un raccourci SAM : WebGPU d'abord (encodeur fp16, décodeur fp32), WASM en secours. */
+function samGpu(alias: "sam2-tiny" | "sam2-small" | "sam2-base-plus", sizeBytes: number) {
   const base = SAM_BASE[alias];
-  return {
-    ...base,
-    devices: ["wasm"] as const,
-    options: {dtype: {vision_encoder: "q8", prompt_encoder_mask_decoder: "q8"}},
-    sizeBytes,
-    label: `${base.label} — processeur`,
-  };
+  return {...base, devices: ["webgpu", "wasm"] as const, sizeBytes, label: `${base.label} — carte graphique`};
 }
 
 /**
