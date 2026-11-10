@@ -1,0 +1,10 @@
+{
+  "schema": "artifacts/1",
+  "title": "Onglets",
+  "defaultView": "a",
+  "views": [
+    {"id": "a", "title": "Alpha", "root": {"nodes": [{"tagName": "h1", "attributes": {"id": "titre-a"}, "textContent": "Alpha"}]}},
+    {"id": "b", "title": "Bravo", "root": {"nodes": [{"tagName": "h1", "attributes": {"id": "titre-b"}, "textContent": "Bravo"}]}},
+    {"id": "c", "title": "Charlie", "root": {"nodes": [{"tagName": "h1", "attributes": {"id": "titre-c"}, "textContent": "Charlie"}]}}
+  ]
+}
