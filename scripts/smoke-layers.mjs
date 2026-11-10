@@ -7,6 +7,7 @@
  *
  * Vérifie : vues alignées (cadrage initial de l'image adopté par le vectoriel, zoom à la molette suivi), pipette
  * à travers les calques (depuis chaque toile), fusion du calque vectoriel dans les pixels (`stamp-from`),
+ * vectorisation du calque pixel sur une palette imposée importée en aplats à sa place (`import-from`),
  * aucune erreur JS / CSP.
  */
 import http from "node:http";
@@ -117,6 +118,29 @@ ps = await P((el) => el.getState());
 const pix = await P((el, [x, y]) => { const c = el.shadowRoot.querySelector("canvas"); const r = c.getBoundingClientRect(); return el.pickAt(r.x + x, r.y + y)?.pixel ?? null; }, [300, 100 + 30]);
 check("stamp : le trait vectoriel est fondu dans l'image, à sa place", ps.strokes === 2 && pix && Math.abs(pix[0] - 22) < 8 && Math.abs(pix[1] - 163) < 8 && Math.abs(pix[2] - 74) < 8, JSON.stringify({s: ps.strokes, pix}));
 await V((el) => { el.style.display = ""; });
+
+// Vectorisation du calque pixel (palette imposée) importée en aplats dans le vectoriel, à sa place.
+const before = (await V((el) => el.getState())).strokes;
+await on("SONIC-VECTORIZE", (el) => el.run());
+await page.waitForFunction(() => {
+  const deep = (r, a = []) => { r.querySelectorAll("*").forEach((e) => { if (e.tagName === "SONIC-SKETCH") a.push(e); if (e.shadowRoot) deep(e.shadowRoot, a); }); return a; };
+  return !!deep(document)[0]?.getState().imported;
+}, null, {timeout: 15000}).catch(() => {});
+vs = await V((el) => el.getState());
+const vz = await on("SONIC-VECTORIZE", (el) => ({paths: el.stateValue.paths.map((p) => p.color), frame: el.stateValue.frame}));
+check("vectorisation du calque pixel : couleurs de la palette imposée", vz.paths.length >= 2 && vz.paths.every((c) => ["#1d4ed8", "#16a34a", "#ffffff"].includes(c)) && !!vz.frame, JSON.stringify(vz));
+check("import automatique en aplats (papier blanc ignoré), une étape", vs.imported && vs.imported.layers >= 2 && vs.colors >= 2 && vs.canUndo, JSON.stringify(vs.imported) + " " + JSON.stringify({c: vs.colors, s: vs.strokes, before}));
+await P((el) => { el.style.display = "none"; });
+await active("SONIC-SKETCH");
+await V((el) => { el.tool = "pick"; });
+await page.mouse.click(...at(xBlue, 100));
+vs = await V((el) => el.getState());
+check("formes importées à leur place : le bleu de la ligne, exact, sans le calque pixel", vs.picked === "#1d4ed8", String(vs.picked));
+await page.mouse.click(...at(xBlue, 300));
+vs = await V((el) => el.getState());
+check("… et rien là où l'image était blanche", vs.picked === "#ffffff", String(vs.picked));
+await V((el) => { el.tool = "paint"; });
+await P((el) => { el.style.display = ""; });
 
 await page.screenshot({path: "/tmp/smoke-layers.png"});
 check("aucune erreur JS / CSP", errors.length === 0, errors.join(" | ").slice(0, 400));

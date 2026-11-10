@@ -64,10 +64,26 @@
                       "smoothing": "0",
                       "pressure": "false",
                       "out-data-provider": "vecState",
-                      "style": "position:absolute;inset:0;width:600px;height:400px"
+                      "style": "position:absolute;inset:0;width:600px;height:400px",
+                      "import-from": "vectoState",
+                      "import-auto": "",
+                      "import-skip": "#ffffff"
                     }
                   }
                 ]
+              },
+              {
+                "tagName": "sonic-vectorize",
+                "attributes": {
+                  "id": "vecto",
+                  "source": "#pixels",
+                  "hidden-preview": "",
+                  "control": "vecCtl",
+                  "palette": "#1d4ed8,#16a34a,#ffffff",
+                  "denoise": "0",
+                  "main-thread": "",
+                  "out-data-provider": "vectoState"
+                }
               }
             ]
           }
