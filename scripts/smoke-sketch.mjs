@@ -6,7 +6,7 @@
  *
  * Vérifie : trait à la souris, zoom à la molette (trait redessiné net), déplacement (Espace + glisser),
  * zoom extrême et retour, pointe personnalisée, gomme de traits, annuler / rétablir, export SVG valide,
- * aucune erreur JS / CSP.
+ * fusion vectorielle des traits pleins, compaction, mode de fusion multiply, aucune erreur JS / CSP.
  */
 import http from "node:http";
 import fs from "node:fs";
@@ -162,6 +162,32 @@ check("enregistrement SVG en blob:", last && last.url.startsWith("blob:") && las
 const svg = await get((el) => el.toSvg());
 const parsed = await page.evaluate((t) => { const d = new DOMParser().parseFromString(t, "image/svg+xml"); return {err: !!d.querySelector("parsererror"), paths: d.querySelectorAll("path").length, uses: d.querySelectorAll("use").length, vb: d.documentElement.getAttribute("viewBox")}; }, svg);
 check("SVG valide avec un tracé par trait net et les <use> de la pointe", !parsed.err && parsed.paths >= 2 && parsed.uses > 10 && !!parsed.vb, JSON.stringify(parsed));
+
+// Fusion vectorielle : deux traits pleins qui se croisent deviennent une seule forme (découpage polygonal).
+await get((el) => { el.reset(); el.clear(); });
+await drag(100, 300, 500, 300);
+await drag(300, 250, 300, 380);
+st = await state();
+check("fusion : deux traits pleins qui se croisent → une seule forme", st.strokes === 1 && st.shapes === 1 && st.merges >= 1, JSON.stringify({s: st.strokes, sh: st.shapes, m: st.merges}));
+check("… dessinée : croisement et bras rouges, dehors blanc", isRed(await pixel(300, 300)) && isRed(await pixel(300, 370)) && isRed(await pixel(120, 300)) && isWhite(await pixel(200, 350)));
+check("… compaction : le dernier trait a perdu des points", st.lastStroke.after < st.lastStroke.before, JSON.stringify(st.lastStroke));
+await get((el) => el.undo());
+st = await state();
+check("annuler la fusion rend le premier trait seul", st.strokes === 1 && st.shapes === 0 && isWhite(await pixel(300, 370)), JSON.stringify({s: st.strokes, sh: st.shapes}));
+await get((el) => el.redo());
+const svg2 = await page.evaluate((t) => { const d = new DOMParser().parseFromString(t, "image/svg+xml"); return {err: !!d.querySelector("parsererror"), paths: d.querySelectorAll("path").length, evenodd: d.querySelectorAll('path[fill-rule="evenodd"]').length}; }, await get((el) => el.toSvg()));
+check("export : la forme fusionnée est un seul chemin rempli", !svg2.err && svg2.paths === 1 && svg2.evenodd === 1, JSON.stringify(svg2));
+
+// Mode de fusion multiply : rouge sur rouge s'assombrit, rouge sur blanc reste rouge ; pas fusionné avec la forme normale.
+await get((el) => { el.blend = "multiply"; });
+await drag(200, 250, 200, 380);
+st = await state();
+const dark = await pixel(200, 300);
+check("multiply : rouge × rouge assombrit (≈ 198, 3, 20)", Math.abs(dark[0] - 198) < 10 && dark[1] < 12 && Math.abs(dark[2] - 20) < 10, JSON.stringify(dark));
+check("… sur le blanc, la couleur du trait", isRed(await pixel(200, 360)), JSON.stringify(await pixel(200, 360)));
+check("… trait gardé à part (autre mode), état blend", st.strokes === 2 && st.blend === "multiply", JSON.stringify({s: st.strokes, b: st.blend}));
+check("… export : groupe mix-blend-mode", (await get((el) => el.toSvg())).includes("mix-blend-mode:multiply"));
+await get((el) => { el.blend = "normal"; });
 
 await page.screenshot({path: "/tmp/smoke-sketch.png"});
 check("aucune erreur JS / CSP", errors.length === 0, errors.join(" | ").slice(0, 400));

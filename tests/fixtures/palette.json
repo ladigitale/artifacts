@@ -1,0 +1,25 @@
+{
+ "schema": "artifacts/1",
+ "title": "Palette d'harmonie",
+ "theme": "default",
+ "defaultView": "main",
+ "views": [
+  {
+   "id": "main",
+   "title": "Palette",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "div",
+      "attributes": {"style": "padding:1rem;max-width:40rem;display:flex;flex-direction:column;gap:12px"},
+      "nodes": [
+       {"tagName": "sonic-store", "attributes": {"id": "pinceau", "initial": "{\"color\": \"#000000\", \"size\": 20, \"hardness\": 1}", "reducer": "$action.type = 'set' ? $merge([$state, $action.payload]) : $state"}},
+       {"tagName": "sonic-palette", "attributes": {"id": "pal", "base": "#c2410c", "rule": "triadic", "count": "6", "selected": "0", "target": "pinceau", "payload": "{\"tool\":\"paint\"}", "out-data-provider": "palette"}},
+       {"tagName": "sonic-sketch", "attributes": {"id": "dessin", "width": "600", "height": "300", "brush-from": "pinceau", "smoothing": "0", "pressure": "false", "out-data-provider": "dessinState"}}
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}
