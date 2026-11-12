@@ -63,6 +63,11 @@ const server = http.createServer((q, r) => {
       : {runId: run[1], slug: "io", mode: "interactive", status: run[1] === CANCELLED ? "cancelled" : "completed"}));
   }
   if (/^\/api\/public\/artifacts\/io/.test(u.pathname)) {
+    // Jeton de compte périmé : l'API refuse la requête authentifiée.
+    if (q.headers.authorization === "Bearer perime") {
+      r.writeHead(401, {"Content-Type": "application/json", ...cors});
+      return r.end('{"message":"JWT expired"}');
+    }
     r.writeHead(200, {"Content-Type": "application/json", ...cors});
     if (u.pathname.includes("/collections/")) return r.end('{"member":[]}');
     return r.end(JSON.stringify({id: "io", slug: "io", title: doc.title, description: "", visibility: "public", document: doc, scriptAssets: [], version: 1, updatedAt: new Date().toISOString(), collections: [], canWrite: false}));
@@ -171,6 +176,16 @@ await click(host2, "#valider");
 await host2.waitForTimeout(800);
 const outs2 = await host2.evaluate(() => window.__outputs);
 check("embed sans entrée : artifact-output émis", outs2.length === 1 && outs2[0].runId === null, JSON.stringify(outs2).slice(0, 200));
+
+// 6. Compte local au jeton périmé : la lecture publique (artefact, run) passe quand même
+const stale = await browser.newPage();
+stale.on("pageerror", (e) => errors.push(String(e)));
+await stale.goto(`http://localhost:${PORT}/`);
+await stale.evaluate((port) => localStorage.setItem("artifacts-account", JSON.stringify({apiBaseUrl: `http://localhost:${port}`, token: "perime", user: {email: "a@b.c"}})), PORT);
+await stale.goto(`http://localhost:${PORT}/io?run=${RUN}&rt=tok`);
+await stale.waitForTimeout(2000);
+check("jeton périmé : artefact affiché quand même (total = 7)", (await deepText(stale, "#total"))[0]?.text === "7", JSON.stringify(await deepText(stale, "#total")));
+check("jeton périmé : compte local retiré", (await stale.evaluate(() => localStorage.getItem("artifacts-account"))) === null);
 
 check("aucune erreur de page", errors.length === 0, errors.join(" | "));
 await browser.close();

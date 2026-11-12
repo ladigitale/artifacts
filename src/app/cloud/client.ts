@@ -80,6 +80,9 @@ async function apiFetch<T>(
   const res = await fetch(`${base}${path}`, {...init, headers});
   if (res.status === 401 && acc) {
     clearArtifactsAccount();
+    // Lecture publique (artefact public ou par lien, run…) : un jeton périmé ne doit pas la bloquer,
+    // on la refait sans compte.
+    if (path.startsWith("/public/")) return apiFetch<T>(path, init, null);
     throw new Error("Session expirée");
   }
   if (!res.ok) {
