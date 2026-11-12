@@ -20,7 +20,9 @@ const PORT = 4455;
 const doc = JSON.parse(fs.readFileSync(path.join(ROOT, "tests/fixtures/io.json"), "utf8"));
 const RUN = "0190f3a2-1111-7222-8333-944455556666";
 const DONE = "0190f3a2-1111-7222-8333-944455557777";
+const CANCELLED = "0190f3a2-1111-7222-8333-944455558888";
 const posts = [];
+const files = [];
 const runGets = [];
 
 const server = http.createServer((q, r) => {
@@ -29,6 +31,18 @@ const server = http.createServer((q, r) => {
   if (q.method === "OPTIONS") {
     r.writeHead(204, {...cors, "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type"});
     return r.end();
+  }
+  const file = /^\/api\/public\/artifacts\/io\/runs\/([0-9a-f-]{36})\/files\/([a-z0-9._-]+)$/.exec(u.pathname);
+  if (file && q.method === "POST") {
+    const chunks = [];
+    q.on("data", (c) => chunks.push(c));
+    q.on("end", () => {
+      const bytes = Buffer.concat(chunks);
+      files.push({run: file[1], name: file[2], type: q.headers["content-type"], rt: u.searchParams.get("rt"), png: bytes.subarray(1, 4).toString() === "PNG", at: posts.length});
+      r.writeHead(201, {"Content-Type": "application/json", ...cors});
+      r.end(JSON.stringify({name: file[2]}));
+    });
+    return;
   }
   const run = /^\/api\/public\/artifacts\/io\/runs\/([0-9a-f-]{36})(\/output)?$/.exec(u.pathname);
   if (run) {
@@ -46,7 +60,7 @@ const server = http.createServer((q, r) => {
     r.writeHead(200, {"Content-Type": "application/json", ...cors});
     return r.end(JSON.stringify(run[1] === RUN
       ? {runId: RUN, slug: "io", mode: "interactive", status: "pending", input: {values: [1, 2, 4]}}
-      : {runId: run[1], slug: "io", mode: "interactive", status: "completed"}));
+      : {runId: run[1], slug: "io", mode: "interactive", status: run[1] === CANCELLED ? "cancelled" : "completed"}));
   }
   if (/^\/api\/public\/artifacts\/io/.test(u.pathname)) {
     r.writeHead(200, {"Content-Type": "application/json", ...cors});
@@ -58,6 +72,12 @@ const server = http.createServer((q, r) => {
     return r.end(`<!doctype html><meta charset="utf-8"><body><h1>Hôte</h1>
 <script>window.__outputs = []; document.addEventListener("artifact-output", (e) => window.__outputs.push(e.detail));</script>
 <script src="/embed.js" data-artifact="io" data-input='{"values":[10,20]}' async></script></body>`);
+  }
+  if (u.pathname === "/host-sans-entree.html") {
+    r.writeHead(200, {"Content-Type": "text/html"});
+    return r.end(`<!doctype html><meta charset="utf-8"><body>
+<script>window.__outputs = []; document.addEventListener("artifact-output", (e) => window.__outputs.push(e.detail));</script>
+<script src="/embed.js" data-artifact="io" async></script></body>`);
   }
   let f = path.join(DIST, u.pathname);
   if (!fs.existsSync(f) || fs.statSync(f).isDirectory()) f = path.join(DIST, "index.html");
@@ -100,10 +120,11 @@ check("aucune sortie avant when", posts.length === 0, JSON.stringify(posts));
 await click(page, "#valider");
 await page.waitForTimeout(1200);
 check("sortie publiée une fois", posts.length === 1 && posts[0].body.rt === "tok" && posts[0].body.output === 7, JSON.stringify(posts));
+check("fichier de sortie envoyé avant la sortie (image.png, PNG, jeton)", files.length === 1 && files[0].name === "image.png" && files[0].type === "image/png" && files[0].png && files[0].rt === "tok" && files[0].at === 0, JSON.stringify(files));
 banner = await deepText(page, ".artifact-io-status");
 check("bandeau « résultat transmis »", banner[0]?.state === "done", JSON.stringify(banner));
 const outs = await page.evaluate(() => window.__outputs);
-check("événement artifact-output", outs.length === 1 && outs[0].output === 7 && outs[0].runId === RUN, JSON.stringify(outs));
+check("événement artifact-output (avec les fichiers)", outs.length === 1 && outs[0].output === 7 && outs[0].runId === RUN && /^data:image\/png/.test(outs[0].files?.image ?? ""), JSON.stringify(outs).slice(0, 300));
 await click(page, "#valider");
 await page.waitForTimeout(600);
 check("pas de second envoi", posts.length === 1);
@@ -114,6 +135,12 @@ await page.goto(`http://localhost:${PORT}/io?run=${DONE}&rt=tok`);
 await page.waitForTimeout(1800);
 banner = await deepText(page, ".artifact-io-status");
 check("run terminé : bandeau, entrée non envoyée", banner[0]?.state === "closed" && (await deepText(page, "#total"))[0]?.text === "", JSON.stringify(banner));
+
+// 2 bis. Run annulé
+await page.goto(`http://localhost:${PORT}/io?run=${CANCELLED}&rt=tok`);
+await page.waitForTimeout(1800);
+banner = await deepText(page, ".artifact-io-status");
+check("run annulé : bandeau « annulée »", banner[0]?.state === "closed" && /annulée/.test(banner[0]?.text ?? ""), JSON.stringify(banner));
 
 // 3. Page sans run : aucun bandeau, aucun appel
 const before = runGets.length;
@@ -132,7 +159,18 @@ await click(host, "#valider");
 await host.waitForTimeout(800);
 const hostOuts = await host.evaluate(() => window.__outputs);
 check("embed : artifact-output reçu par la page hôte", hostOuts.length === 1 && hostOuts[0].output === 30 && hostOuts[0].runId === null, JSON.stringify(hostOuts));
-check("embed : aucun appel aux runs ni POST", runGets.length === before && posts.length === 1);
+check("embed : aucun appel aux runs ni POST", runGets.length === before && posts.length === 1 && files.length === 1);
+
+// 5. Embed sans entrée : la sortie est émise quand when devient vraie
+const host2 = await browser.newPage();
+host2.on("pageerror", (e) => errors.push(String(e)));
+await host2.goto(`http://localhost:${PORT}/host-sans-entree.html`);
+await host2.waitForTimeout(2500);
+check("embed sans entrée : rien d'émis avant when", (await host2.evaluate(() => window.__outputs.length)) === 0);
+await click(host2, "#valider");
+await host2.waitForTimeout(800);
+const outs2 = await host2.evaluate(() => window.__outputs);
+check("embed sans entrée : artifact-output émis", outs2.length === 1 && outs2[0].runId === null, JSON.stringify(outs2).slice(0, 200));
 
 check("aucune erreur de page", errors.length === 0, errors.join(" | "));
 await browser.close();

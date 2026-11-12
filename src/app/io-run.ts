@@ -20,12 +20,13 @@ import {loadApiBaseUrl, normalizeApiBase} from "./cloud/api-base";
  * L'entrée part au store `input.store` en action `{type: input.action ?? "io:input", payload}`.
  * La sortie (`output.from`) est prise quand `output.when` (JSONata sur l'état du DataProvider lu)
  * devient vrai — sans `when`, au premier changement non vide après l'entrée — puis émise une seule
- * fois : événement DOM `artifact-output` {output, runId?} et, pour un run serveur, POST de la sortie.
+ * fois : événement DOM `artifact-output` {output, files, runId?} et, pour un run serveur, envoi des
+ * fichiers (`io.output.files`) puis de la sortie.
  */
 export type IoDef = {
   modes?: string[];
   input?: {store?: string; action?: string};
-  output?: {from?: string; when?: string};
+  output?: {from?: string; when?: string; files?: Record<string, string>};
 };
 
 export type IoStatus =
@@ -45,7 +46,8 @@ export type IoRunOptions = {
   /** Nom effectif d'un DataProvider / store (préfixe des artefacts intégrés). */
   resolve: (name: string) => string;
   onStatus: (s: IoStatus) => void;
-  onOutput: (output: unknown, runId: string | null) => void;
+  /** `files` : clé → URL (blob:, data:…) des fichiers de `io.output.files`. */
+  onOutput: (output: unknown, runId: string | null, files: Record<string, string>) => void;
 };
 
 const STORE_WAIT_MS = 10_000;
@@ -67,7 +69,12 @@ export function startIoRun(opts: IoRunOptions): () => void {
         if (r.status !== "pending") {
           opts.onStatus({
             state: "closed",
-            message: r.status === "expired" ? "Cette tâche a expiré." : "Cette tâche est déjà terminée.",
+            message:
+              r.status === "expired"
+                ? "Cette tâche a expiré."
+                : r.status === "cancelled"
+                  ? "Cette tâche a été annulée."
+                  : "Cette tâche est déjà terminée.",
           });
           return;
         }
@@ -110,14 +117,19 @@ export function startIoRun(opts: IoRunOptions): () => void {
       sent = true;
       off?.();
       const value = clone(output);
-      opts.onOutput(value, opts.run?.id ?? null);
+      const files = collectFiles(opts.io.output?.files, opts.resolve);
       if (!opts.run) {
+        opts.onOutput(value, null, files);
         opts.onStatus({state: "done"});
         return;
       }
       opts.onStatus({state: "sending"});
       try {
+        for (const [key, url] of Object.entries(files)) {
+          await postRunFile(opts.slug, opts.run.id, opts.run.token, key, url);
+        }
         await postRunOutput(opts.slug, opts.run.id, opts.run.token, value);
+        opts.onOutput(value, opts.run.id, files);
         opts.onStatus({state: "done"});
       } catch (e) {
         // Sortie refusée (non conforme) : on réarme pour laisser la personne corriger.
@@ -146,11 +158,61 @@ export function startIoRun(opts: IoRunOptions): () => void {
     if (stopped) return;
     opts.onStatus({state: "waiting"});
     armed = true;
-    if (storeId) dispatch(storeId, {type: opts.io.input?.action || "io:input", payload: clone(input ?? {})});
+    // Sans run ni entrée (embed, aperçu de l'atelier) : la sortie est seulement émise quand `when` devient vraie.
+    if (storeId && (opts.run || input !== undefined)) {
+      dispatch(storeId, {type: opts.io.input?.action || "io:input", payload: clone(input ?? {})});
+    }
     queueMicrotask(() => void check());
   })();
 
   return stop;
+}
+
+/** URL des fichiers de sortie : chaîne (`blob:`, `data:`, https) ou objet `{url | href | src}`. */
+function collectFiles(files: Record<string, string> | undefined, resolve: (n: string) => string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, path] of Object.entries(files ?? {})) {
+    if (typeof path !== "string") continue;
+    const v = get(mapPath(path, resolve)) as unknown;
+    const o = v && typeof v === "object" ? (v as {url?: unknown; href?: unknown; src?: unknown}) : null;
+    const url = typeof v === "string" ? v : o ? (o.url ?? o.href ?? o.src) : null;
+    if (typeof url === "string" && /^(blob:|data:|https:)/.test(url)) out[key] = url;
+  }
+  return out;
+}
+
+const EXT: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "image/avif": "avif",
+  "image/svg+xml": "svg",
+  "audio/ogg": "ogg",
+  "audio/mpeg": "mp3",
+  "audio/wav": "wav",
+  "audio/x-wav": "wav",
+  "audio/wave": "wav",
+  "audio/flac": "flac",
+  "audio/webm": "webm",
+  "video/webm": "webm",
+  "video/mp4": "mp4",
+  "model/gltf-binary": "glb",
+  "application/json": "json",
+};
+
+/** Envoie un fichier de sortie (`<clé>.<ext>`, extension d'après son type). */
+async function postRunFile(slug: string, runId: string, token: string, key: string, url: string): Promise<void> {
+  const blob = await (await fetch(url)).blob();
+  const type = (blob.type || "").split(";")[0].trim().toLowerCase();
+  const ext = EXT[type];
+  if (!ext) throw new Error(`Fichier « ${key} » : type ${type || "inconnu"} non accepté.`);
+  const res = await fetch(`${runUrl(slug, runId)}/files/${encodeURIComponent(`${key}.${ext}`)}?rt=${encodeURIComponent(token)}`, {
+    method: "POST",
+    headers: {Accept: "application/json", "Content-Type": type},
+    body: blob,
+  });
+  if (!res.ok) throw new Error(await failure(res, `Envoi du fichier « ${key} » refusé.`));
 }
 
 /** `store.chemin` → nom effectif du DataProvider + chemin inchangé. */
