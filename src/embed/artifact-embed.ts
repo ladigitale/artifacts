@@ -194,6 +194,11 @@ export class ArtifactEmbed extends LitElement {
   @property({type: String}) height = "";
   /** Fond transparent (le thème garde ses couleurs de texte et de composants). */
   @property({type: Boolean, reflect: true}) transparent = false;
+  /** Run serveur du contrat `io` (`run_artifact` mode embed) : id et jeton. */
+  @property({type: String}) run = "";
+  @property({type: String, attribute: "run-token"}) runToken = "";
+  /** Entrée locale du contrat `io` (JSON) ; la sortie arrive en événement `artifact-output`. */
+  @property({type: String}) input = "";
   /** `open-link="false"` masque le lien « Ouvrir dans Artefacts ». */
   @property({type: String, attribute: "open-link"}) openLink = "true";
 
@@ -262,6 +267,9 @@ export class ArtifactEmbed extends LitElement {
             view=${this.view}
             link-key=${this.linkKey}
             read-key=${this.readKey}
+            run=${this.run}
+            run-token=${this.runToken}
+            input=${this.input}
           ></artifact-viewer>
         </sonic-scope>
         ${this.openLink !== "false"

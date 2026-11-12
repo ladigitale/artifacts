@@ -20,6 +20,7 @@ import {applySafeTransforms} from "../jsonata-safe";
 import {loadScriptAssets} from "../script-loader";
 import {ensureAddonsFor} from "../addons";
 import {startSinks, type SinkDef} from "../sinks";
+import {runFromLocation, startIoRun, type IoDef, type IoStatus} from "../io-run";
 import {applyDocFontFiles, applyDocFonts} from "../doc-fonts";
 import {claimNamespace, transformDocument, type NamespaceClaim} from "../doc-transform";
 import {withRoomContext} from "../room-context";
@@ -106,6 +107,12 @@ export class ArtifactViewer extends LitElement {
    * sont vides et rien n'est envoyé (pas de sinks) ; à utiliser avec `embedded`.
    */
   @property({attribute: false}) previewDocument: Record<string, unknown> | null = null;
+  /** Embed : run serveur (contrat `io`) dont l'entrée est lue puis la sortie publiée. */
+  @property({type: String}) run = "";
+  /** Embed : jeton du run. */
+  @property({type: String, attribute: "run-token"}) runToken = "";
+  /** Embed : entrée locale du contrat `io` (JSON), sans run serveur. */
+  @property({type: String}) input = "";
 
   @state() private data: PublicArtifact | null = null;
   @state() private error = "";
@@ -114,6 +121,7 @@ export class ArtifactViewer extends LitElement {
   @state() private loading = true;
   @state() private scriptsReady = false;
   @state() private docStores: Record<string, StoreDef> = {};
+  @state() private ioStatus: IoStatus | null = null;
 
   private sourceData: Record<string, unknown> = {};
   private transformUnsubs: Array<() => void> = [];
@@ -121,6 +129,7 @@ export class ArtifactViewer extends LitElement {
   private viewUnsub: (() => void) | null = null;
   private refreshTimers: number[] = [];
   private stopSinks: (() => void) | null = null;
+  private stopIo: (() => void) | null = null;
   /** Préfixe des DataProviders (vide sauf collision entre artefacts intégrés). */
   private ns = "";
   private nsNames = new Set<string>();
@@ -234,6 +243,72 @@ export class ArtifactViewer extends LitElement {
     this.refreshTimers = [];
     this.stopSinks?.();
     this.stopSinks = null;
+    this.stopIo?.();
+    this.stopIo = null;
+    this.ioStatus = null;
+  }
+
+  /**
+   * Contrat `io` : entrée d'un run (`?run=&rt=` sur la page, `run` / `run-token` ou `input` en
+   * embed) envoyée au store, sortie émise (`artifact-output`) et publiée quand `when` est vraie.
+   */
+  private startIo() {
+    const io = (this.data?.document as {io?: IoDef} | undefined)?.io;
+    if (!io?.output?.from) return;
+    const run = this.embedded
+      ? this.run && this.runToken
+        ? {id: this.run, token: this.runToken}
+        : null
+      : runFromLocation(location.search);
+    let input: unknown = undefined;
+    if (!run && this.embedded && this.input) {
+      try {
+        input = JSON.parse(this.input);
+      } catch {
+        this.ioStatus = {state: "error", message: "Attribut input : JSON invalide."};
+        return;
+      }
+    }
+    if (!run && input === undefined) return;
+    this.stopIo = startIoRun({
+      slug: this.slug,
+      io,
+      run,
+      input,
+      resolve: (name) => this.n(name),
+      onStatus: (s) => {
+        // En embed local, pas de bandeau : la page hôte reçoit l'événement.
+        this.ioStatus = run || s.state === "error" ? s : null;
+      },
+      onOutput: (output, runId) => {
+        this.dispatchEvent(
+          new CustomEvent("artifact-output", {detail: {output, runId, slug: this.slug}, bubbles: true, composed: true}),
+        );
+      },
+    });
+  }
+
+  /** Bandeau d'une tâche (run) en cours : la personne sait que son résultat sera transmis. */
+  private renderIoStatus() {
+    const s = this.ioStatus;
+    if (!s) return nothing;
+    const text =
+      s.state === "waiting"
+        ? "Tâche en cours : le résultat sera transmis automatiquement une fois terminé."
+        : s.state === "sending"
+          ? "Envoi du résultat…"
+          : s.state === "done"
+            ? "Résultat transmis, vous pouvez fermer cette page."
+            : s.message;
+    return html`<p
+      class="artifact-io-status m-0 mx-3 mt-3 sm:mx-4 px-3 py-2 rounded-md text-sm print:hidden"
+      style="background:rgba(127,127,127,.12)"
+      role="status"
+      aria-live="polite"
+      data-state=${s.state}
+    >
+      ${text}
+    </p>`;
   }
 
   private releaseNamespace() {
@@ -339,6 +414,7 @@ export class ArtifactViewer extends LitElement {
         await this.applyDataProviders();
         const sinks = (this.data.document as {data?: {sinks?: Record<string, SinkDef>}}).data?.sinks;
         if (!this.previewDocument) this.stopSinks = startSinks(this.slug, this.linkToken(), this.nsSinks(sinks));
+        if (!this.previewDocument) this.startIo();
       }
     } catch (e) {
       const raw = e instanceof Error ? e.message : String(e);
@@ -783,7 +859,7 @@ export class ArtifactViewer extends LitElement {
               </nav>
             `
           : nothing}
-        ${this.renderCapabilities()}
+        ${this.renderCapabilities()} ${this.renderIoStatus()}
         <div class="artifact-sdui flex-1 min-h-[12rem] ${paddingClass(frame.padding)}">
           ${this.renderBody(root)}
         </div>

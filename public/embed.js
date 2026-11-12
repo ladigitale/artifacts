@@ -14,6 +14,11 @@
  *   data-transparent  fond transparent
  *   data-open-link="false"  masque le lien « Ouvrir dans Artefacts »
  *   data-api        URL de l'API Tadaaa (développement uniquement)
+ *   data-run, data-run-token  run du contrat io (run_artifact mode embed)
+ *   data-input      entrée locale du contrat io (JSON), sans run serveur
+ *
+ * Contrat io : la sortie est émise sur l'élément <artifact-embed> en événement
+ * `artifact-output` (detail : {output, runId, slug}).
  *
  * Le script insère un <artifact-embed> (web component, shadow DOM) et charge une seule
  * fois le module partagé, même avec plusieurs balises sur la page.
@@ -49,7 +54,7 @@
 
   var el = document.createElement("artifact-embed");
   el.setAttribute("slug", slug);
-  var attrs = {theme: "theme", view: "view", key: "link-key", readKey: "read-key", height: "height", openLink: "open-link"};
+  var attrs = {theme: "theme", view: "view", key: "link-key", readKey: "read-key", height: "height", openLink: "open-link", run: "run", runToken: "run-token", input: "input"};
   for (var k in attrs) {
     if (Object.prototype.hasOwnProperty.call(attrs, k) && data[k]) el.setAttribute(attrs[k], data[k]);
   }
