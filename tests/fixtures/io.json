@@ -1,0 +1,39 @@
+{
+  "schema": "artifacts/1",
+  "title": "Somme à valider",
+  "defaultView": "home",
+  "views": [
+    {
+      "id": "home",
+      "title": "Accueil",
+      "root": {
+        "nodes": [
+          {"tagName": "p", "nodes": [{"tagName": "sonic-value", "attributes": {"id": "total", "dataProvider": "calc", "key": "total"}}]},
+          {"tagName": "p", "nodes": [{"tagName": "sonic-value", "attributes": {"id": "phase", "dataProvider": "calc", "key": "phase"}}]},
+          {
+            "tagName": "sonic-action",
+            "attributes": {"target": "calc", "type": "valider", "trigger": "click"},
+            "nodes": [{"tagName": "sonic-button", "attributes": {"id": "valider"}, "textContent": "Valider"}]
+          }
+        ]
+      }
+    }
+  ],
+  "data": {
+    "stores": {
+      "calc": {
+        "initial": {"phase": "idle"},
+        "reducer": "$action.type='io:input' ? {'phase':'edit','values':$action.payload.values,'total':$sum($action.payload.values)} : $action.type='valider' ? $merge([$state,{'phase':'done'}]) : $state"
+      }
+    }
+  },
+  "io": {
+    "title": "Somme à valider",
+    "modes": ["headless", "interactive", "embed"],
+    "input": {
+      "schema": {"type": "object", "properties": {"values": {"type": "array", "items": {"type": "number"}}}, "required": ["values"]},
+      "store": "calc"
+    },
+    "output": {"schema": {"type": "number"}, "from": "calc.total", "when": "phase='done'"}
+  }
+}
