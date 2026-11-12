@@ -885,6 +885,7 @@ export class ArtifactAtelierPage extends LitElement {
                 .forwardedProps=${this.chatContext}
                 .toolLabels=${atelierToolLabels}
                 markdown
+                attachments
                 @chat-custom=${this.onCustom}
                 @chat-run-error=${this.onRunError}
                 @chat-run-end=${this.onRunEnd}
