@@ -9,9 +9,9 @@
  *   <artifact-embed slug="mon-slug" theme="dark"></artifact-embed>
  *
  * Ce module est compilé à part (`LIB_NAME=embed vite build`, sortie `dist/embed/`) avec le
- * préfixe de composants `afx` : `sonic-button` devient `afx-button`, etc. Une page hôte qui
- * utilise déjà Concorde (autre version, autre PublisherManager) n'entre donc pas en conflit
- * avec l'artefact. Le document publié parle toujours `sonic-*` : il est réécrit à la volée
+ * préfixe de composants `afx` : `sonic-button` devient `afx-button`, `sonic-store` devient
+ * `afx-store`, etc. (Concorde et creative-stack). Une page hôte qui utilise déjà l'un ou
+ * l'autre (autre version, autre PublisherManager) n'entre donc pas en conflit avec l'artefact. Le document publié parle toujours `sonic-*` : il est réécrit à la volée
  * vers les noms réellement définis (`remapDocumentTags`).
  *
  * Isolation : shadow DOM (styles Tailwind + thème), DataProviders propres au bundle,
@@ -54,9 +54,10 @@ function remapTag(tag: unknown): unknown {
   const lower = tag.toLowerCase();
   if (!lower.startsWith(SOURCE_PREFIX)) return tag;
   const scoped = SCOPED_PREFIX + lower.slice(SOURCE_PREFIX.length);
-  // Seuls les composants préfixés à la compilation sont réécrits ; les autres
-  // (sonic-store, sonic-patch… de la creative-stack) gardent leur nom. Les addons à la
-  // demande ne sont pas encore définis : leur manifeste (préfixé lui aussi) fait foi.
+  // Seuls les composants préfixés à la compilation sont réécrits ; les autres (modules
+  // enfants définis en boucle : sonic-osc, sonic-voice, sonic-body…) gardent leur nom.
+  // Les addons à la demande ne sont pas encore définis : leur manifeste (préfixé lui
+  // aussi) fait foi.
   return customElements.get(scoped) || isAddonTag(scoped) ? scoped : tag;
 }
 
