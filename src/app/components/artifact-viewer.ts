@@ -5,7 +5,7 @@ import "@supersoniks/concorde/sdui";
 import "./artifact-a2ui-view";
 import {agentStackLibrary, injectAgentStackStyles} from "@ladigitale/agent-stack/libraries";
 import type {A2uiServerMessage} from "@ladigitale/agent-stack/a2ui";
-import {html, LitElement, nothing} from "lit";
+import {css, html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
 import {
   fetchPublicArtifact,
@@ -88,7 +88,61 @@ export class ArtifactViewer extends LitElement {
     return root;
   }
 
-  static styles = [tailwind];
+  static styles = [
+    tailwind,
+    css`
+      /* Bandeau d'une tâche : flottant, il ne décale pas un artefact plein écran (hauteur 100svh). */
+      .artifact-io-status {
+        position: fixed;
+        top: max(8px, env(safe-area-inset-top));
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        width: max-content;
+        max-width: min(calc(100vw - 24px), 36rem);
+        box-sizing: border-box;
+        background: color-mix(in oklab, var(--sc-base, #fff) 88%, transparent);
+        color: var(--sc-base-content, inherit);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgb(127 127 127 / 0.25);
+        box-shadow: 0 10px 30px -18px rgb(0 0 0 / 0.5);
+        pointer-events: none;
+      }
+      /* Intégré dans une page tiers : flottant dans le cadre du viewer, pas dans la page hôte. */
+      :host([embedded]) {
+        position: relative;
+      }
+      :host([embedded]) .artifact-io-status {
+        position: absolute;
+        top: 8px;
+      }
+      /* « Tâche en cours » s'efface après quelques secondes ; envoi, fin et erreurs restent. */
+      .artifact-io-status[data-state="waiting"] {
+        animation: artifact-io-fade 0.6s ease 6s forwards;
+      }
+      .artifact-io-status[data-state="error"],
+      .artifact-io-status[data-state="closed"] {
+        pointer-events: auto;
+      }
+      @keyframes artifact-io-fade {
+        to {
+          opacity: 0;
+          visibility: hidden;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .artifact-io-status[data-state="waiting"] {
+          animation-duration: 0s;
+        }
+      }
+      @media print {
+        .artifact-io-status {
+          display: none;
+        }
+      }
+    `,
+  ];
 
   @property({type: String}) slug = "";
   /**
@@ -305,8 +359,7 @@ export class ArtifactViewer extends LitElement {
             ? "Résultat transmis, vous pouvez fermer cette page."
             : s.message;
     return html`<p
-      class="artifact-io-status m-0 mx-3 mt-3 sm:mx-4 px-3 py-2 rounded-md text-sm print:hidden"
-      style="background:rgba(127,127,127,.12)"
+      class="artifact-io-status m-0 px-3 py-2 rounded-md text-sm"
       role="status"
       aria-live="polite"
       data-state=${s.state}
