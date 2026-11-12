@@ -255,11 +255,14 @@ export class ArtifactViewer extends LitElement {
   private startIo() {
     const io = (this.data?.document as {io?: IoDef} | undefined)?.io;
     if (!io?.output?.from) return;
-    const run = this.embedded
-      ? this.run && this.runToken
-        ? {id: this.run, token: this.runToken}
-        : null
-      : runFromLocation(location.search);
+    // Aperçu de l'atelier : jamais de run serveur, seulement l'entrée d'essai (`input`).
+    const run = this.previewDocument
+      ? null
+      : this.embedded
+        ? this.run && this.runToken
+          ? {id: this.run, token: this.runToken}
+          : null
+        : runFromLocation(location.search);
     let input: unknown = undefined;
     if (!run && this.embedded && this.input) {
       try {
@@ -269,7 +272,8 @@ export class ArtifactViewer extends LitElement {
         return;
       }
     }
-    if (!run && input === undefined) return;
+    // Page complète sans run : rien. Intégré (embed, atelier) : la sortie est émise même sans entrée.
+    if (!run && input === undefined && !this.embedded) return;
     this.stopIo = startIoRun({
       slug: this.slug,
       io,
@@ -280,9 +284,9 @@ export class ArtifactViewer extends LitElement {
         // En embed local, pas de bandeau : la page hôte reçoit l'événement.
         this.ioStatus = run || s.state === "error" ? s : null;
       },
-      onOutput: (output, runId) => {
+      onOutput: (output, runId, files) => {
         this.dispatchEvent(
-          new CustomEvent("artifact-output", {detail: {output, runId, slug: this.slug}, bubbles: true, composed: true}),
+          new CustomEvent("artifact-output", {detail: {output, files, runId, slug: this.slug}, bubbles: true, composed: true}),
         );
       },
     });
@@ -332,6 +336,8 @@ export class ArtifactViewer extends LitElement {
 
   protected updated(changed: Map<PropertyKey, unknown>) {
     if (changed.has("previewDocument") && changed.get("previewDocument") !== undefined) void this.load();
+    // Aperçu : une nouvelle entrée d'essai rejoue l'artefact depuis son état initial.
+    else if (this.previewDocument && changed.has("input") && changed.get("input") !== undefined) void this.load();
     if (changed.has("viewId") && this.viewId) this.publishView(this.viewId);
   }
 
@@ -414,7 +420,7 @@ export class ArtifactViewer extends LitElement {
         await this.applyDataProviders();
         const sinks = (this.data.document as {data?: {sinks?: Record<string, SinkDef>}}).data?.sinks;
         if (!this.previewDocument) this.stopSinks = startSinks(this.slug, this.linkToken(), this.nsSinks(sinks));
-        if (!this.previewDocument) this.startIo();
+        this.startIo();
       }
     } catch (e) {
       const raw = e instanceof Error ? e.message : String(e);

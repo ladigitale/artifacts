@@ -40,6 +40,42 @@ function readUseKits(): boolean {
   }
 }
 
+type IoContract = {
+  modes?: string[];
+  input?: {schema?: Record<string, unknown>};
+  output?: {from?: string; when?: string};
+};
+
+/** Exemple d'entrée tiré d'un JSON Schema (default, examples, const, enum, puis type). */
+function sampleFromSchema(schema: unknown, depth = 0): unknown {
+  if (!schema || typeof schema !== "object" || depth > 6) return null;
+  const s = schema as Record<string, unknown>;
+  if ("default" in s) return s.default;
+  if (Array.isArray(s.examples) && s.examples.length) return s.examples[0];
+  if ("const" in s) return s.const;
+  if (Array.isArray(s.enum) && s.enum.length) return s.enum[0];
+  const type = Array.isArray(s.type) ? s.type[0] : s.type;
+  switch (type) {
+    case "object": {
+      const out: Record<string, unknown> = {};
+      const props = (s.properties ?? {}) as Record<string, unknown>;
+      for (const [k, v] of Object.entries(props)) out[k] = sampleFromSchema(v, depth + 1);
+      return out;
+    }
+    case "array":
+      return s.items ? [sampleFromSchema(s.items, depth + 1)] : [];
+    case "integer":
+    case "number":
+      return typeof s.minimum === "number" ? s.minimum : 1;
+    case "boolean":
+      return false;
+    case "string":
+      return "";
+    default:
+      return null;
+  }
+}
+
 const atelierStyles = css`
   :host {
     display: block;
@@ -222,6 +258,44 @@ const atelierStyles = css`
     flex: 1;
     min-height: 0;
   }
+  .io-test {
+    margin: var(--ui-2) var(--ui-3) var(--ui-3);
+    border: 1px solid var(--sc-border, rgba(127, 127, 127, 0.3));
+    border-radius: var(--sc-rounded, 0.5rem);
+    padding: var(--ui-2) var(--ui-3);
+    font-size: var(--ui-fs-sm);
+  }
+  .io-test summary {
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .io-test textarea {
+    width: 100%;
+    min-height: 6rem;
+    margin-block: var(--ui-2);
+    font-family: ui-monospace, monospace;
+    font-size: var(--ui-fs-sm);
+    box-sizing: border-box;
+  }
+  .io-test pre {
+    margin: var(--ui-2) 0 0;
+    padding: var(--ui-2);
+    max-height: 12rem;
+    overflow: auto;
+    background: rgba(127, 127, 127, 0.1);
+    border-radius: var(--sc-rounded, 0.5rem);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .io-test .io-files img {
+    max-width: 8rem;
+    max-height: 8rem;
+    margin-top: var(--ui-2);
+    border-radius: var(--sc-rounded, 0.5rem);
+  }
+  .io-test .io-hint {
+    color: var(--ui-muted);
+  }
   .preview-empty {
     height: 100%;
     display: grid;
@@ -310,6 +384,11 @@ export class ArtifactAtelierPage extends LitElement {
 
   @state() private preview: Record<string, unknown> | null = null;
   @state() private previewVersion = 0;
+  /** Essai du contrat io dans l'aperçu : entrée saisie, entrée appliquée, dernière sortie émise. */
+  @state() private ioDraft = "";
+  @state() private ioInput = "";
+  @state() private ioError = "";
+  @state() private ioOutput: {output: unknown; files: Record<string, string>} | null = null;
   @state() private error = "";
   /** Kits de l'agent (quiz, jeux, shader…) : décochés, l'agent compose tout librement. */
   @state() private useKits = readUseKits();
@@ -616,6 +695,63 @@ export class ArtifactAtelierPage extends LitElement {
     if (document && typeof document === "object") this.showPreview(document as Record<string, unknown>);
   };
 
+  /** Contrat `io` du brouillon : essai comme outil (entrée JSON → sortie émise par l'aperçu). */
+  private renderIoTest() {
+    const io = (this.preview as {io?: IoContract} | null)?.io;
+    if (!io || typeof io !== "object" || !io.output) return nothing;
+    const schema = io.input?.schema;
+    const draft = this.ioDraft || (schema ? JSON.stringify(sampleFromSchema(schema), null, 2) : "");
+    const files = Object.entries(this.ioOutput?.files ?? {});
+    return html`<details class="io-test" data-io-test>
+      <summary>Tester comme outil${Array.isArray(io.modes) ? ` (${io.modes.join(", ")})` : ""}</summary>
+      ${schema
+        ? html`<label class="io-hint" for="io-input">Entrée (JSON, conforme à io.input.schema)</label>
+            <textarea
+              id="io-input"
+              data-io-input
+              spellcheck="false"
+              .value=${draft}
+              @input=${(e: Event) => (this.ioDraft = (e.target as HTMLTextAreaElement).value)}
+            ></textarea>
+            <sonic-button size="sm" type="primary" data-io-run @click=${() => this.runIoTest(draft)}
+              >Lancer avec cette entrée</sonic-button
+            >`
+        : html`<p class="io-hint">Sans entrée : utilisez l’aperçu, la sortie s’affiche ici.</p>`}
+      ${this.ioError ? html`<p class="notice" data-tone="danger">${this.ioError}</p>` : nothing}
+      ${this.ioOutput
+        ? html`<pre data-io-output>${JSON.stringify(this.ioOutput.output, null, 2)}</pre>
+            ${files.length
+              ? html`<div class="io-files">
+                  ${files.map(([key, url]) =>
+                    url.startsWith("data:image/")
+                      ? html`<div>${key} :<br /><img src=${url} alt=${key} /></div>`
+                      : html`<div>${key} : <a href=${url} target="_blank" rel="noopener">ouvrir</a></div>`,
+                  )}
+                </div>`
+              : nothing}`
+        : html`<p class="io-hint">${io.output.when ? `La sortie s’affiche quand « ${io.output.when} » devient vraie.` : "La sortie s’affiche au premier changement de " + io.output.from + "."}</p>`}
+    </details>`;
+  }
+
+  private runIoTest(draft: string) {
+    try {
+      const value = JSON.parse(draft || "{}") as unknown;
+      if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("objet JSON attendu");
+      this.ioError = "";
+      this.ioOutput = null;
+      const next = JSON.stringify(value);
+      // Même entrée : on force le rejeu (le viewer recharge l'aperçu quand `input` change).
+      this.ioInput = next === this.ioInput ? `${next} ` : next;
+    } catch (e) {
+      this.ioError = `Entrée invalide : ${e instanceof Error ? e.message : String(e)}`;
+    }
+  }
+
+  private onIoOutput = (e: Event) => {
+    const d = (e as CustomEvent<{output: unknown; files?: Record<string, string>}>).detail ?? {output: null};
+    this.ioOutput = {output: d.output, files: d.files ?? {}};
+  };
+
   private renderPublish() {
     if (this.published && this.published.slug !== this.slug) {
       return html`<sonic-button
@@ -762,11 +898,13 @@ export class ArtifactAtelierPage extends LitElement {
             </div>
             <div class="pane-body">
               ${this.preview
-                ? html`<artifact-viewer
+                ? html`${this.renderIoTest()}<artifact-viewer
                     embedded
                     slug=${this.slug || "atelier"}
                     .previewDocument=${this.preview}
+                    input=${this.ioInput}
                     data-version=${this.previewVersion}
+                    @artifact-output=${this.onIoOutput}
                   ></artifact-viewer>`
                 : html`<div class="preview-empty">
                     <h2>L’aperçu apparaît ici</h2>
