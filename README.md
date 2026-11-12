@@ -41,7 +41,9 @@ La balise est proposée dans l’édition d’un artefact (`/admin/{slug}/edit`)
 - `public/embed.js` : petit chargeur ; le module commun n’est chargé qu’une fois par page,
   quel que soit le nombre d’artefacts.
 - `src/embed/` → `dist/embed/` (`yarn build:embed`, inclus dans `yarn build`) : composants
-  Concorde préfixés `afx-` (aucun conflit avec un Concorde de la page hôte), shadow DOM,
+  Concorde et creative-stack préfixés `afx-` (aucun conflit avec un Concorde ou une
+  creative-stack de la page hôte ; seuls les modules enfants de patch / physique —
+  `sonic-osc`, `sonic-body`… — gardent leur nom), shadow DOM,
   vues internes (le hash de l’hôte n’est jamais touché), lecture publique sans compte.
 - Addons creative-stack (3d, shader, audio, physique…) chargés à la demande d’après les
   composants du document, une seule fois par page (`src/app/addons.ts`, aussi pour le viewer).

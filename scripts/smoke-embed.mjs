@@ -7,11 +7,13 @@
  *
  * Deux origines, comme en vrai :
  *   - :4455 = artifacts (dist/ + fausse API publique, CORS ouvert comme en prod) ;
- *   - :4466 = site tiers qui a déjà son propre `sonic-button`, `sonic-jsonata` et
- *     `sonic-store` (simule un Concorde / une creative-stack sur la page hôte).
+ *   - :4466 = site tiers qui a déjà son propre `sonic-button`, `sonic-jsonata`,
+ *     `sonic-store`, `sonic-shader` et `sonic-patch` (simule un Concorde et une
+ *     creative-stack sur la page hôte).
  * La page tiers intègre trois artefacts : deux fois « atelier-visuel » (même store) et
  * « premier-son ». Vérifie : module commun et addons chargés une seule fois, addons
- * inutiles jamais chargés, rendu des trois, DataProviders isolés, hash de l'hôte intact.
+ * inutiles jamais chargés, rendu des trois, composants Concorde et creative-stack préfixés
+ * (aucun composant de l'hôte utilisé), DataProviders isolés, hash de l'hôte intact.
  */
 import http from "node:http";
 import fs from "node:fs";
@@ -56,7 +58,7 @@ const HOST_PAGE = `<!doctype html><html><head><meta charset="utf-8"><title>Site 
 <style>body{font-family:serif;color:#c00} button{background:red}</style>
 <script>
   // Composants déjà présents sur la page hôte : l'embed ne doit ni planter ni les utiliser.
-  for (const t of ["sonic-button", "sonic-jsonata", "sonic-store"]) {
+  for (const t of ["sonic-button", "sonic-jsonata", "sonic-store", "sonic-shader", "sonic-patch"]) {
     customElements.define(t, class extends HTMLElement { connectedCallback() { this.dataset.host = "1"; } });
   }
 </script></head><body>
@@ -109,7 +111,11 @@ const s = await page.evaluate(() => {
         ns: viewer?.ns ?? null,
         view: viewer?.viewId ?? null,
         height: e.style.height,
-        stores: deep(e.shadowRoot, "sonic-store").map((x) => x.getAttribute("dataProvider") || x.id),
+        stores: deep(e.shadowRoot, "afx-store").map((x) => x.getAttribute("dataProvider") || x.id),
+        hostInside: deep(e.shadowRoot, "[data-host]").map((x) => x.localName),
+        creative: ["afx-store", "afx-shader", "afx-patch"].filter((t) => deep(e.shadowRoot, t).length),
+        patchModules: deep(e.shadowRoot, "sonic-osc").length,
+        patchErrors: deep(e.shadowRoot, "afx-patch").flatMap((p) => p.compiled?.errors ?? ["non compilé"]),
       };
     }),
     hostButtons: deep(document, "sonic-button").filter((b) => b.dataset.host === "1" && b.closest("artifact-embed") === null && b.getRootNode() !== document).length,
@@ -128,17 +134,32 @@ check("trois artefacts", s.embeds.length === 3);
 for (const e of s.embeds) check(`rendu ${e.slug} (${e.parent})`, e.rendered && !e.error, e.error);
 check("premier-son monté dans #slot", s.embeds[2]?.parent === "slot");
 check("composants préfixés afx- (pas ceux de l'hôte)", s.afxButtons > 0 && s.hostButtons === 0, `afx=${s.afxButtons} hôte=${s.hostButtons}`);
+const hostInside = s.embeds.flatMap((e) => e.hostInside);
+check("aucun composant de l'hôte dans les embeds", hostInside.length === 0, hostInside.join(", "));
+check("creative-stack préfixée (afx-store, afx-shader, afx-patch)",
+  ["afx-store", "afx-shader", "afx-patch"].every((t) => s.embeds.some((e) => e.creative.includes(t))),
+  JSON.stringify(s.embeds.map((e) => e.creative)));
+// Modules de patch définis en boucle : noms d'origine (la bibliothèque de presets les construit en `sonic-*`).
+check("modules de patch non préfixés (sonic-osc)", s.embeds[2]?.patchModules > 0, String(s.embeds[2]?.patchModules));
+check("patches compilés sans erreur", s.embeds[2]?.patchErrors.length === 0, s.embeds[2]?.patchErrors.join(" | "));
+// Preset de la bibliothèque (modules construits en `sonic-${tag}` à l'exécution) dans le bundle embed.
+const preset = await page.evaluate(async () => {
+  const p = document.createElement("afx-patch");
+  p.setAttribute("preset", "synth/lead");
+  document.querySelector("artifact-embed").shadowRoot.appendChild(p);
+  await new Promise((r) => setTimeout(r, 300));
+  const out = p.compiled ? {errors: p.compiled.errors, modules: p.compiled.modules?.length ?? null} : null;
+  p.remove();
+  return out;
+});
+check("preset de patch compilé dans l'embed", !!preset && preset.errors.length === 0, JSON.stringify(preset).slice(0, 200));
 check("1er atelier : pas de préfixe", s.embeds[0]?.ns === "", JSON.stringify(s.embeds[0]?.ns));
 check("2e atelier : DataProviders préfixés", typeof s.embeds[1]?.ns === "string" && s.embeds[1].ns.startsWith("atelier-visuel~"), JSON.stringify(s.embeds[1]?.ns));
 check("vue de départ data-view", s.embeds[1]?.view === "mosaique", String(s.embeds[1]?.view));
 check("hauteur data-height", s.embeds[1]?.height === "420px", s.embeds[1]?.height);
 
-// Navigation entre vues dans le 1er embed : le hash de la page hôte ne bouge pas.
-await page.evaluate(() => {
-  const viewer = document.querySelector("artifact-embed").shadowRoot.querySelector("artifact-viewer");
-  const btn = [...viewer.shadowRoot.querySelectorAll("nav afx-button")].find((b) => b.getAttribute("variant") === "outline");
-  btn?.click();
-});
+// Navigation entre vues dans le 1er embed (menu des vues) : le hash de la page hôte ne bouge pas.
+await page.locator("artifact-embed").first().locator('nav afx-menu-item[value="mosaique"]').click({timeout: 3000});
 await page.waitForTimeout(800);
 const after = await page.evaluate(() => ({
   hash: location.hash,
@@ -158,16 +179,16 @@ await twin.goto(`http://localhost:${HOST_PORT}/jumeaux`);
 await twin.waitForTimeout(4000);
 const states = () => twin.evaluate(() => {
   const deep = (r, sel, a = []) => { r.querySelectorAll("*").forEach((e) => { if (e.matches(sel)) a.push(e); if (e.shadowRoot) deep(e.shadowRoot, sel, a); }); return a; };
-  return [...document.querySelectorAll("artifact-embed")].map((e) => deep(e.shadowRoot, "sonic-store")[0]?.state ?? null);
+  return [...document.querySelectorAll("artifact-embed")].map((e) => deep(e.shadowRoot, "afx-store")[0]?.state ?? null);
 });
 const before = await states();
 check("deux stores initialisés", before.length === 2 && before.every((x) => x?.sym === 6), JSON.stringify(before).slice(0, 120));
-await twin.locator("artifact-embed").first().locator("sonic-action").nth(1).locator("afx-button").click({timeout: 3000});
+await twin.locator("artifact-embed").first().locator("afx-action").nth(1).locator("afx-button").click({timeout: 3000});
 await twin.waitForTimeout(600);
 const afterClick = await states();
 check("clic dans le 1er → sym 7", afterClick[0]?.sym === 7, `sym=${afterClick[0]?.sym}`);
 check("2e artefact inchangé → sym 6", afterClick[1]?.sym === 6, `sym=${afterClick[1]?.sym}`);
-await twin.locator("artifact-embed").nth(1).locator("sonic-action").nth(0).locator("afx-button").click({timeout: 3000});
+await twin.locator("artifact-embed").nth(1).locator("afx-action").nth(0).locator("afx-button").click({timeout: 3000});
 await twin.waitForTimeout(600);
 const afterSecond = await states();
 check("clic dans le 2e (store préfixé) → sym 5", afterSecond[1]?.sym === 5, `sym=${afterSecond[1]?.sym}`);

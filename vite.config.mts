@@ -36,41 +36,56 @@ function chunkFileNames(prefix: string) {
 }
 
 /**
- * Le plugin de préfixe de Concorde ne connaît que les composants déclarés par
- * `const tagName = "sonic-…"` ; quelques-uns sont déclarés en littéral
- * (`@customElement("sonic-jsonata")`, `sonic-mix`) et resteraient en conflit avec un
- * Concorde hôte. On les préfixe aussi (embed uniquement).
+ * Le plugin de préfixe de Concorde ne connaît que les composants Concorde déclarés par
+ * `const tagName = "sonic-…"`. En embed, on préfixe aussi (sinon conflit avec une page hôte
+ * qui charge son propre Concorde ou sa propre creative-stack) :
+ * - les composants Concorde déclarés en littéral (`@customElement("sonic-jsonata")`, `sonic-mix`) ;
+ * - tous les composants déclarés de la creative-stack (`sonic-store`, `sonic-3d`, `sonic-patch`…),
+ *   manifestes des addons compris (`remapDocumentTags` s'y fie pour les addons pas encore chargés).
+ * Les modules enfants définis en boucle (`sonic-osc`, `sonic-voice`, `sonic-body`…) gardent leur
+ * nom : la bibliothèque de patches les construit dynamiquement (`sonic-${tag}`).
  */
-function prefixLiteralConcordeTags(prefix: string) {
-  const src = path.resolve(__dirname, "node_modules/@supersoniks/concorde/src");
-  const known = new Set<string>();
-  const literal = new Set<string>();
-  const walk = (dir: string) => {
-    for (const entry of fs.readdirSync(dir, {withFileTypes: true})) {
-      const file = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (entry.name !== "docs") walk(file);
-      } else if (/\.ts$/.test(entry.name) && !/\.spec\.ts$/.test(entry.name)) {
-        const code = fs.readFileSync(file, "utf8");
-        for (const m of code.matchAll(/const tagName = "(sonic-[\w-]+)"/g)) known.add(m[1]);
-        for (const m of code.matchAll(/customElement\(\s*"(sonic-[\w-]+)"/g)) literal.add(m[1]);
+function embedTagsToPrefix(): string[] {
+  const scan = (root: string, re: RegExp, out: Set<string>) => {
+    const walk = (dir: string) => {
+      for (const entry of fs.readdirSync(dir, {withFileTypes: true})) {
+        const file = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (entry.name !== "docs" && entry.name !== "node_modules") walk(file);
+        } else if (/\.ts$/.test(entry.name) && !/\.spec\.ts$/.test(entry.name)) {
+          for (const m of fs.readFileSync(file, "utf8").matchAll(re)) out.add(m[1]);
+        }
       }
-    }
+    };
+    if (fs.existsSync(root)) walk(root);
+    return out;
   };
-  walk(src);
-  const tags = [...literal].filter((t) => !known.has(t) && !t.endsWith("-demo"));
-  const pattern = tags.length
-    ? new RegExp(`\\b(${tags.map((t) => t.slice("sonic-".length)).join("|")})(?![\\w-])`, "g")
-    : null;
+  const concorde = path.resolve(__dirname, "node_modules/@supersoniks/concorde/src");
+  const known = scan(concorde, /const tagName = "(sonic-[\w-]+)"/g, new Set());
+  const literal = scan(concorde, /customElement\(\s*"(sonic-[\w-]+)"/g, new Set());
+  const creative = scan(
+    path.resolve(__dirname, "node_modules/@supersoniks/creative-stack/src"),
+    /(?:const tagName = |customElement\(\s*|customElements\.define\(\s*)"(sonic-[\w-]+)"/g,
+    new Set(),
+  );
+  const tags = new Set([...literal, ...creative]);
+  return [...tags].filter((t) => !known.has(t) && !t.endsWith("-demo"));
+}
+
+function prefixEmbedTags(prefix: string) {
+  const tags = embedTagsToPrefix().sort((a, b) => b.length - a.length);
   const sonic = "sonic-";
+  const pattern = tags.length
+    ? new RegExp(`(?<![\\w-])${sonic}(${tags.map((t) => t.slice(sonic.length)).join("|")})(?![\\w-])`, "g")
+    : null;
   return {
-    name: "artifacts-embed-literal-tags",
+    name: "artifacts-embed-tags",
     transform(code: string, id: string) {
       if (!pattern) return null;
       if (id.includes("node_modules") && !id.includes("@supersoniks")) return null;
       if (!/\.(ts|js|json|css)(\?|$)/.test(id)) return null;
       if (!code.includes(sonic)) return null;
-      const next = code.replace(new RegExp(sonic + pattern.source, "g"), `${prefix}-$1`);
+      const next = code.replace(pattern, `${prefix}-$1`);
       return next === code ? null : {code: next, map: null};
     },
   };
@@ -113,7 +128,7 @@ const config = {
     },
   },
   plugins: [
-    ...(isEmbed ? [prefixLiteralConcordeTags("afx")] : []),
+    ...(isEmbed ? [prefixEmbedTags("afx")] : []),
     postcssLit({
       include: ["/src/**/*.css", "/src/**/*.css?*"],
     }),
@@ -124,11 +139,6 @@ const config = {
       /* $cosine, $rankBySimilarity, $mediaUrl dans sonic-jsonata (ajouts visual-stack portés
        * dans la creative-stack) : Concorde classique n'a pas de point d'extension JSONata. */
       {find: /^jsonata$/, replacement: "@supersoniks/creative-stack/jsonata"},
-      /* Embed : le plugin de préfixe réécrit aussi les chemins d'import
-       * (`@supersoniks/concorde/sonic-scope` → `…/afx-scope`) ; on les ramène au fichier réel. */
-      ...(isEmbed
-        ? [{find: /^@supersoniks\/concorde\/(.*)afx-/, replacement: "@supersoniks/concorde/$1sonic-"}]
-        : []),
       /* Embed : le plugin de préfixe réécrit aussi les chemins d'import
        * (`@supersoniks/concorde/sonic-scope` → `…/afx-scope`) ; on les ramène au fichier réel. */
       ...(isEmbed
