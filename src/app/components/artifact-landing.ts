@@ -19,6 +19,18 @@ const STARS = 5;
 const SECRET = "tadaaa";
 const TICKER = ["quiz", "jeu", "instrument", "carte", "dessin", "sondage", "synthé", "histoire", "simulateur"];
 /** Rotation (°) et décalage vertical (em) de chaque lettre du titre : écrit une fois, pas tiré au sort. */
+/** Étoile à pointes (macaron) : n pointes entre deux rayons, centrée dans un carré de 100. */
+function burst(n: number, r1: number, r2: number): string {
+  return (
+    Array.from({length: n * 2}, (_, i) => {
+      const r = i % 2 ? r2 : r1;
+      const a = (Math.PI * i) / n - Math.PI / 2;
+      return `${i ? "L" : "M"}${(50 + r * Math.cos(a)).toFixed(1)} ${(50 + r * Math.sin(a)).toFixed(1)}`;
+    }).join("") + "Z"
+  );
+}
+const SQUIGGLE = "M2 8 Q 14 -4 26 8 T 50 8 T 74 8 T 98 8";
+
 const WOBBLE: [number, number][] = [[-4, 0.02], [3, -0.03], [-2, 0.04], [5, 0], [-3, -0.02], [2, 0.03], [-5, 0.01], [4, -0.04]];
 
 @customElement("artifact-landing")
@@ -153,11 +165,21 @@ export class ArtifactLanding extends LitElement {
 
         <main>
           <section class="hero" aria-labelledby="promise">
+            <div class="decor" aria-hidden="true">
+              <span class="blob b1"></span>
+              <span class="blob b2 hatch"></span>
+              <svg class="burst b3" viewBox="0 0 100 100"><path d=${burst(14, 48, 36)} /></svg>
+              <svg class="spark s1" viewBox="0 0 100 100"><path d=${burst(4, 48, 12)} /></svg>
+              <svg class="spark s2" viewBox="0 0 100 100"><path d=${burst(4, 48, 12)} /></svg>
+              <span class="ring"></span>
+            </div>
             <div class="copy">
               <p class="eyebrow">${this.star(0)} pages interactives, publiées depuis une conversation</p>
               <h1 id="promise" aria-label="Décrivez une page. Elle est en ligne.">
                 <span class="w1" aria-hidden="true">Décrivez</span>
-                <span class="w2 serif" aria-hidden="true">une page.</span>
+                <span class="w2 serif" aria-hidden="true"
+                  >une page.<svg class="squiggle" viewBox="0 0 100 16" preserveAspectRatio="none"><path d=${SQUIGGLE} /></svg></span
+                >
                 <span class="w3" aria-hidden="true">${this.letters("Elle est en ligne.")}</span>
               </h1>
               <p class="lede">
@@ -181,6 +203,11 @@ export class ArtifactLanding extends LitElement {
                         <sonic-button type="default" variant="ghost" size="lg" @click=${() => this.login()}>
                           Se connecter
                         </sonic-button>
+                        <svg class="macaron" viewBox="0 0 100 100" aria-hidden="true">
+                          <path d=${burst(12, 48, 39)} />
+                          <text x="50" y="47" text-anchor="middle">c’est</text>
+                          <text x="50" y="63" text-anchor="middle" class="big">gratuit</text>
+                        </svg>
                       </div>
                       <p class="note">Compte gratuit, <span class="serif mark">trois étapes guidées,</span> cinq minutes.</p>
                     `}
@@ -214,7 +241,7 @@ export class ArtifactLanding extends LitElement {
           <div class="ticker" aria-hidden="true">
             <div class="ticker-run">
               ${[0, 1].map(
-                () => html`${TICKER.map((w, i) => html`<span class=${i % 3 === 1 ? "serif" : i % 3 === 2 ? "out" : ""}>${w}</span><i></i>`)}`,
+                () => html`${TICKER.map((w, i) => html`<span class=${i % 3 === 1 ? "serif" : i % 3 === 2 ? "out" : ""}>${w}</span><i data-c=${(i % 4) + 1}></i>`)}`,
               )}
             </div>
           </div>
