@@ -15,7 +15,7 @@ import {
   loadApiBaseUrl,
   saveApiBaseUrl,
 } from "../app/cloud/api-base";
-import {exchangeHandoff, tadaaaLoginUrl} from "../app/cloud/client";
+import {exchangeHandoff, safeNextPath, tadaaaLoginUrl} from "../app/cloud/client";
 import {initAppearance, loadStoredThemeId} from "../app/appearance";
 
 @customElement("cloud-page")
@@ -95,7 +95,9 @@ export class CloudPageEl extends LitElement {
         url.searchParams.delete("handoff");
         url.searchParams.delete("theme");
         const next =
-          sessionStorage.getItem("artifacts-return-after-login") || "/admin";
+          safeNextPath(params.get("next")) ||
+          safeNextPath(sessionStorage.getItem("artifacts-return-after-login")) ||
+          "/admin";
         sessionStorage.removeItem("artifacts-return-after-login");
         history.replaceState({}, "", "/cloud");
         if (next !== "/cloud") {

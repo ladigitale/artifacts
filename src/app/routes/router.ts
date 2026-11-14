@@ -8,10 +8,11 @@ import admin_slugAtelierPage from "./admin/[slug]/atelier/page";
 import admin_slugEditPage from "./admin/[slug]/edit/page";
 import admin_slugVersionsPage from "./admin/[slug]/versions/page";
 import adminAtelierPage from "./admin/atelier/page";
-import adminPage from "./admin/page";
 import adminRessourcesPage from "./admin/ressources/page";
+import adminPage from "./admin/page";
 import cloudLayout from "./cloud/layout";
 import cloudPage from "./cloud/page";
+import demarrerPage from "./demarrer/page";
 import page from "./page";
 import {renderPublicArtifactRoute} from "./public-artifact-route";
 export const router = (basePath?:string) => {
@@ -52,10 +53,15 @@ const cloudLayoutRoutes = {
     "/cloud$": cloudPage
 }        
 
+const demarrerDefaultLayoutRoutes = {
+    "/demarrer$": demarrerPage
+}        
+
 const layoutRoutes = {
     "/$": page,
     "/admin\\b": (params?: Record<string, string>) => adminLayout(html`<sonic-router .basePath=${basePath} .routes=${adminLayoutRoutes}></sonic-router>`, params),
     "/cloud\\b": (params?: Record<string, string>) => cloudLayout(html`<sonic-router .basePath=${basePath} .routes=${cloudLayoutRoutes}></sonic-router>`, params),
+    "/demarrer\\b": () => html`<sonic-router .basePath=${basePath} .routes=${demarrerDefaultLayoutRoutes}></sonic-router>`,
     fallback: () => renderPublicArtifactRoute(),
 }        
 return layout(html`<sonic-router .basePath=${basePath} .routes=${layoutRoutes}></sonic-router>`)}

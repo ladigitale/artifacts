@@ -5,7 +5,8 @@ import {customElement, state} from "lit/decorators.js";
 import {uiStyles} from "../styles/ui";
 import {landingStyles} from "../css/landing";
 import {loadArtifactsAccount} from "../cloud/account";
-import {tadaaaLoginUrl} from "../cloud/client";
+import {cloudReturnUrl, tadaaaLoginUrl} from "../cloud/client";
+import {FEATURED} from "../featured";
 import {navigate} from "../navigate";
 import "./artifact-logo";
 import "./artifact-theme-switcher";
@@ -22,10 +23,13 @@ export class ArtifactLanding extends LitElement {
   }
 
   private login() {
-    sessionStorage.setItem("artifacts-return-after-login", "/admin");
-    const returnTo = `${location.origin}/cloud`;
-    location.assign(tadaaaLoginUrl(returnTo));
+    location.assign(tadaaaLoginUrl(cloudReturnUrl("/admin")));
   }
+
+  private goStart = (e: Event) => {
+    e.preventDefault();
+    navigate("/demarrer");
+  };
 
   private goAdmin(e: Event) {
     e.preventDefault();
@@ -44,8 +48,8 @@ export class ArtifactLanding extends LitElement {
           <section class="copy" aria-labelledby="promise">
             <h1 id="promise">Décrivez une page. Elle est en ligne.</h1>
             <p class="lede">
-              Dites à l’atelier ce que vous voulez : un quiz, un sondage, un jeu, une visualisation. Vous
-              ajustez l’aperçu, puis vous partagez le lien ou vous l’intégrez sur votre site.
+              Dites à votre assistant ce que vous voulez : un quiz, un jeu, un instrument, une
+              visualisation. Il publie la page ; vous partagez le lien ou vous l’intégrez sur votre site.
             </p>
             <div class="cta">
               ${this.authed
@@ -57,11 +61,16 @@ export class ArtifactLanding extends LitElement {
                     <p class="note">Vous êtes déjà connecté.</p>
                   `
                 : html`
-                    <sonic-button type="primary" size="lg" @click=${() => this.login()}>
-                      <sonic-icon slot="prefix" library="custom" name="log-in" size="sm"></sonic-icon>
-                      Se connecter avec Tadaaa
-                    </sonic-button>
-                    <p class="note">Artefacts utilise votre compte Tadaaa.</p>
+                    <div class="cta-row">
+                      <sonic-button type="primary" size="lg" data-cta="start" @click=${this.goStart}>
+                        Commencer
+                      </sonic-button>
+                      <sonic-button type="default" variant="ghost" size="lg" @click=${() => this.login()}>
+                        <sonic-icon slot="prefix" library="custom" name="log-in" size="sm"></sonic-icon>
+                        Se connecter
+                      </sonic-button>
+                    </div>
+                    <p class="note">Compte gratuit, trois étapes guidées, cinq minutes.</p>
                   `}
             </div>
           </section>
@@ -86,6 +95,24 @@ export class ArtifactLanding extends LitElement {
               </div>
               <p class="publish">Publié sur <code>/quiz-chateaux</code></p>
             </div>
+          </section>
+          <section class="showcase" aria-labelledby="showcase-title">
+            <h2 id="showcase-title">À essayer tout de suite</h2>
+            <p class="showcase-lede">Tous ont été décrits à un assistant, puis publiés ici. Aucun compte requis.</p>
+            <ul>
+              ${FEATURED.map(
+                (f) => html`
+                  <li>
+                    <a href=${`/${f.slug}`} data-featured=${f.slug}>
+                      <span class="kind">${f.kind}</span>
+                      <strong>${f.title}</strong>
+                      <span class="blurb">${f.blurb}</span>
+                      <span class="go" aria-hidden="true">Ouvrir →</span>
+                    </a>
+                  </li>
+                `,
+              )}
+            </ul>
           </section>
         </main>
 

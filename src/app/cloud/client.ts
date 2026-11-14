@@ -134,6 +134,43 @@ export function tadaaaLoginUrl(returnTo: string): string {
   return url.toString();
 }
 
+/** Inscription Tadaaa ; `returnTo` est repris dans le lien de confirmation envoyé par email. */
+export function tadaaaRegisterUrl(returnTo: string): string {
+  const url = new URL("/account/register", tadaaaWebUrl());
+  url.searchParams.set("return_to", returnTo);
+  return url.toString();
+}
+
+/**
+ * Adresse de retour après connexion ou inscription. `next` voyage dans l'URL (et non en
+ * sessionStorage) : le lien de confirmation d'email s'ouvre dans un nouvel onglet.
+ */
+export function cloudReturnUrl(next = "/admin"): string {
+  const url = new URL("/cloud", location.origin);
+  if (next !== "/admin") url.searchParams.set("next", next);
+  return url.toString();
+}
+
+/** Chemin interne sûr (jamais une autre origine). */
+export function safeNextPath(value: string | null | undefined): string {
+  const v = (value ?? "").trim();
+  return /^\/(?![\/\\])[\w\-./?=&%#]*$/.test(v) ? v : "";
+}
+
+/** Adresse du serveur MCP de Tadaaa (même origine que l'API). */
+export function mcpServerUrl(): string {
+  const acc = loadArtifactsAccount();
+  return `${normalizeApiBase(acc?.apiBaseUrl ?? loadApiBaseUrl()).replace(/\/api$/, "")}/mcp`;
+}
+
+/** Jeton d'accès personnel pour les clients MCP sans OAuth (Cursor…). Affiché une seule fois. */
+export async function createMcpAccessToken(name: string): Promise<{plainToken: string; mcpUrl: string}> {
+  return apiFetch<{plainToken: string; mcpUrl: string}>("/access-tokens", {
+    method: "POST",
+    body: JSON.stringify({name}),
+  });
+}
+
 /** Page « Assistant IA » de Tadaaa (fournisseur, modèle, clé de l'agent). */
 export function tadaaaAssistantSettingsUrl(): string {
   return new URL("/connectivity/assistant", tadaaaWebUrl()).toString();

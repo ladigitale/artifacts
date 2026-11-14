@@ -69,6 +69,12 @@ export const landingStyles = css`
     align-items: flex-start;
     gap: var(--ui-2);
   }
+  .cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ui-2);
+  }
   .cta .note {
     color: var(--ui-muted);
     font-size: var(--ui-fs-sm);
@@ -83,6 +89,77 @@ export const landingStyles = css`
   .kinds li + li::before {
     content: "·";
     margin-inline-end: var(--ui-4);
+  }
+
+  /* ───── Vitrine : des artefacts publics à ouvrir ───── */
+  .showcase {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--ui-3);
+    padding-top: var(--ui-8);
+  }
+  .showcase h2 {
+    font-size: var(--ui-fs-2xl);
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+  .showcase-lede {
+    color: var(--ui-muted);
+  }
+  .showcase ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+    gap: var(--ui-3);
+    margin-top: var(--ui-2);
+  }
+  .showcase a {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ui-2);
+    height: 100%;
+    padding: var(--ui-4);
+    background: var(--sc-base);
+    border: 1px solid var(--ui-line);
+    border-radius: calc(var(--ui-radius) * 1.5);
+    text-decoration: none;
+    transition:
+      border-color 0.2s var(--ui-ease),
+      transform 0.2s var(--ui-ease);
+  }
+  .showcase a:hover {
+    border-color: var(--ui-line-strong);
+    transform: translateY(-2px);
+  }
+  .showcase .kind {
+    color: var(--ui-muted);
+    font-size: var(--ui-fs-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .showcase strong {
+    font-family: var(--sc-font-family-headings, inherit);
+    font-size: var(--ui-fs-xl);
+    line-height: 1.15;
+  }
+  .showcase .blurb {
+    flex: 1;
+    color: var(--ui-muted);
+    font-size: var(--ui-fs-sm);
+    line-height: 1.45;
+  }
+  .showcase .go {
+    font-size: var(--ui-fs-sm);
+    font-weight: 600;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .showcase a {
+      transition: none;
+    }
+    .showcase a:hover {
+      transform: none;
+    }
   }
 
   /* ───── Démonstration : le produit, pas un décor ───── */
