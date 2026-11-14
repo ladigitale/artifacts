@@ -2,6 +2,7 @@
  * Scène d'accueil : un document d'artefact comme les autres, rendu par le viewer.
  * `sonic-physics` simule (corps transparents : son canvas ne sert qu'à attraper les gestes), `sonic-stage` place des éléments HTML sur les corps,
  * `sonic-sound` joue un « toc » aux chocs une fois le son déverrouillé par un geste.
+ * Le petit bouton ↕ inverse la gravité : une des choses à découvrir sur la page.
  * Aucun JavaScript propre à la page : c'est la démonstration.
  */
 const W = 560;
@@ -22,9 +23,10 @@ const TILES: Tile[] = [
 ];
 
 const LOOKS: Record<Tile["look"], string> = {
-  ink: "background:var(--sc-base-content);color:var(--sc-base)",
-  primary: "background:var(--sc-primary);color:var(--sc-primary-content)",
-  paper: "background:var(--sc-base);color:var(--sc-base-content);border:1.5px solid var(--sc-base-content)",
+  ink: "background:var(--art-ink, var(--sc-base-content));color:var(--art-paper, var(--sc-base))",
+  primary: "background:var(--art-hot, var(--sc-primary));color:var(--art-on-hot, var(--sc-primary-content))",
+  paper:
+    "background:var(--art-card, var(--sc-base));color:var(--art-ink, var(--sc-base-content));border:1.5px solid var(--art-ink, var(--sc-base-content))",
 };
 
 const body = (t: Tile) => ({
@@ -46,7 +48,7 @@ const tile = (t: Tile) => ({
   tagName: "div",
   attributes: {
     id: t.name,
-    style: `width:${t.w}px;height:${t.h}px;box-sizing:border-box;display:grid;place-items:center;border-radius:${t.round ? "50%" : "6px"};font-weight:700;font-size:${t.name === "idee" ? 24 : 18}px;letter-spacing:-0.01em;user-select:none;${LOOKS[t.look]}`,
+    style: `width:${t.w}px;height:${t.h}px;box-sizing:border-box;display:grid;place-items:center;border-radius:${t.round ? "50%" : "6px"};font-family:var(--art-display, inherit);font-weight:700;font-size:${t.name === "idee" ? 26 : 19}px;letter-spacing:-0.01em;user-select:none;${LOOKS[t.look]}`,
   },
   textContent: t.label,
 });
@@ -68,9 +70,24 @@ export const LANDING_HERO_DOC: Record<string, unknown> = {
             attributes: {
               id: "pile",
               "budget-ms": "50",
-              initial: '{"sound": {"play": {"toc": 0}}}',
-              reducer:
-                '$action.type = "collide" ? $merge([$state, {"sound": {"play": {"toc": $state.sound.play.toc + 1}}}]) : $state',
+              // `input` part de n = 0 pour chaque corps : une impulsion ne part qu'à la hausse du compteur.
+              initial: JSON.stringify({
+                flips: 0,
+                ctl: {gravity: [0, 9.8]},
+                input: Object.fromEntries(TILES.map((t) => [t.name, {impulse: {n: 0, x: 0, y: 0}}])),
+                sound: {play: {toc: 0}},
+              }),
+              // « flip » : la gravité s'inverse ; une petite impulsion réveille chaque corps endormi.
+              reducer: `(
+  $names := ${JSON.stringify(TILES.map((t) => t.name))};
+  $action.type = "collide" ? $merge([$state, {"sound": {"play": {"toc": $state.sound.play.toc + 1}}}])
+  : $action.type = "flip" ? (
+      $n := $state.flips + 1;
+      $g := $state.ctl.gravity[1] > 0 ? -9.8 : 9.8;
+      $merge([$state, {"flips": $n, "ctl": {"gravity": [0, $g]}, "input": $merge($names.{$: {"impulse": {"n": $n, "x": 0, "y": $g > 0 ? 60 : -60}}})}])
+    )
+  : $state
+)`,
             },
           },
           {
@@ -93,6 +110,8 @@ export const LANDING_HERO_DOC: Record<string, unknown> = {
                   height: String(H),
                   bounds: "walls",
                   store: "pile",
+                  control: "pile.ctl",
+                  input: "pile.input",
                   "collide-min": "5",
                   drag: "",
                   "nodes-plane": "screen",
@@ -109,6 +128,22 @@ export const LANDING_HERO_DOC: Record<string, unknown> = {
                   style: "position:absolute;inset:0;pointer-events:none",
                 },
                 nodes: TILES.map(tile),
+              },
+              {
+                tagName: "sonic-action",
+                attributes: {target: "pile", type: "flip"},
+                nodes: [
+                  {
+                    tagName: "div",
+                    attributes: {
+                      id: "bascule",
+                      title: "Ne pas toucher",
+                      style:
+                        "position:absolute;top:10px;right:12px;z-index:2;width:26px;height:26px;display:grid;place-items:center;border:1.5px solid var(--art-ink, currentColor);border-radius:50%;font-size:14px;line-height:1;cursor:pointer;user-select:none;transform:rotate(12deg);background:var(--art-card, transparent);color:var(--art-ink, currentColor)",
+                    },
+                    textContent: "↕",
+                  },
+                ],
               },
             ],
           },

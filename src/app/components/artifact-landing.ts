@@ -1,29 +1,59 @@
 import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/icon";
-import {html, LitElement, svg, type SVGTemplateResult} from "lit";
+import {html, LitElement, nothing, svg, type SVGTemplateResult} from "lit";
 import {customElement, state} from "lit/decorators.js";
 import {uiStyles} from "../styles/ui";
+import {artStyles, ensureArtFonts} from "../css/art";
 import {landingStyles} from "../css/landing";
 import {loadArtifactsAccount} from "../cloud/account";
 import {cloudReturnUrl, tadaaaLoginUrl} from "../cloud/client";
 import {FEATURED, type FeaturedArtifact} from "../featured";
+import {LANDING_HERO_DOC} from "../landing-hero";
 import {navigate} from "../navigate";
 import "./artifact-logo";
-import "./artifact-theme-switcher";
 import "./artifact-legal-links";
 import "./artifact-viewer";
-import {LANDING_HERO_DOC} from "../landing-hero";
+
+const STARS = 5;
+const SECRET = "tadaaa";
+const TICKER = ["quiz", "jeu", "instrument", "carte", "dessin", "sondage", "synthé", "histoire", "simulateur"];
+/** Rotation (°) et décalage vertical (em) de chaque lettre du titre : écrit une fois, pas tiré au sort. */
+const WOBBLE: [number, number][] = [[-4, 0.02], [3, -0.03], [-2, 0.04], [5, 0], [-3, -0.02], [2, 0.03], [-5, 0.01], [4, -0.04]];
 
 @customElement("artifact-landing")
 export class ArtifactLanding extends LitElement {
-  static styles = [uiStyles, landingStyles];
+  static styles = [uiStyles, artStyles, landingStyles];
 
   @state() private authed = !!loadArtifactsAccount();
+  /** Astérisques trouvés (chasse discrète : cinq sont cachés dans la page). */
+  @state() private found = new Set<number>();
+  @state() private party = false;
+
+  private typed = "";
+  private partyTimer: ReturnType<typeof setTimeout> | undefined;
 
   connectedCallback(): void {
     super.connectedCallback();
     this.authed = !!loadArtifactsAccount();
+    ensureArtFonts();
+    window.addEventListener("keydown", this.onKey);
   }
+
+  disconnectedCallback(): void {
+    window.removeEventListener("keydown", this.onKey);
+    clearTimeout(this.partyTimer);
+    super.disconnectedCallback();
+  }
+
+  /** Taper « tadaaa » n'importe où : la page s'agite quelques secondes. */
+  private onKey = (e: KeyboardEvent) => {
+    if (e.key.length !== 1) return;
+    this.typed = (this.typed + e.key.toLowerCase()).slice(-SECRET.length);
+    if (this.typed !== SECRET) return;
+    this.party = true;
+    clearTimeout(this.partyTimer);
+    this.partyTimer = setTimeout(() => (this.party = false), 4200);
+  };
 
   private login() {
     location.assign(tadaaaLoginUrl(cloudReturnUrl("/admin")));
@@ -37,6 +67,36 @@ export class ArtifactLanding extends LitElement {
   private goAdmin(e: Event) {
     e.preventDefault();
     navigate("/admin");
+  }
+
+  private find(i: number, e: Event) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (this.found.has(i)) return;
+    this.found = new Set([...this.found, i]);
+  }
+
+  private star(i: number) {
+    const done = this.found.has(i);
+    return html`<button
+      class="star"
+      type="button"
+      data-star=${i}
+      ?data-found=${done}
+      aria-label=${done ? "Astérisque trouvé" : "Un astérisque"}
+      @click=${(e: Event) => this.find(i, e)}
+    >
+      ${svg`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="square"/></svg>`}
+    </button>`;
+  }
+
+  private letters(text: string) {
+    let k = 0;
+    return [...text].map((ch) => {
+      if (ch === " ") return html`<span class="sp"> </span>`;
+      const [r, y] = WOBBLE[k++ % WOBBLE.length];
+      return html`<span class="l" style=${`--r:${r}deg;--y:${y}em;--i:${k}`}>${ch}</span>`;
+    });
   }
 
   /** Illustration de carte, dessinée dans la palette de l'artefact (pas une capture d'écran). */
@@ -81,59 +141,88 @@ export class ArtifactLanding extends LitElement {
   }
 
   protected render() {
+    const all = this.found.size === STARS;
     return html`
-      <div class="stage">
+      <div class="stage" ?data-party=${this.party}>
         <header>
           <artifact-logo wordmark size="2rem" href="/"></artifact-logo>
-          <artifact-theme-switcher></artifact-theme-switcher>
+          <span class="edition">éd. n° 1 · faite main avec des prompts</span>
         </header>
 
         <main>
-          <section class="copy" aria-labelledby="promise">
-            <h1 id="promise">Décrivez une page. <span class="hl">Elle est en ligne.</span></h1>
-            <p class="lede">
-              Dites à votre assistant ce que vous voulez : un quiz, un jeu, un instrument, une
-              visualisation. Il publie la page ; vous partagez le lien ou vous l’intégrez sur votre site.
-            </p>
-            <div class="cta">
-              ${this.authed
-                ? html`
-                    <sonic-button type="primary" size="lg" @click=${this.goAdmin}>
-                      <sonic-icon slot="prefix" library="custom" name="folder" size="sm"></sonic-icon>
-                      Ouvrir la bibliothèque
-                    </sonic-button>
-                    <p class="note">Vous êtes déjà connecté.</p>
-                  `
-                : html`
-                    <div class="cta-row">
-                      <sonic-button type="primary" size="lg" data-cta="start" @click=${this.goStart}>
-                        Commencer
+          <section class="hero" aria-labelledby="promise">
+            <div class="copy">
+              <p class="eyebrow">${this.star(0)} pages interactives, publiées depuis une conversation</p>
+              <h1 id="promise" aria-label="Décrivez une page. Elle est en ligne.">
+                <span class="w1" aria-hidden="true">Décrivez</span>
+                <span class="w2 serif" aria-hidden="true">une page.</span>
+                <span class="w3" aria-hidden="true">${this.letters("Elle est en ligne.")}</span>
+              </h1>
+              <p class="lede">
+                Dites à votre assistant ce que vous voulez : un quiz, un jeu, un instrument, une
+                visualisation. Il publie la page ; vous partagez le lien ou vous l’intégrez sur votre site.
+              </p>
+              <div class="cta">
+                ${this.authed
+                  ? html`
+                      <sonic-button type="primary" size="lg" @click=${this.goAdmin}>
+                        <sonic-icon slot="prefix" library="custom" name="folder" size="sm"></sonic-icon>
+                        Ouvrir la bibliothèque
                       </sonic-button>
-                      <sonic-button type="default" variant="ghost" size="lg" @click=${() => this.login()}>
-                        <sonic-icon slot="prefix" library="custom" name="log-in" size="sm"></sonic-icon>
-                        Se connecter
-                      </sonic-button>
-                    </div>
-                    <p class="note">Compte gratuit, trois étapes guidées, cinq minutes.</p>
-                  `}
+                      <p class="note">Vous êtes déjà connecté.</p>
+                    `
+                  : html`
+                      <div class="cta-row">
+                        <sonic-button type="primary" size="lg" data-cta="start" @click=${this.goStart}>
+                          Commencer
+                        </sonic-button>
+                        <sonic-button type="default" variant="ghost" size="lg" @click=${() => this.login()}>
+                          Se connecter
+                        </sonic-button>
+                      </div>
+                      <p class="note">Compte gratuit, <span class="serif">trois étapes guidées,</span> cinq minutes.</p>
+                    `}
+              </div>
+            </div>
+
+            <div class="pile">
+              <span class="tag-fig">fig. 1 — une pile de mots</span>
+              <div class="pile-frame">
+                <artifact-viewer embedded slug="accueil" .previewDocument=${LANDING_HERO_DOC}></artifact-viewer>
+              </div>
+              <div class="pile-foot">
+                <svg class="arrow" viewBox="0 0 80 60" aria-hidden="true">
+                  <path d="M74 54C52 56 22 44 14 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                  <path d="M4 22 14 10l10 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <p class="pile-note">
+                  <span class="serif">Attrapez un mot, lancez-le.</span> Cette scène est un artefact : de la
+                  physique, du HTML, du son, zéro ligne de JavaScript. ${this.star(1)}
+                </p>
+              </div>
+              <svg class="stamp" viewBox="0 0 120 120" aria-hidden="true">
+                <defs><path id="rond" d="M60 60m-44 0a44 44 0 1 1 88 0a44 44 0 1 1-88 0" /></defs>
+                <circle cx="60" cy="60" r="57" fill="none" stroke="currentColor" stroke-width="1.5" />
+                <text font-size="11.5" letter-spacing="2.6"><textPath href="#rond">DÉCRIT · PUBLIÉ · PARTAGÉ · DÉCRIT · PUBLIÉ · PARTAGÉ ·</textPath></text>
+                <path d="M60 40v40M42.7 50l34.6 20M42.7 70l34.6-20" fill="none" stroke="currentColor" stroke-width="5" />
+              </svg>
             </div>
           </section>
 
-          <section class="pile" aria-label="Scène interactive">
-            <div class="pile-frame">
-              <artifact-viewer embedded slug="accueil" .previewDocument=${LANDING_HERO_DOC}></artifact-viewer>
+          <div class="ticker" aria-hidden="true">
+            <div class="ticker-run">
+              ${[0, 1].map(
+                () => html`${TICKER.map((w, i) => html`<span class=${i % 3 === 1 ? "serif" : i % 3 === 2 ? "out" : ""}>${w}</span><i></i>`)}`,
+              )}
             </div>
-            <p class="pile-note">
-              Attrapez un mot, lancez-le. Cette scène est un artefact : de la physique, des éléments
-              HTML, du son, et aucune ligne de JavaScript.
-            </p>
-          </section>
+          </div>
+
           <section class="showcase" aria-labelledby="showcase-title">
-            <h2 id="showcase-title">À essayer tout de suite</h2>
+            <h2 id="showcase-title">À essayer <span class="serif">tout de suite</span> ${this.star(2)}</h2>
             <p class="showcase-lede">Tous ont été décrits à un assistant, puis publiés ici. Aucun compte requis.</p>
             <ul>
               ${FEATURED.map(
-                (f) => html`
+                (f, i) => html`
                   <li>
                     <a
                       href=${`/${f.slug}`}
@@ -141,22 +230,39 @@ export class ArtifactLanding extends LitElement {
                       style=${`--card-bg:${f.colors.bg};--card-ink:${f.colors.ink};--card-accent:${f.colors.accent}`}
                     >
                       ${this.cover(f)}
+                      <span class="num" aria-hidden="true">${String(i + 1).padStart(2, "0")}</span>
                       <span class="kind">${f.kind}</span>
                       <strong>${f.title}</strong>
                       <span class="blurb">${f.blurb}</span>
                       <span class="go" aria-hidden="true">Ouvrir →</span>
                     </a>
+                    ${i === 4 ? html`<span class="star-spot">${this.star(3)}</span>` : nothing}
                   </li>
                 `,
               )}
             </ul>
           </section>
+
+          ${all
+            ? html`<section class="prize" role="status">
+                <p><span class="serif">Vous avez l’œil.</span> Les cinq y sont.</p>
+                <sonic-button type="primary" @click=${this.goStart}>Alors faites le vôtre</sonic-button>
+              </section>`
+            : nothing}
         </main>
 
         <footer>
           <span>Artefacts — pages interactives publiées depuis une conversation</span>
           <artifact-legal-links></artifact-legal-links>
+          <p class="fine">
+            Petites lignes : aucun pixel n’a été maltraité. Essayez le bouton ↕ de la pile, ou tapez
+            « tadaaa ». ${this.star(4)}
+          </p>
         </footer>
+
+        ${this.found.size > 0 && !all
+          ? html`<p class="hunt" role="status">${this.found.size} / ${STARS} astérisques</p>`
+          : nothing}
       </div>
     `;
   }

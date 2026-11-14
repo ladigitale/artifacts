@@ -3,6 +3,7 @@ import "@supersoniks/concorde/icon";
 import {css, html, LitElement, nothing} from "lit";
 import {customElement, state} from "lit/decorators.js";
 import {uiStyles} from "../styles/ui";
+import {artStyles, ensureArtFonts} from "../css/art";
 import {loadArtifactsAccount, type ArtifactsAccount} from "../cloud/account";
 import {
   artifactSharePath,
@@ -18,7 +19,6 @@ import {
 } from "../cloud/client";
 import {navigate} from "../navigate";
 import "./artifact-logo";
-import "./artifact-theme-switcher";
 import "./artifact-legal-links";
 
 type Client = "claude" | "claude-code" | "cursor" | "atelier";
@@ -40,6 +40,7 @@ const POLL_MS = 5000;
 export class ArtifactOnboarding extends LitElement {
   static styles = [
     uiStyles,
+    artStyles,
     css`
       :host {
         height: 100vh;
@@ -258,43 +259,45 @@ export class ArtifactOnboarding extends LitElement {
         gap: var(--ui-2);
       }
 
-      /* ───── Net et de travers : jetons du thème, traits fins, ombres franches ───── */
+      /* ───── Même direction que l'accueil (art.ts) : papier, encre, vermillon ───── */
       :host {
-        --ink: var(--sc-base-content);
-        --edge: 1.5px solid var(--ink);
-        --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-        background: linear-gradient(
-          168deg,
-          color-mix(in srgb, var(--sc-primary) 9%, var(--sc-base-50)) 0 22rem,
-          var(--sc-base-50) calc(22rem + 1px)
-        );
+        font-family: var(--art-display);
       }
-      .hl {
-        position: relative;
+      header {
+        border-bottom: var(--art-edge);
+      }
+      .edition {
+        font-family: var(--art-serif);
+        font-style: italic;
+      }
+      h1 {
+        font-size: clamp(2.25rem, 7vw, 4rem);
+        line-height: 0.95;
+        font-weight: 800;
+        font-stretch: 85%;
+        letter-spacing: -0.04em;
+        text-transform: uppercase;
+      }
+      h1 .serif {
         display: inline-block;
-        color: var(--sc-primary);
-        transform: rotate(-2deg);
+        text-transform: none;
+        font-size: 1.12em;
+        color: var(--art-hot);
+        transform: rotate(-3deg);
       }
-      .hl::after {
-        content: "";
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: 0.02em;
-        height: 0.09em;
-        background: var(--ink);
-        transform: rotate(1.2deg);
+      .lede {
+        color: var(--art-ink);
+        font-weight: 400;
       }
       .steps {
         gap: var(--ui-6);
       }
       .step {
         padding: var(--ui-6);
-        border: var(--edge);
-        border-radius: var(--ui-radius);
-        background: var(--sc-base);
+        border: var(--art-edge);
+        border-radius: 0;
+        background: var(--art-card);
         box-shadow: none;
-        transition: transform 0.45s var(--spring);
       }
       .step:nth-child(odd) {
         transform: rotate(-0.5deg);
@@ -303,82 +306,101 @@ export class ArtifactOnboarding extends LitElement {
         transform: rotate(0.45deg);
       }
       .step[data-state="current"] {
-        border-color: var(--ink);
-        box-shadow: 6px 6px 0 var(--sc-primary);
+        box-shadow: 6px 6px 0 var(--art-hot);
       }
       .step[data-state="todo"] {
         border-style: dashed;
+        background: transparent;
       }
       .badge,
       .step[data-state="current"] .badge,
       .step[data-state="done"] .badge {
-        width: 2.5rem;
-        height: 2.5rem;
-        border: var(--edge);
-        border-radius: 4px;
-        background: var(--sc-base);
-        color: var(--ink);
-        font-size: var(--ui-fs-lg);
-        transform: rotate(-7deg);
+        width: 3rem;
+        height: 3rem;
+        border: 0;
+        border-radius: 0;
+        background: none;
+        color: var(--art-ink);
+        font-family: var(--art-serif);
+        font-style: italic;
+        font-weight: 400;
+        font-size: 3.4rem;
+        line-height: 0.8;
+        transform: rotate(-8deg);
       }
       .step[data-state="current"] .badge {
-        background: var(--sc-primary);
-        color: var(--sc-primary-content);
+        color: var(--art-hot);
       }
       .step[data-state="done"] .badge {
-        background: var(--ink);
-        color: var(--sc-base);
+        color: var(--art-moss);
+        font-size: 2.4rem;
       }
       h2 {
-        line-height: 2.5rem;
+        line-height: 3rem;
         font-size: var(--ui-fs-xl);
-        letter-spacing: -0.01em;
+        font-weight: 800;
+        font-stretch: 85%;
+        letter-spacing: -0.02em;
+        text-transform: uppercase;
+      }
+      .muted {
+        color: color-mix(in srgb, var(--art-ink) 78%, transparent);
       }
       .tabs {
         padding: 0;
         gap: 0;
-        border: var(--edge);
-        border-radius: var(--ui-radius);
-        background: var(--sc-base);
+        border: var(--art-edge);
+        border-radius: 0;
+        background: var(--art-card);
         overflow: hidden;
       }
       .tabs button {
         border-radius: 0;
-        font-weight: 600;
+        font-weight: 700;
         padding: var(--ui-2) var(--ui-4);
       }
       .tabs button + button {
-        border-inline-start: 1px solid var(--ui-line-strong);
+        border-inline-start: 1.5px solid var(--art-ink);
       }
       .tabs button[aria-selected="true"] {
-        background: var(--ink);
-        color: var(--sc-base);
+        background: var(--art-ink);
+        color: var(--art-paper);
         box-shadow: none;
       }
       .copy code,
       .copy pre {
-        border: var(--edge);
-        border-radius: 4px;
-        background: var(--sc-base-50);
+        border: var(--art-edge);
+        border-radius: 0;
+        background: var(--art-paper);
+      }
+      .dot {
+        background: var(--art-hot);
+        border-radius: 0;
+        transform: rotate(45deg);
       }
       .invite {
         padding: var(--ui-6);
-        border: 1.5px dashed var(--ink);
-        border-radius: var(--ui-radius);
-        background: transparent;
-        transform: rotate(0.6deg);
+        border: var(--art-edge);
+        border-radius: 0;
+        background: var(--art-sun);
+        box-shadow: var(--art-hard);
+        transform: rotate(0.8deg);
+      }
+      .invite h2 {
+        line-height: 1.1;
+      }
+      .invite .muted {
+        color: var(--art-ink);
+      }
+      .invite .copy code {
+        background: var(--art-card);
       }
       footer {
         width: 100%;
         max-width: 46rem;
         margin-inline: auto;
         padding: 0 var(--ui-4) var(--ui-8);
-        color: var(--ui-muted);
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .step {
-          transition: none;
-        }
+        font-size: var(--ui-fs-sm);
       }
     `,
   ];
@@ -405,6 +427,7 @@ export class ArtifactOnboarding extends LitElement {
       /* stockage indisponible */
     }
     this.account = loadArtifactsAccount();
+    ensureArtFonts();
     if (this.account) {
       void this.refresh();
       this.timer = setInterval(() => {
@@ -717,10 +740,10 @@ export class ArtifactOnboarding extends LitElement {
     return html`
       <header>
         <artifact-logo wordmark size="2rem" href="/"></artifact-logo>
-        <artifact-theme-switcher></artifact-theme-switcher>
+        <span class="edition">mode d’emploi</span>
       </header>
       <main>
-        <h1>Votre premier artefact en <span class="hl">trois étapes</span></h1>
+        <h1>Votre premier artefact en <span class="serif">trois étapes</span></h1>
         <p class="lede">
           Un artefact est une page interactive (quiz, jeu, instrument, carte) que votre assistant IA
           fabrique et met en ligne pour vous. Comptez cinq minutes.
