@@ -11,6 +11,8 @@ import {navigate} from "../navigate";
 import "./artifact-logo";
 import "./artifact-theme-switcher";
 import "./artifact-legal-links";
+import "./artifact-viewer";
+import {LANDING_HERO_DOC} from "../landing-hero";
 
 @customElement("artifact-landing")
 export class ArtifactLanding extends LitElement {
@@ -115,35 +117,16 @@ export class ArtifactLanding extends LitElement {
                     <p class="note">Compte gratuit, trois étapes guidées, cinq minutes.</p>
                   `}
             </div>
-            <ul class="stickers" aria-hidden="true">
-              <li data-c="1">quiz</li>
-              <li data-c="2">jeu</li>
-              <li data-c="3">instrument</li>
-              <li data-c="4">carte</li>
-              <li data-c="5">dessin</li>
-            </ul>
           </section>
 
-          <section class="demo" aria-hidden="true">
-            <div class="pane">
-              <span class="pane-title">Conversation</span>
-              <p class="bubble me">Un quiz de 5 questions sur les châteaux de la Loire</p>
-              <p class="step">Composition du quiz</p>
-              <p class="bubble agent">Voici une première version. Je la publie ?</p>
+          <section class="pile" aria-label="Scène interactive">
+            <div class="pile-frame">
+              <artifact-viewer embedded slug="accueil" .previewDocument=${LANDING_HERO_DOC}></artifact-viewer>
             </div>
-            <div class="pane">
-              <span class="pane-title">Aperçu</span>
-              <div class="quiz">
-                <span class="count">Question 1 sur 5</span>
-                <p class="q">Quel château enjambe le Cher ?</p>
-                <ul>
-                  <li>Chambord</li>
-                  <li data-on>Chenonceau</li>
-                  <li>Azay-le-Rideau</li>
-                </ul>
-              </div>
-              <p class="publish">Publié sur <code>/quiz-chateaux</code></p>
-            </div>
+            <p class="pile-note">
+              Attrapez un mot, lancez-le. Cette scène est un artefact : de la physique, des éléments
+              HTML, du son, et aucune ligne de JavaScript.
+            </p>
           </section>
           <section class="showcase" aria-labelledby="showcase-title">
             <h2 id="showcase-title">À essayer tout de suite</h2>

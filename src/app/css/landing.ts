@@ -304,93 +304,73 @@ export const landingStyles = css`
     }
   }
 
-  /* ───── Couleur et rondeur : l'accueil est une vitrine, pas un écran d'administration ───── */
+  /* ───── Net et de travers : aplats, traits fins, ombres franches, rien de flou ─────
+     Tout vient des jetons du thème ; seules les cartes de la vitrine portent la palette de
+     leur artefact (couleurs de contenu). */
   :host {
-    --pop-coral: #ff5d73;
-    --pop-teal: #27d3c3;
-    --pop-sun: #ffc94d;
-    --pop-orange: #ff8a3d;
-    --sc-btn-rounded: 999px;
+    --ink: var(--sc-base-content);
+    --edge: 1.5px solid var(--ink);
+    --hard: 6px 6px 0 var(--ink);
+    --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
     background:
-      radial-gradient(52rem 34rem at 92% -8%, color-mix(in srgb, var(--pop-coral) 30%, transparent), transparent 62%),
-      radial-gradient(46rem 32rem at -12% 18%, color-mix(in srgb, var(--sc-primary) 30%, transparent), transparent 62%),
-      radial-gradient(44rem 30rem at 55% 108%, color-mix(in srgb, var(--pop-teal) 28%, transparent), transparent 62%),
-      radial-gradient(30rem 22rem at 30% 55%, color-mix(in srgb, var(--pop-sun) 18%, transparent), transparent 65%),
-      var(--sc-base-50);
+      linear-gradient(
+        168deg,
+        color-mix(in srgb, var(--sc-primary) 9%, var(--sc-base-50)) 0 34rem,
+        var(--sc-base-50) calc(34rem + 1px)
+      );
+  }
+  h1 {
+    max-width: 13ch;
   }
   .hl {
-    background: linear-gradient(100deg, var(--sc-primary), var(--pop-coral) 55%, var(--pop-orange));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    position: relative;
+    display: inline-block;
+    color: var(--sc-primary);
+    transform: rotate(-2deg);
+    transform-origin: left bottom;
   }
-  .stickers {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--ui-2);
-  }
-  .stickers li {
-    padding: 0.3em 0.9em;
-    border-radius: 999px;
-    font-size: var(--ui-fs-sm);
-    font-weight: 700;
-    color: #14121a;
-  }
-  .stickers li:nth-child(odd) {
-    transform: rotate(-3deg);
-  }
-  .stickers li:nth-child(even) {
-    transform: rotate(2deg);
-  }
-  .stickers [data-c="1"] {
-    background: var(--pop-sun);
-  }
-  .stickers [data-c="2"] {
-    background: var(--pop-coral);
-  }
-  .stickers [data-c="3"] {
-    background: var(--pop-teal);
-  }
-  .stickers [data-c="4"] {
-    background: var(--pop-orange);
-  }
-  .stickers [data-c="5"] {
-    background: var(--sc-primary);
-    color: var(--sc-primary-content);
-  }
-  .demo {
-    border: 0;
-    border-radius: 1.75rem;
+  .hl::after {
+    content: "";
+    position: absolute;
+    left: -0.04em;
+    right: -0.04em;
+    bottom: 0.02em;
+    height: 0.09em;
+    background: var(--ink);
     transform: rotate(1.2deg);
-    box-shadow:
-      0 0 0 1px var(--ui-line),
-      0 34px 70px -34px color-mix(in srgb, var(--sc-primary) 70%, transparent),
-      -18px 26px 60px -40px var(--pop-coral);
-  }
-  .bubble {
-    border-radius: 1.1rem;
-  }
-  .bubble.me {
-    border-bottom-right-radius: 0.3rem;
-  }
-  .bubble.agent {
-    border-bottom-left-radius: 0.3rem;
-  }
-  .quiz {
-    border-radius: 1.25rem;
-  }
-  .quiz li {
-    border-radius: 999px;
-    padding-inline: var(--ui-4);
-  }
-  .quiz li[data-on] {
-    background: var(--sc-primary);
-    color: var(--sc-primary-content);
   }
 
+  /* Scène vivante */
+  .pile {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ui-3);
+    min-width: 0;
+  }
+  .pile-frame {
+    background: var(--sc-base);
+    border: var(--edge);
+    border-radius: var(--ui-radius);
+    box-shadow: var(--hard);
+    transform: rotate(1.4deg);
+    overflow: hidden;
+  }
+  .pile-frame artifact-viewer {
+    display: block;
+  }
+  .pile-note {
+    max-width: 38ch;
+    color: var(--ui-muted);
+    font-size: var(--ui-fs-sm);
+    transform: rotate(1.4deg);
+    transform-origin: left top;
+    padding-inline-start: var(--ui-2);
+  }
+
+  /* Vitrine */
   .showcase ul {
     grid-template-columns: minmax(0, 1fr);
-    gap: var(--ui-4);
+    gap: var(--ui-6);
   }
   .showcase a {
     position: relative;
@@ -398,40 +378,42 @@ export const landingStyles = css`
     justify-content: flex-end;
     min-height: 20rem;
     padding: var(--ui-6);
-    border: 0;
-    border-radius: 1.75rem;
+    border: var(--edge);
+    border-radius: var(--ui-radius);
     background: var(--card-bg);
     color: var(--card-ink);
-    box-shadow: 0 24px 50px -30px var(--card-bg);
+    box-shadow: var(--hard);
     transition:
-      transform 0.35s var(--ui-ease),
-      box-shadow 0.35s var(--ui-ease);
+      transform 0.45s var(--spring),
+      box-shadow 0.45s var(--spring);
   }
-  .showcase li:nth-child(odd) a:hover {
-    transform: translateY(-6px) rotate(-1.2deg);
+  .showcase li:nth-child(odd) a {
+    transform: rotate(-0.9deg);
   }
-  .showcase li:nth-child(even) a:hover {
-    transform: translateY(-6px) rotate(1.2deg);
+  .showcase li:nth-child(even) a {
+    transform: rotate(0.8deg);
   }
-  .showcase a:hover {
-    border-color: transparent;
-    box-shadow: 0 34px 60px -28px var(--card-accent);
+  .showcase li a:hover {
+    border-color: var(--ink);
+    transform: rotate(0deg) translate(-3px, -3px);
+    box-shadow: 10px 10px 0 var(--ink);
+  }
+  .showcase li a:active {
+    transform: rotate(0deg) translate(3px, 3px) scale(0.99);
+    box-shadow: 2px 2px 0 var(--ink);
   }
   .showcase .cover {
     position: absolute;
     inset: 0 0 auto 0;
     width: 100%;
     height: 56%;
-    transition: transform 0.6s var(--ui-ease);
-  }
-  .showcase a:hover .cover {
-    transform: scale(1.06);
   }
   .showcase a::after {
     content: "";
     position: absolute;
-    inset: 30% 0 0 0;
-    background: linear-gradient(to top, var(--card-bg) 62%, transparent);
+    inset: 54% 0 0 0;
+    background: var(--card-bg);
+    border-top: 1.5px solid var(--card-ink);
   }
   .showcase a > span,
   .showcase a > strong {
@@ -440,11 +422,12 @@ export const landingStyles = css`
   }
   .showcase .kind {
     align-self: flex-start;
-    padding: 0.25em 0.8em;
-    border-radius: 999px;
+    padding: 0.2em 0.6em;
+    border-radius: 3px;
     background: var(--card-accent);
     color: #14121a;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.06em;
+    transform: rotate(-2deg);
   }
   .showcase strong {
     font-size: var(--ui-fs-2xl);
@@ -453,7 +436,7 @@ export const landingStyles = css`
   .showcase .blurb {
     flex: none;
     max-width: 32ch;
-    color: color-mix(in srgb, var(--card-ink) 82%, transparent);
+    color: color-mix(in srgb, var(--card-ink) 84%, transparent);
   }
   footer {
     display: flex;
@@ -478,17 +461,8 @@ export const landingStyles = css`
     }
   }
   @media (prefers-reduced-motion: reduce) {
-    .demo,
-    .stickers li {
-      transform: none;
-    }
-    .showcase a,
-    .showcase .cover {
+    .showcase a {
       transition: none;
-    }
-    .showcase li a:hover,
-    .showcase a:hover .cover {
-      transform: none;
     }
   }
 `;

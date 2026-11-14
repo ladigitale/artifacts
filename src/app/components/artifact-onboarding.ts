@@ -258,101 +258,115 @@ export class ArtifactOnboarding extends LitElement {
         gap: var(--ui-2);
       }
 
-      /* ───── Couleur et rondeur ───── */
+      /* ───── Net et de travers : jetons du thème, traits fins, ombres franches ───── */
       :host {
-        --pop-coral: #ff5d73;
-        --pop-teal: #27d3c3;
-        --pop-sun: #ffc94d;
-        --sc-btn-rounded: 999px;
-        background:
-          radial-gradient(44rem 30rem at 100% -6%, color-mix(in srgb, var(--pop-coral) 28%, transparent), transparent 62%),
-          radial-gradient(40rem 28rem at -14% 30%, color-mix(in srgb, var(--sc-primary) 28%, transparent), transparent 62%),
-          radial-gradient(40rem 28rem at 70% 104%, color-mix(in srgb, var(--pop-teal) 26%, transparent), transparent 62%),
-          var(--sc-base-50);
+        --ink: var(--sc-base-content);
+        --edge: 1.5px solid var(--ink);
+        --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+        background: linear-gradient(
+          168deg,
+          color-mix(in srgb, var(--sc-primary) 9%, var(--sc-base-50)) 0 22rem,
+          var(--sc-base-50) calc(22rem + 1px)
+        );
       }
       .hl {
-        background: linear-gradient(100deg, var(--sc-primary), var(--pop-coral) 60%, #ff8a3d);
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
+        position: relative;
+        display: inline-block;
+        color: var(--sc-primary);
+        transform: rotate(-2deg);
+      }
+      .hl::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0.02em;
+        height: 0.09em;
+        background: var(--ink);
+        transform: rotate(1.2deg);
+      }
+      .steps {
+        gap: var(--ui-6);
       }
       .step {
-        --hue: var(--sc-primary);
-        --hue-ink: var(--sc-primary-content);
         padding: var(--ui-6);
-        border: 0;
-        border-radius: 1.75rem;
-        background: linear-gradient(140deg, color-mix(in srgb, var(--hue) 13%, var(--sc-base)), var(--sc-base) 58%);
-        box-shadow: 0 0 0 1px var(--ui-line);
+        border: var(--edge);
+        border-radius: var(--ui-radius);
+        background: var(--sc-base);
+        box-shadow: none;
+        transition: transform 0.45s var(--spring);
       }
-      .step[data-step="account"] {
-        --hue: var(--pop-coral);
-        --hue-ink: #2b0a1a;
+      .step:nth-child(odd) {
+        transform: rotate(-0.5deg);
       }
-      .step[data-step="publish"] {
-        --hue: var(--pop-teal);
-        --hue-ink: #06302c;
+      .step:nth-child(even) {
+        transform: rotate(0.45deg);
       }
       .step[data-state="current"] {
-        box-shadow:
-          0 0 0 2px var(--hue),
-          0 30px 60px -34px var(--hue);
+        border-color: var(--ink);
+        box-shadow: 6px 6px 0 var(--sc-primary);
       }
       .step[data-state="todo"] {
-        opacity: 0.82;
+        border-style: dashed;
       }
       .badge,
       .step[data-state="current"] .badge,
       .step[data-state="done"] .badge {
-        width: 2.75rem;
-        height: 2.75rem;
-        border: 0;
-        border-radius: 0.95rem;
-        background: var(--hue);
-        color: var(--hue-ink);
+        width: 2.5rem;
+        height: 2.5rem;
+        border: var(--edge);
+        border-radius: 4px;
+        background: var(--sc-base);
+        color: var(--ink);
         font-size: var(--ui-fs-lg);
-        transform: rotate(-6deg);
+        transform: rotate(-7deg);
       }
-      .step:nth-child(even) .badge {
-        transform: rotate(5deg);
+      .step[data-state="current"] .badge {
+        background: var(--sc-primary);
+        color: var(--sc-primary-content);
+      }
+      .step[data-state="done"] .badge {
+        background: var(--ink);
+        color: var(--sc-base);
       }
       h2 {
-        line-height: 2.75rem;
+        line-height: 2.5rem;
         font-size: var(--ui-fs-xl);
         letter-spacing: -0.01em;
       }
       .tabs {
-        border: 0;
-        border-radius: 999px;
-        background: color-mix(in srgb, var(--hue) 14%, var(--sc-base-50));
+        padding: 0;
+        gap: 0;
+        border: var(--edge);
+        border-radius: var(--ui-radius);
+        background: var(--sc-base);
+        overflow: hidden;
       }
       .tabs button {
-        border-radius: 999px;
+        border-radius: 0;
         font-weight: 600;
+        padding: var(--ui-2) var(--ui-4);
+      }
+      .tabs button + button {
+        border-inline-start: 1px solid var(--ui-line-strong);
       }
       .tabs button[aria-selected="true"] {
-        background: var(--hue);
-        color: var(--hue-ink);
+        background: var(--ink);
+        color: var(--sc-base);
         box-shadow: none;
       }
       .copy code,
       .copy pre {
-        border-radius: 1rem;
-        border-color: color-mix(in srgb, var(--hue) 35%, var(--ui-line));
-        background: color-mix(in srgb, var(--hue) 7%, var(--sc-base));
-      }
-      .dot {
-        background: var(--hue);
+        border: var(--edge);
+        border-radius: 4px;
+        background: var(--sc-base-50);
       }
       .invite {
         padding: var(--ui-6);
-        border: 0;
-        border-radius: 1.75rem;
-        background: color-mix(in srgb, var(--pop-sun) 38%, var(--sc-base));
-      }
-      .invite .copy code {
-        background: var(--sc-base);
-        border-color: transparent;
+        border: 1.5px dashed var(--ink);
+        border-radius: var(--ui-radius);
+        background: transparent;
+        transform: rotate(0.6deg);
       }
       footer {
         width: 100%;
@@ -362,9 +376,8 @@ export class ArtifactOnboarding extends LitElement {
         color: var(--ui-muted);
       }
       @media (prefers-reduced-motion: reduce) {
-        .badge,
-        .step:nth-child(even) .badge {
-          transform: none;
+        .step {
+          transition: none;
         }
       }
     `,
