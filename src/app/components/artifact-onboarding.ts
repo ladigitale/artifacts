@@ -19,6 +19,7 @@ import {
 import {navigate} from "../navigate";
 import "./artifact-logo";
 import "./artifact-theme-switcher";
+import "./artifact-legal-links";
 
 type Client = "claude" | "claude-code" | "cursor" | "atelier";
 
@@ -255,6 +256,116 @@ export class ArtifactOnboarding extends LitElement {
         display: flex;
         flex-direction: column;
         gap: var(--ui-2);
+      }
+
+      /* ───── Couleur et rondeur ───── */
+      :host {
+        --pop-coral: #ff5d73;
+        --pop-teal: #27d3c3;
+        --pop-sun: #ffc94d;
+        --sc-btn-rounded: 999px;
+        background:
+          radial-gradient(44rem 30rem at 100% -6%, color-mix(in srgb, var(--pop-coral) 28%, transparent), transparent 62%),
+          radial-gradient(40rem 28rem at -14% 30%, color-mix(in srgb, var(--sc-primary) 28%, transparent), transparent 62%),
+          radial-gradient(40rem 28rem at 70% 104%, color-mix(in srgb, var(--pop-teal) 26%, transparent), transparent 62%),
+          var(--sc-base-50);
+      }
+      .hl {
+        background: linear-gradient(100deg, var(--sc-primary), var(--pop-coral) 60%, #ff8a3d);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .step {
+        --hue: var(--sc-primary);
+        --hue-ink: var(--sc-primary-content);
+        padding: var(--ui-6);
+        border: 0;
+        border-radius: 1.75rem;
+        background: linear-gradient(140deg, color-mix(in srgb, var(--hue) 13%, var(--sc-base)), var(--sc-base) 58%);
+        box-shadow: 0 0 0 1px var(--ui-line);
+      }
+      .step[data-step="account"] {
+        --hue: var(--pop-coral);
+        --hue-ink: #2b0a1a;
+      }
+      .step[data-step="publish"] {
+        --hue: var(--pop-teal);
+        --hue-ink: #06302c;
+      }
+      .step[data-state="current"] {
+        box-shadow:
+          0 0 0 2px var(--hue),
+          0 30px 60px -34px var(--hue);
+      }
+      .step[data-state="todo"] {
+        opacity: 0.82;
+      }
+      .badge,
+      .step[data-state="current"] .badge,
+      .step[data-state="done"] .badge {
+        width: 2.75rem;
+        height: 2.75rem;
+        border: 0;
+        border-radius: 0.95rem;
+        background: var(--hue);
+        color: var(--hue-ink);
+        font-size: var(--ui-fs-lg);
+        transform: rotate(-6deg);
+      }
+      .step:nth-child(even) .badge {
+        transform: rotate(5deg);
+      }
+      h2 {
+        line-height: 2.75rem;
+        font-size: var(--ui-fs-xl);
+        letter-spacing: -0.01em;
+      }
+      .tabs {
+        border: 0;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--hue) 14%, var(--sc-base-50));
+      }
+      .tabs button {
+        border-radius: 999px;
+        font-weight: 600;
+      }
+      .tabs button[aria-selected="true"] {
+        background: var(--hue);
+        color: var(--hue-ink);
+        box-shadow: none;
+      }
+      .copy code,
+      .copy pre {
+        border-radius: 1rem;
+        border-color: color-mix(in srgb, var(--hue) 35%, var(--ui-line));
+        background: color-mix(in srgb, var(--hue) 7%, var(--sc-base));
+      }
+      .dot {
+        background: var(--hue);
+      }
+      .invite {
+        padding: var(--ui-6);
+        border: 0;
+        border-radius: 1.75rem;
+        background: color-mix(in srgb, var(--pop-sun) 38%, var(--sc-base));
+      }
+      .invite .copy code {
+        background: var(--sc-base);
+        border-color: transparent;
+      }
+      footer {
+        width: 100%;
+        max-width: 46rem;
+        margin-inline: auto;
+        padding: 0 var(--ui-4) var(--ui-8);
+        color: var(--ui-muted);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .badge,
+        .step:nth-child(even) .badge {
+          transform: none;
+        }
       }
     `,
   ];
@@ -596,7 +707,7 @@ export class ArtifactOnboarding extends LitElement {
         <artifact-theme-switcher></artifact-theme-switcher>
       </header>
       <main>
-        <h1>Votre premier artefact en trois étapes</h1>
+        <h1>Votre premier artefact en <span class="hl">trois étapes</span></h1>
         <p class="lede">
           Un artefact est une page interactive (quiz, jeu, instrument, carte) que votre assistant IA
           fabrique et met en ligne pour vous. Comptez cinq minutes.
@@ -610,6 +721,7 @@ export class ArtifactOnboarding extends LitElement {
           ${this.copyable("invite", invite)}
         </section>
       </main>
+      <footer><artifact-legal-links></artifact-legal-links></footer>
     `;
   }
 }

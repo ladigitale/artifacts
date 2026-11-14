@@ -1,0 +1,21 @@
+{
+  "schema": "artifacts/1",
+  "title": "Plein cadre",
+  "theme": "default",
+  "defaultView": "jeu",
+  "views": [
+    {
+      "id": "jeu",
+      "title": "Jeu",
+      "root": {
+        "nodes": [
+          {
+            "tagName": "div",
+            "attributes": {"id": "plein", "style": "position:fixed;inset:0;z-index:10;background:#0e0c0d;color:#ece6d6"},
+            "nodes": [{"tagName": "p", "attributes": {"text": "Plein cadre"}}]
+          }
+        ]
+      }
+    }
+  ]
+}
