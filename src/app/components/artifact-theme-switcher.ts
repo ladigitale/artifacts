@@ -10,7 +10,7 @@ type ThemeOption = {id: string; label: string; dark: boolean; base: string; ink:
 
 /** Miroir du catalogue Tadaaa (`config/appearance/themes.json`) : de quoi dessiner les pastilles. */
 const THEMES: ThemeOption[] = [
-  {id: "default", label: "Clair", dark: false, base: "#f4f2ff", ink: "#14101f", primary: "#4f1fff"},
+  {id: "affiche", label: "Affiche", dark: false, base: "#f3ede1", ink: "#17130e", primary: "#d7f23f"},
   {id: "lavande", label: "Lavande", dark: false, base: "#f0e8ff", ink: "#1e0840", primary: "#7c2cff"},
   {id: "matcha", label: "Matcha", dark: false, base: "#eef8e4", ink: "#142416", primary: "#2f8f3a"},
   {id: "bubblegum", label: "Bubblegum", dark: false, base: "#fff5fb", ink: "#5a0848", primary: "#ff1aad"},

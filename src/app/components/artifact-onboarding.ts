@@ -20,6 +20,7 @@ import {
 import {navigate} from "../navigate";
 import "./artifact-logo";
 import "./artifact-legal-links";
+import "./artifact-theme-switcher";
 
 type Client = "claude" | "claude-code" | "cursor" | "atelier";
 
@@ -282,7 +283,6 @@ export class ArtifactOnboarding extends LitElement {
         display: inline-block;
         text-transform: none;
         font-size: 1.12em;
-        color: var(--art-hot);
         transform: rotate(-3deg);
       }
       .lede {
@@ -306,7 +306,7 @@ export class ArtifactOnboarding extends LitElement {
         transform: rotate(0.45deg);
       }
       .step[data-state="current"] {
-        box-shadow: 6px 6px 0 var(--art-hot);
+        box-shadow: 6px 6px 0 var(--art-accent);
       }
       .step[data-state="todo"] {
         border-style: dashed;
@@ -329,10 +329,10 @@ export class ArtifactOnboarding extends LitElement {
         transform: rotate(-8deg);
       }
       .step[data-state="current"] .badge {
-        color: var(--art-hot);
+        background: linear-gradient(to top, var(--art-accent) 0 45%, transparent 45%);
       }
       .step[data-state="done"] .badge {
-        color: var(--art-moss);
+        color: var(--sc-success);
         font-size: 2.4rem;
       }
       h2 {
@@ -374,7 +374,7 @@ export class ArtifactOnboarding extends LitElement {
         background: var(--art-paper);
       }
       .dot {
-        background: var(--art-hot);
+        background: var(--art-ink);
         border-radius: 0;
         transform: rotate(45deg);
       }
@@ -382,7 +382,8 @@ export class ArtifactOnboarding extends LitElement {
         padding: var(--ui-6);
         border: var(--art-edge);
         border-radius: 0;
-        background: var(--art-sun);
+        background: var(--art-accent);
+        color: var(--art-on-accent);
         box-shadow: var(--art-hard);
         transform: rotate(0.8deg);
       }
@@ -390,6 +391,9 @@ export class ArtifactOnboarding extends LitElement {
         line-height: 1.1;
       }
       .invite .muted {
+        color: inherit;
+      }
+      .invite .copy code {
         color: var(--art-ink);
       }
       .invite .copy code {
@@ -741,9 +745,10 @@ export class ArtifactOnboarding extends LitElement {
       <header>
         <artifact-logo wordmark size="2rem" href="/"></artifact-logo>
         <span class="edition">mode d’emploi</span>
+        <artifact-theme-switcher></artifact-theme-switcher>
       </header>
       <main>
-        <h1>Votre premier artefact en <span class="serif">trois étapes</span></h1>
+        <h1>Votre premier artefact en <span class="serif mark">trois étapes</span></h1>
         <p class="lede">
           Un artefact est une page interactive (quiz, jeu, instrument, carte) que votre assistant IA
           fabrique et met en ligne pour vous. Comptez cinq minutes.

@@ -12,6 +12,7 @@ import {LANDING_HERO_DOC} from "../landing-hero";
 import {navigate} from "../navigate";
 import "./artifact-logo";
 import "./artifact-legal-links";
+import "./artifact-theme-switcher";
 import "./artifact-viewer";
 
 const STARS = 5;
@@ -147,6 +148,7 @@ export class ArtifactLanding extends LitElement {
         <header>
           <artifact-logo wordmark size="2rem" href="/"></artifact-logo>
           <span class="edition">éd. n° 1 · faite main avec des prompts</span>
+          <artifact-theme-switcher></artifact-theme-switcher>
         </header>
 
         <main>
@@ -180,7 +182,7 @@ export class ArtifactLanding extends LitElement {
                           Se connecter
                         </sonic-button>
                       </div>
-                      <p class="note">Compte gratuit, <span class="serif">trois étapes guidées,</span> cinq minutes.</p>
+                      <p class="note">Compte gratuit, <span class="serif mark">trois étapes guidées,</span> cinq minutes.</p>
                     `}
               </div>
             </div>
@@ -218,7 +220,7 @@ export class ArtifactLanding extends LitElement {
           </div>
 
           <section class="showcase" aria-labelledby="showcase-title">
-            <h2 id="showcase-title">À essayer <span class="serif">tout de suite</span> ${this.star(2)}</h2>
+            <h2 id="showcase-title">À essayer <span class="serif mark">tout de suite</span> ${this.star(2)}</h2>
             <p class="showcase-lede">Tous ont été décrits à un assistant, puis publiés ici. Aucun compte requis.</p>
             <ul>
               ${FEATURED.map(

@@ -3,7 +3,7 @@ import {css} from "lit";
 /**
  * Accueil : une affiche plus qu'un écran. Typographie mêlée (grotesque serrée, sérif italique,
  * lettres de travers), petits repères d'imprimeur, et quelques choses à trouver.
- * Palette et jetons : `art.ts`. Seules les cartes de la vitrine portent la palette de leur artefact.
+ * Couleurs : jetons du thème via `art.ts`. Seules les cartes de la vitrine portent la palette de leur artefact.
  */
 export const landingStyles = css`
   :host {
@@ -97,8 +97,9 @@ export const landingStyles = css`
     display: inline-block;
     margin-top: 0.14em;
     padding: 0.04em 0.16em 0.1em;
-    background: var(--art-hot);
-    color: var(--art-on-hot);
+    background: var(--art-accent);
+    color: var(--art-on-accent);
+    border: var(--art-edge);
     font-size: 0.6em;
     letter-spacing: -0.02em;
     transform: rotate(-2.2deg);
@@ -146,7 +147,7 @@ export const landingStyles = css`
     gap: var(--ui-2);
   }
   .cta sonic-button[type="primary"] {
-    box-shadow: 4px 4px 0 var(--art-ink);
+    box-shadow: 4px 4px 0 var(--art-accent);
     transition: transform 0.3s var(--art-spring);
   }
   .cta sonic-button[type="primary"]:hover {
@@ -236,7 +237,7 @@ export const landingStyles = css`
     right: -1.75rem;
     bottom: -0.5rem;
     width: 6.5rem;
-    color: var(--art-hot);
+    color: var(--art-ink);
     fill: currentColor;
     font-family: var(--art-display);
     font-weight: 700;
@@ -284,7 +285,7 @@ export const landingStyles = css`
   .ticker .serif {
     text-transform: none;
     font-size: 1.25em;
-    color: var(--art-sun);
+    color: var(--art-accent);
   }
   .ticker .out {
     color: transparent;
@@ -293,7 +294,7 @@ export const landingStyles = css`
   .ticker i {
     width: 0.5em;
     height: 0.5em;
-    background: var(--art-hot);
+    background: var(--art-accent);
     transform: rotate(45deg);
   }
   @keyframes run {
@@ -319,7 +320,6 @@ export const landingStyles = css`
   .showcase h2 .serif {
     text-transform: none;
     font-size: 1.12em;
-    color: var(--art-hot);
   }
   .showcase h2 .star {
     font-size: 0.5em;
@@ -445,7 +445,8 @@ export const landingStyles = css`
     gap: var(--ui-4);
     padding: var(--ui-4) var(--ui-6);
     border: var(--art-edge);
-    background: var(--art-sun);
+    background: var(--art-accent);
+    color: var(--art-on-accent);
     box-shadow: var(--art-hard);
     transform: rotate(-1.5deg);
     font-size: var(--ui-fs-lg);

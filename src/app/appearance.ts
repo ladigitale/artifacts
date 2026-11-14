@@ -30,6 +30,18 @@ export type AppearancePayload = {
   icons?: AppearanceIcons;
 };
 
+/**
+ * Thème maison d'Artefacts : c'est lui qui s'applique tant que la personne n'en a pas choisi
+ * un autre. Le « default » de Tadaaa (violet) n'est pas proposé ici ; un compte resté sur
+ * « default » voit donc Artefacts en thème maison, sur toutes les pages.
+ */
+export const HOUSE_THEME = "affiche";
+
+export function houseTheme(id: string | null | undefined): string {
+  const v = (id ?? "").trim();
+  return !v || v === "default" ? HOUSE_THEME : v;
+}
+
 const THEME_KEY = "artifacts-theme";
 const LINK_ID = "artifacts-tadaaa-fonts";
 const STYLE_ID = "artifacts-appearance-vars";
@@ -48,19 +60,19 @@ export function loadStoredThemeId(): string {
   try {
     const fromUrl = new URL(location.href).searchParams.get("theme");
     if (fromUrl?.trim()) {
-      localStorage.setItem(THEME_KEY, fromUrl.trim());
-      return fromUrl.trim();
+      localStorage.setItem(THEME_KEY, houseTheme(fromUrl));
+      return houseTheme(fromUrl);
     }
   } catch {
     /* ignore */
   }
   try {
     const stored = localStorage.getItem(THEME_KEY);
-    if (stored?.trim()) return stored.trim();
+    if (stored?.trim()) return houseTheme(stored);
   } catch {
     /* ignore */
   }
-  return "default";
+  return HOUSE_THEME;
 }
 
 export function saveThemeId(id: string): void {
@@ -69,12 +81,8 @@ export function saveThemeId(id: string): void {
 
 export function applyTheme(id: string, dark?: boolean): void {
   const root = document.documentElement;
-  const themeId = id || "default";
-  if (themeId === "default") {
-    root.removeAttribute("data-theme");
-  } else {
-    root.setAttribute("data-theme", themeId);
-  }
+  const themeId = houseTheme(id);
+  root.setAttribute("data-theme", themeId);
   const isDark = dark ?? DARK_THEMES.has(themeId);
   root.style.colorScheme = isDark ? "dark" : "light";
   clearInlineScVars(root);
@@ -207,10 +215,14 @@ export async function initAppearance(): Promise<void> {
   try {
     // Avec JWT : sans ?theme= l’API renvoie le thème compte
     const preferAccount = Boolean(account?.token) && !urlTheme;
-    const payload = await fetchAppearance(
-      preferAccount ? null : urlTheme || localId,
+    let payload = await fetchAppearance(
+      preferAccount ? null : houseTheme(urlTheme || localId),
       account?.token,
     );
+    // Compte resté sur le « default » de Tadaaa : thème maison.
+    if (payload && payload.themeId === "default") {
+      payload = await fetchAppearance(HOUSE_THEME, account?.token);
+    }
     if (payload) {
       applyAppearance(payload);
       if (account?.user) {
