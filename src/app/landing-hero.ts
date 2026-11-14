@@ -24,7 +24,7 @@ const TILES: Tile[] = [
 
 const LOOKS: Record<Tile["look"], string> = {
   ink: "background:var(--art-ink, var(--sc-base-content));color:var(--art-paper, var(--sc-base))",
-  primary: "background:var(--art-hot, var(--sc-primary));color:var(--art-on-hot, var(--sc-primary-content))",
+  primary: "background:var(--art-accent, var(--sc-primary));color:var(--art-on-accent, var(--sc-primary-content));border:1.5px solid var(--art-ink, var(--sc-base-content))",
   paper:
     "background:var(--art-card, var(--sc-base));color:var(--art-ink, var(--sc-base-content));border:1.5px solid var(--art-ink, var(--sc-base-content))",
 };

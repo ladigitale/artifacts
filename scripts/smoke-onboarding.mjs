@@ -26,6 +26,12 @@ const server = http.createServer((q, r) => {
   if (u.pathname === "/api/auth/handoff/exchange") return json(r, {token: "jwt", user: {email: "ami@example.org"}});
   if (u.pathname === "/api/artifacts") return json(r, {member: published ? [artifact] : []});
   if (u.pathname === "/api/access-tokens" && q.method === "POST") return json(r, {plainToken: "tada_test123", mcpUrl: `http://localhost:${PORT}/mcp`, token: {}}, 201);
+  if (u.pathname === "/api/appearance") {
+    // Compte resté sur le « default » de Tadaaa (violet) ; le thème maison est servi à la demande.
+    const id = u.searchParams.get("theme") || "default";
+    const primary = id === "affiche" ? "#17130e" : "#4f1fff";
+    return json(r, {themeId: id, label: id, dark: false, vars: {"--sc-primary": primary}, fontsCssUrl: null, shell: {contentMaxWidth: "72rem", menuPosition: "start"}});
+  }
   if (u.pathname.startsWith("/api/")) return json(r, {configured: false, serverKeyAvailable: false, member: []});
   let f = path.join(DIST, u.pathname);
   if (!fs.existsSync(f) || fs.statSync(f).isDirectory()) f = path.join(DIST, "index.html");
@@ -52,6 +58,8 @@ page.on("pageerror", (e) => errors.push(String(e)));
 // Accueil
 await page.goto(`${origin}/`);
 await page.waitForTimeout(1200);
+const themeOf = (p) => p.evaluate(() => `${document.documentElement.getAttribute("data-theme")} ${getComputedStyle(document.documentElement).getPropertyValue("--sc-primary").trim()}`);
+check("accueil : thème maison appliqué", (await themeOf(page)) === "affiche #17130e", await themeOf(page));
 const cards = await q(page, "a[data-featured]");
 check("accueil : vitrine de 5 artefacts", cards.length === 5, cards.map((c) => c.href).join(" "));
 await page.waitForTimeout(2500);
@@ -80,6 +88,7 @@ await shot(page, "accueil.png");
 await click(page, "[data-cta='start']");
 await page.waitForTimeout(600);
 check("accueil : Commencer mène à /demarrer", new URL(page.url()).pathname === "/demarrer", page.url());
+check("/demarrer : même thème que l'accueil", (await themeOf(page)) === "affiche #17130e", await themeOf(page));
 
 // Hors connexion
 let steps = await q(page, "li.step");
@@ -102,6 +111,7 @@ page2.on("pageerror", (e) => errors.push(String(e)));
 await page2.goto(`${origin}/cloud?next=%2Fdemarrer&handoff=abc`);
 await page2.waitForTimeout(1800);
 check("retour de confirmation : arrive sur /demarrer", new URL(page2.url()).pathname === "/demarrer", page2.url());
+check("connecté, compte en thème « default » : thème maison conservé", (await themeOf(page2)) === "affiche #17130e", await themeOf(page2));
 steps = await q(page2, "li.step");
 check("connecté : étape 1 faite, étape 2 active", steps.map((s) => s.state).join(",") === "done,current,todo", steps.map((s) => s.state).join(","));
 check("l'onglet choisi est retenu", (await q(page2, "[data-client='claude-code']"))[0]?.selected === "true");
