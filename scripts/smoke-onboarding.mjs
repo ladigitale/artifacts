@@ -4,7 +4,7 @@
  * Prérequis : VITE_API_BASE_URL=http://localhost:4455 VITE_TADAAA_URL=http://localhost:4455 yarn build
  * Lancer   : CHROME_PATH=…/chrome node scripts/smoke-onboarding.mjs
  *
- * Vérifie : accueil (vitrine, bouton Commencer), /demarrer hors connexion (étape 1 active, inscription avec
+ * Vérifie : accueil (scène physique attrapable, vitrine, bouton Commencer), /demarrer hors connexion (étape 1 active, inscription avec
  * retour porté par l'URL), onglets d'assistant et adresse MCP, retour de connexion vers /demarrer
  * (`/cloud?handoff=…&next=/demarrer`), création du jeton Cursor, détection du premier artefact.
  */
@@ -54,6 +54,17 @@ await page.goto(`${origin}/`);
 await page.waitForTimeout(1200);
 const cards = await q(page, "a[data-featured]");
 check("accueil : vitrine de 5 artefacts", cards.length === 5, cards.map((c) => c.href).join(" "));
+await page.waitForTimeout(2500);
+const tiles = await q(page, "sonic-stage > div");
+check("accueil : scène creative-stack montée (9 éléments posés par la physique)", tiles.length === 9, String(tiles.length));
+const idee = await page.evaluate(new Function(`${deepFn} const b = deep(document, "#idee")[0].getBoundingClientRect(); return {x: b.x + b.width / 2, y: b.y + b.height / 2};`));
+await page.mouse.move(idee.x, idee.y);
+await page.mouse.down();
+await page.mouse.move(idee.x - 40, idee.y - 140, {steps: 10});
+await page.waitForTimeout(250);
+const held = await page.evaluate(new Function(`${deepFn} const b = deep(document, "#idee")[0].getBoundingClientRect(); return {y: b.y + b.height / 2};`));
+await page.mouse.up();
+check("accueil : un mot se laisse attraper et soulever", idee.y - held.y > 60, `${Math.round(idee.y)} → ${Math.round(held.y)}`);
 await shot(page, "accueil.png");
 await click(page, "[data-cta='start']");
 await page.waitForTimeout(600);
