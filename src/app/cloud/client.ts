@@ -171,6 +171,11 @@ export async function createMcpAccessToken(name: string): Promise<{plainToken: s
   });
 }
 
+/** Pages légales, servies par l'app Tadaaa (éditeur, CGU, confidentialité). */
+export function tadaaaLegalUrl(doc: "mentions" | "terms" | "privacy" | "cookies"): string {
+  return new URL(`/legal/${doc}`, tadaaaWebUrl()).toString();
+}
+
 /** Page « Assistant IA » de Tadaaa (fournisseur, modèle, clé de l'agent). */
 export function tadaaaAssistantSettingsUrl(): string {
   return new URL("/connectivity/assistant", tadaaaWebUrl()).toString();

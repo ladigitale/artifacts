@@ -113,6 +113,12 @@ export class ArtifactViewer extends LitElement {
       :host([embedded]) {
         position: relative;
       }
+      /* Garde-fou : un document en \`position:fixed;inset:0\` (jeu plein écran) remplit le cadre
+         du viewer, pas la page hôte ni l'atelier. \`contain: layout\` fait du cadre le bloc
+         conteneur des descendants fixes. */
+      :host([embedded]) .artifact-bare {
+        contain: layout;
+      }
       :host([embedded]) .artifact-io-status {
         position: absolute;
         top: 8px;

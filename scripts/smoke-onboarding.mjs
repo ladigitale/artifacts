@@ -53,7 +53,7 @@ page.on("pageerror", (e) => errors.push(String(e)));
 await page.goto(`${origin}/`);
 await page.waitForTimeout(1200);
 const cards = await q(page, "a[data-featured]");
-check("accueil : vitrine de 6 artefacts", cards.length === 6, cards.map((c) => c.href).join(" "));
+check("accueil : vitrine de 5 artefacts", cards.length === 5, cards.map((c) => c.href).join(" "));
 await shot(page, "accueil.png");
 await click(page, "[data-cta='start']");
 await page.waitForTimeout(600);
