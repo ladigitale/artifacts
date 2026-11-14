@@ -16,12 +16,47 @@ export const artStyles = css`
     --art-on-accent: var(--sc-accent-content, var(--sc-primary-content));
     --art-display: var(--sc-font-family-headings, system-ui, sans-serif);
     --art-serif: "Instrument Serif", "Iowan Old Style", Georgia, serif;
-    --art-edge: 1.5px solid var(--art-ink);
+    /* Aplats décoratifs : jamais du sens. Hors thème maison, on retombe sur les couleurs du thème. */
+    --art-deco-1: var(--sc-deco-1, var(--sc-primary));
+    --art-deco-2: var(--sc-deco-2, var(--sc-info));
+    --art-deco-3: var(--sc-deco-3, var(--sc-warning));
+    --art-deco-4: var(--sc-deco-4, var(--sc-success));
+    --art-on-deco-1: var(--sc-deco-content, var(--sc-primary-content));
+    --art-on-deco-2: var(--sc-deco-content, var(--sc-info-content));
+    --art-on-deco-3: var(--sc-deco-content, var(--sc-warning-content));
+    --art-on-deco-4: var(--sc-deco-content, var(--sc-success-content));
+    --art-round: calc(var(--sc-rounded, 0.5rem) * 1.6);
+    --art-blob: 58% 42% 55% 45% / 46% 56% 44% 54%;
+    --art-edge: 2px solid var(--art-ink);
     --art-hard: 6px 6px 0 var(--art-ink);
+    /* Trame de points, nette : la texture de fond. */
+    --art-dots: radial-gradient(color-mix(in srgb, var(--art-ink) 16%, transparent) 1.3px, transparent 1.7px);
     --art-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
-    background: var(--art-paper);
+    background-color: var(--art-paper);
+    background-image: var(--art-dots);
+    background-size: 14px 14px;
     color: var(--art-ink);
+  }
+  /* Hachures et trame pour habiller un aplat. */
+  .hatch {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--art-ink) 22%, transparent) 0 2px,
+      transparent 2px 9px
+    );
+  }
+  .squiggle {
+    display: block;
+    width: 100%;
+    height: 0.22em;
+    overflow: visible;
+  }
+  .squiggle path {
+    fill: none;
+    stroke-width: 5;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
   }
   /* Rehaut au surligneur : le mot reste à l'encre, l'accent passe derrière. */
   .mark {

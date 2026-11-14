@@ -260,16 +260,20 @@ export class ArtifactOnboarding extends LitElement {
         gap: var(--ui-2);
       }
 
-      /* ───── Même direction que l'accueil (art.ts) : papier, encre, vermillon ───── */
+      /* ───── Même habillage que l'accueil (art.ts) : formes rondes, gros trait, aplats ───── */
       :host {
         font-family: var(--art-display);
       }
-      header {
-        border-bottom: var(--art-edge);
-      }
       .edition {
+        padding: 0.15em 0.9em;
+        border: var(--art-edge);
+        border-radius: 999px;
+        background: var(--art-deco-3);
+        color: var(--art-on-deco-3);
         font-family: var(--art-serif);
         font-style: italic;
+        transform: rotate(-1.5deg);
+        box-shadow: 3px 3px 0 var(--art-ink);
       }
       h1 {
         font-size: clamp(2.25rem, 7vw, 4rem);
@@ -278,10 +282,12 @@ export class ArtifactOnboarding extends LitElement {
         font-stretch: 85%;
         letter-spacing: -0.04em;
         text-transform: uppercase;
+        text-shadow: 0.045em 0.045em 0 var(--art-deco-1);
       }
       h1 .serif {
         display: inline-block;
         text-transform: none;
+        text-shadow: none;
         font-size: 1.12em;
         transform: rotate(-3deg);
       }
@@ -290,53 +296,64 @@ export class ArtifactOnboarding extends LitElement {
         font-weight: 400;
       }
       .steps {
-        gap: var(--ui-6);
+        gap: var(--ui-8);
       }
       .step {
+        --hue: var(--art-deco-1);
+        --on-hue: var(--art-on-deco-1);
         padding: var(--ui-6);
         border: var(--art-edge);
-        border-radius: 0;
+        border-radius: calc(var(--art-round) * 1.4);
         background: var(--art-card);
-        box-shadow: none;
+        box-shadow: 7px 7px 0 var(--hue);
+        transition: transform 0.45s var(--art-spring);
+      }
+      .step[data-step="connect"] {
+        --hue: var(--art-deco-2);
+        --on-hue: var(--art-on-deco-2);
+      }
+      .step[data-step="publish"] {
+        --hue: var(--art-deco-3);
+        --on-hue: var(--art-on-deco-3);
       }
       .step:nth-child(odd) {
-        transform: rotate(-0.5deg);
+        transform: rotate(-0.6deg);
       }
       .step:nth-child(even) {
-        transform: rotate(0.45deg);
+        transform: rotate(0.5deg);
       }
       .step[data-state="current"] {
-        box-shadow: 6px 6px 0 var(--art-accent);
+        border-color: var(--art-ink);
+        box-shadow: 7px 7px 0 var(--hue);
       }
       .step[data-state="todo"] {
         border-style: dashed;
-        background: transparent;
+        box-shadow: none;
       }
       .badge,
       .step[data-state="current"] .badge,
       .step[data-state="done"] .badge {
-        width: 3rem;
-        height: 3rem;
-        border: 0;
-        border-radius: 0;
-        background: none;
-        color: var(--art-ink);
+        width: 3.4rem;
+        height: 3.1rem;
+        border: var(--art-edge);
+        border-radius: var(--art-blob);
+        background: var(--hue);
+        color: var(--on-hue);
         font-family: var(--art-serif);
         font-style: italic;
         font-weight: 400;
-        font-size: 3.4rem;
-        line-height: 0.8;
-        transform: rotate(-8deg);
-      }
-      .step[data-state="current"] .badge {
-        background: linear-gradient(to top, var(--art-accent) 0 45%, transparent 45%);
+        font-size: 2.2rem;
+        line-height: 1;
+        transform: rotate(-9deg);
+        box-shadow: 3px 3px 0 var(--art-ink);
       }
       .step[data-state="done"] .badge {
-        color: var(--sc-success);
-        font-size: 2.4rem;
+        background: var(--art-accent);
+        color: var(--art-on-accent);
+        font-size: 1.7rem;
       }
       h2 {
-        line-height: 3rem;
+        line-height: 3.1rem;
         font-size: var(--ui-fs-xl);
         font-weight: 800;
         font-stretch: 85%;
@@ -347,42 +364,39 @@ export class ArtifactOnboarding extends LitElement {
         color: color-mix(in srgb, var(--art-ink) 78%, transparent);
       }
       .tabs {
-        padding: 0;
-        gap: 0;
+        padding: 3px;
+        gap: 3px;
         border: var(--art-edge);
-        border-radius: 0;
+        border-radius: 999px;
         background: var(--art-card);
-        overflow: hidden;
       }
       .tabs button {
-        border-radius: 0;
+        border-radius: 999px;
         font-weight: 700;
         padding: var(--ui-2) var(--ui-4);
       }
-      .tabs button + button {
-        border-inline-start: 1.5px solid var(--art-ink);
-      }
       .tabs button[aria-selected="true"] {
-        background: var(--art-ink);
-        color: var(--art-paper);
-        box-shadow: none;
+        background: var(--hue);
+        color: var(--on-hue);
+        box-shadow: 0 0 0 2px var(--art-ink);
       }
       .copy code,
       .copy pre {
         border: var(--art-edge);
-        border-radius: 0;
-        background: var(--art-paper);
+        border-radius: var(--art-round);
+        background-color: var(--art-paper);
       }
       .dot {
-        background: var(--art-ink);
-        border-radius: 0;
-        transform: rotate(45deg);
+        background: var(--hue);
+        border: 2px solid var(--art-ink);
+        width: 0.8rem;
+        height: 0.8rem;
       }
       .invite {
         padding: var(--ui-6);
         border: var(--art-edge);
-        border-radius: 0;
-        background: var(--art-accent);
+        border-radius: calc(var(--art-round) * 1.4);
+        background-color: var(--art-accent);
         color: var(--art-on-accent);
         box-shadow: var(--art-hard);
         transform: rotate(0.8deg);
@@ -394,10 +408,8 @@ export class ArtifactOnboarding extends LitElement {
         color: inherit;
       }
       .invite .copy code {
-        color: var(--art-ink);
-      }
-      .invite .copy code {
         background: var(--art-card);
+        color: var(--art-ink);
       }
       footer {
         width: 100%;
@@ -405,6 +417,11 @@ export class ArtifactOnboarding extends LitElement {
         margin-inline: auto;
         padding: 0 var(--ui-4) var(--ui-8);
         font-size: var(--ui-fs-sm);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .step {
+          transition: none;
+        }
       }
     `,
   ];
@@ -756,7 +773,7 @@ export class ArtifactOnboarding extends LitElement {
         <ol class="steps">
           ${this.renderAccount(s1)} ${this.renderConnect(s2)} ${this.renderPublish(s3)}
         </ol>
-        <section class="invite" aria-labelledby="invite-title">
+        <section class="invite hatch" aria-labelledby="invite-title">
           <h2 id="invite-title">Inviter quelqu’un</h2>
           <p class="muted">Envoyez ce lien : il ouvre directement ce parcours.</p>
           ${this.copyable("invite", invite)}
