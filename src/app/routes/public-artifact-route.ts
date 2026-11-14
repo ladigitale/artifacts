@@ -1,7 +1,7 @@
 import {html, type TemplateResult} from "lit";
 import "../components/artifact-viewer";
 
-const RESERVED = new Set(["admin", "cloud"]);
+const RESERVED = new Set(["admin", "cloud", "demarrer"]);
 
 /**
  * Catch-all public artefact. Must be router `fallback` — Concorde renders

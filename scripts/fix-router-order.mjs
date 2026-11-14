@@ -1,6 +1,6 @@
 /**
  * Post-process Concorde generate-routes:
- * 1. Reserved paths (`/`, `/admin`, `/cloud`) before catch-all
+ * 1. Reserved paths (`/`, `/admin`, `/cloud`, `/demarrer`) before catch-all
  * 2. Public artefacts via `fallback` — NOT `/:slug` — because Concorde paints
  *    every matching route (so `/:slug` would also mount on `/admin`).
  */
@@ -23,6 +23,7 @@ const block = `const layoutRoutes = {
     "/$": page,
     "/admin\\\\b": (params?: Record<string, string>) => adminLayout(html\`<sonic-router .basePath=\${basePath} .routes=\${adminLayoutRoutes}></sonic-router>\`, params),
     "/cloud\\\\b": (params?: Record<string, string>) => cloudLayout(html\`<sonic-router .basePath=\${basePath} .routes=\${cloudLayoutRoutes}></sonic-router>\`, params),
+    "/demarrer\\\\b": () => html\`<sonic-router .basePath=\${basePath} .routes=\${demarrerDefaultLayoutRoutes}></sonic-router>\`,
     fallback: () => renderPublicArtifactRoute(),
 }        
 return layout`;

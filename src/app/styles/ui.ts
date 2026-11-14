@@ -244,6 +244,11 @@ export const uiStyles = css`
     gap: var(--ui-3);
     padding: var(--ui-8) var(--ui-6);
   }
+  .empty-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ui-2);
+  }
   .empty p {
     color: var(--ui-muted);
     max-width: 46ch;

@@ -521,13 +521,19 @@ export class ArtifactLibraryPage extends LitElement {
       <div class="panel empty">
         <h2>Aucun artefact pour l’instant</h2>
         <p>
-          Décrivez ce que vous voulez à l’atelier : l’agent le conçoit, vous le prévisualisez, puis vous
-          le publiez. Vous pouvez aussi en publier depuis un client MCP.
+          Branchez votre assistant (Claude, Claude Code, Cursor) et demandez-lui de publier un
+          artefact : le parcours guidé vous y amène en trois étapes. L’atelier fait la même chose dans
+          le navigateur, avec votre propre clé de modèle.
         </p>
-        <sonic-button type="primary" @click=${() => navigate("/admin/atelier")}>
-          <sonic-icon slot="prefix" library="custom" name="chat-bubble" size="sm"></sonic-icon>
-          Créer avec l’atelier
-        </sonic-button>
+        <div class="empty-actions">
+          <sonic-button type="primary" data-empty-start @click=${() => navigate("/demarrer")}>
+            Démarrer en trois étapes
+          </sonic-button>
+          <sonic-button type="default" variant="outline" @click=${() => navigate("/admin/atelier")}>
+            <sonic-icon slot="prefix" library="custom" name="chat-bubble" size="sm"></sonic-icon>
+            Créer avec l’atelier
+          </sonic-button>
+        </div>
       </div>
     `;
   }
