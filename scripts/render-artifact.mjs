@@ -15,6 +15,7 @@
  *       {"press": "Enter"},                   // touche clavier (nom Playwright)
  *       {"hold": "Space", "ms": 300},
  *       {"click": "sonic-button", "index": 0},// sélecteur CSS traversant les shadow roots
+ *       {"drag": "sonic-3d", "from": [0.5, 0.5], "to": [0.6, 0.4]}, // glisser, en fractions de la boîte de l'élément
  *       {"waitText": "Game over", "timeout": 5000}, // attend un texte affiché (échec si absent)
  *       {"expectText": "Score"},              // assertion : texte affiché (shadow DOM compris)
  *       {"expectNoText": "undefined"},        // assertion : texte absent
@@ -144,6 +145,18 @@ try {
       const box = await page.evaluate(new Function("a", deep + `const e = all(a[0])[a[1]]; if (!e) return null; e.scrollIntoView({block: "center"}); const r = e.getBoundingClientRect(); return r.width ? {x: r.x + r.width / 2, y: r.y + r.height / 2} : null;`), [s.click, s.index ?? 0]);
       if (!box) out.errors.push(`étape ${i} : « ${s.click} » introuvable ou invisible`);
       else await page.mouse.click(box.x, box.y);
+    } else if (s.drag) {
+      // glisser : de `from` à `to`, en fractions [x, y] de la boîte de l'élément (0,0 = coin haut gauche)
+      const r = await page.evaluate(new Function("a", deep + `const e = all(a[0])[a[1]]; if (!e) return null; e.scrollIntoView({block: "center"}); const r = e.getBoundingClientRect(); return r.width ? {x: r.x, y: r.y, w: r.width, h: r.height} : null;`), [s.drag, s.index ?? 0]);
+      if (!r) out.errors.push(`étape ${i} : « ${s.drag} » introuvable ou invisible`);
+      else {
+        const [fx, fy] = s.from ?? [0.5, 0.5];
+        const [tx, ty] = s.to ?? [0.5, 0.5];
+        await page.mouse.move(r.x + fx * r.w, r.y + fy * r.h);
+        await page.mouse.down();
+        await page.mouse.move(r.x + tx * r.w, r.y + ty * r.h, {steps: 12});
+        await page.mouse.up();
+      }
     } else if (s.waitText) {
       const until = Date.now() + Math.min(Number(s.timeout ?? 5000), 20000);
       let found = false;
@@ -158,7 +171,7 @@ try {
       if (s.count != null ? n !== s.count : n === 0) fail(i, s, `« ${s.expect} » : ${n} trouvé(s)${s.count != null ? `, ${s.count} attendu(s)` : ""}`);
     } else if (s.shot) await shot(String(s.shot).replace(/[^\w-]/g, "_"));
     // Étape non reconnue (chaîne JSON au lieu d'un objet, clé mal orthographiée) : le dire au lieu de l'ignorer.
-    else out.errors.push(`étape ${i} ignorée : objet attendu parmi wait, press, hold, click, waitText, expectText, expectNoText, expect, shot (reçu ${JSON.stringify(s).slice(0, 80)})`);
+    else out.errors.push(`étape ${i} ignorée : objet attendu parmi wait, press, hold, click, drag, waitText, expectText, expectNoText, expect, shot (reçu ${JSON.stringify(s).slice(0, 80)})`);
   }
   await page.waitForTimeout(Math.min(Number(req.settleMs ?? 800), 10000));
 
