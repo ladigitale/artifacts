@@ -15,7 +15,7 @@
  *       {"press": "Enter"},                   // touche clavier (nom Playwright)
  *       {"hold": "Space", "ms": 300},
  *       {"click": "sonic-button", "index": 0},// sélecteur CSS traversant les shadow roots
- *       {"drag": "sonic-3d", "from": [0.5, 0.5], "to": [0.6, 0.4]}, // glisser, en fractions de la boîte de l'élément
+ *       {"drag": "sonic-3d", "from": [0.5, 0.5], "to": [0.6, 0.4], "keys": ["r"]}, // glisser (fractions de la boîte de l'élément), touches avant de lâcher
  *       {"waitText": "Game over", "timeout": 5000}, // attend un texte affiché (échec si absent)
  *       {"expectText": "Score"},              // assertion : texte affiché (shadow DOM compris)
  *       {"expectNoText": "undefined"},        // assertion : texte absent
@@ -155,6 +155,8 @@ try {
         await page.mouse.move(r.x + fx * r.w, r.y + fy * r.h);
         await page.mouse.down();
         await page.mouse.move(r.x + tx * r.w, r.y + ty * r.h, {steps: 12});
+        // touches pressées avant de lâcher (rotation de l'objet saisi, par ex.)
+        for (const k of Array.isArray(s.keys) ? s.keys.slice(0, 20) : []) await page.keyboard.press(String(k));
         await page.mouse.up();
       }
     } else if (s.waitText) {
