@@ -1,0 +1,88 @@
+{
+ "schema": "artifacts/1",
+ "title": "Étiquette",
+ "theme": "default",
+ "capabilities": [
+  "bluetooth"
+ ],
+ "defaultView": "main",
+ "views": [
+  {
+   "id": "main",
+   "title": "Étiquette",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "div",
+      "attributes": {
+       "style": "padding:1rem;max-width:40rem;display:grid;gap:1rem"
+      },
+      "nodes": [
+       {
+        "tagName": "sonic-bluetooth",
+        "attributes": {
+         "id": "bt",
+         "profile": "luck",
+         "for": "connecter",
+         "gap-ms": "0"
+        }
+       },
+       {
+        "tagName": "sonic-still",
+        "attributes": {
+         "id": "motif",
+         "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAABgCAAAAAAGWKANAAAAdUlEQVR42u3PAQkAAAwDoPUv/ccYA21gUnIlERYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFt4OP44d1ZXmGJF2AAAAAElFTkSuQmCC",
+         "fit": "contain",
+         "style": "width:240px;height:96px"
+        }
+       },
+       {
+        "tagName": "sonic-label-printer",
+        "attributes": {
+         "id": "imp",
+         "transport": "#bt",
+         "source": "#motif",
+         "label-mm": "30x12",
+         "for": "imprimer",
+         "show-preview": true,
+         "time-scale": "0.02",
+         "style": "width:240px"
+        }
+       },
+       {
+        "tagName": "sonic-button",
+        "attributes": {
+         "id": "connecter",
+         "type": "primary"
+        },
+        "nodes": [
+         {
+          "tagName": "span",
+          "attributes": {
+           "text": "Connecter l'imprimante"
+          }
+         }
+        ]
+       },
+       {
+        "tagName": "sonic-button",
+        "attributes": {
+         "id": "imprimer",
+         "type": "success"
+        },
+        "nodes": [
+         {
+          "tagName": "span",
+          "attributes": {
+           "text": "Imprimer"
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}

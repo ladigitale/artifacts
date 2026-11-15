@@ -794,7 +794,7 @@ export class ArtifactViewer extends LitElement {
     `;
   }
 
-  /** Bandeau : l'artefact peut demander caméra / micro / MIDI / écran (jamais sans un clic de l'utilisateur). */
+  /** Bandeau : l'artefact peut demander caméra / micro / MIDI / écran / Bluetooth (jamais sans un clic de l'utilisateur). */
   private renderCapabilities() {
     const caps = docCapabilities(this.data?.document);
     const mlOrigins = docMlOrigins(this.data?.document);
@@ -804,6 +804,7 @@ export class ArtifactViewer extends LitElement {
       microphone: "le micro",
       midi: "vos appareils MIDI",
       screen: "un partage d’écran",
+      bluetooth: "un appareil Bluetooth",
     };
     const names = caps.map((c) => label[c] ?? c);
     const list = names.length > 1 ? `${names.slice(0, -1).join(", ")} et ${names[names.length - 1]}` : names[0];
