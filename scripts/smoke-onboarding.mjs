@@ -144,6 +144,29 @@ const link = (await q(page2, "[data-first-artifact] a.link"))[0];
 check("lien de l'artefact affiché", link?.href === `${origin}/quiz-chateaux`, link?.href);
 await shot(page2, "demarrer-publie.png");
 
+// Thèmes : trois, choisis ici, retenus d'une page à l'autre ; anciens identifiants ramenés au plus proche.
+const tp = await ctx.newPage();
+tp.on("pageerror", (e) => errors.push(String(e)));
+await tp.goto(`${origin}/`);
+await tp.waitForTimeout(1200);
+const opts = await q(tp, "artifact-theme-switcher .opt, .opt");
+check("sélecteur : trois thèmes", opts.length === 3, opts.map((o) => o.text).join(" / "));
+await tp.evaluate(new Function(`${deepFn} const b = deep(document, ".opt").find((e) => e.textContent.includes("Nuit")); b.click();`));
+await tp.waitForTimeout(300);
+check("choisir Nuit l'applique", (await themeOf(tp)).startsWith("nuit "), await themeOf(tp));
+await tp.goto(`${origin}/demarrer`);
+await tp.waitForTimeout(800);
+check("Nuit retenu sur /demarrer", (await themeOf(tp)).startsWith("nuit "), await themeOf(tp));
+await tp.evaluate(() => localStorage.setItem("artifacts-theme", "dracula"));
+await tp.goto(`${origin}/`);
+await tp.waitForTimeout(800);
+check("ancien thème sombre (dracula) → Nuit", (await themeOf(tp)).startsWith("nuit "), await themeOf(tp));
+await tp.goto(`${origin}/?theme=matcha`);
+await tp.waitForTimeout(800);
+check("ancien thème clair (?theme=matcha) → Affiche", (await themeOf(tp)).startsWith("affiche "), await themeOf(tp));
+await tp.evaluate(() => localStorage.removeItem("artifacts-theme"));
+await tp.close();
+
 // Mobile
 const m = await browser.newContext({viewport: {width: 380, height: 760}});
 const mp = await m.newPage();

@@ -33,6 +33,7 @@
     "smoke:vector": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-vector.mjs",
     "smoke:plot": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-plot.mjs",
     "smoke:scenes": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-scenes.mjs",
+    "check:themes": "node scripts/check-theme-contrast.mjs",
     "smoke:onboarding": "VITE_API_BASE_URL=http://localhost:4455 VITE_TADAAA_URL=http://localhost:4455 vite build && node scripts/smoke-onboarding.mjs",
     "smoke:embed-fixed": "VITE_API_BASE_URL=http://localhost:4455 yarn build && node scripts/smoke-embed-fixed.mjs"
   },

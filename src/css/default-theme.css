@@ -1,38 +1,40 @@
-/* Thème par défaut (= Tadaaa default). Viewer : :root ; embed : réécrit en :host. */
+/* Thème par défaut d'Artefacts (= Affiche). Viewer : :root ; intégration : réécrit en :host. */
 :root {
+  --belts-content-max-width: 72rem;
   color-scheme: light;
-
-  --belts-content-max-width: 72rem; /* = Tailwind max-w-6xl */
-
-  --sc-base: #f4f2ff;
-  --sc-base-content: #14101f;
-  --sc-base-50: #e8e4f8;
-  --sc-base-100: #d4cef0;
-  --sc-base-200: #b8aee0;
-  --sc-base-300: #9488c4;
-  --sc-base-400: #6e64a0;
-  --sc-base-500: #524878;
-  --sc-base-600: #3a3258;
-  --sc-base-700: #282240;
-  --sc-base-800: #1a162c;
-  --sc-base-900: #100e1a;
-
-  --sc-primary: #4f1fff;
-  --sc-primary-content: #f8f6ff;
-  --sc-info: #00c8ff;
-  --sc-info-content: #002430;
-  --sc-success: #2b8400;
-  --sc-success-content: #f4ffe8;
-  --sc-warning: #ff6b1a;
-  --sc-warning-content: #fff5ee;
-  --sc-danger: #ff1a6a;
-  --sc-danger-content: #fff0f5;
-
-  --sc-rounded: 0.625rem;
+  --sc-base: #fffdf7;
+  --sc-base-content: #17130e;
+  --sc-base-50: #f3ede1;
+  --sc-base-100: #e6dece;
+  --sc-base-200: #d2c8b4;
+  --sc-base-300: #b0a48e;
+  --sc-base-400: #857a66;
+  --sc-base-500: #5f5647;
+  --sc-base-600: #453e33;
+  --sc-base-700: #2e2922;
+  --sc-base-800: #1f1b16;
+  --sc-base-900: #17130e;
+  --sc-primary: #17130e;
+  --sc-primary-content: #fffdf7;
+  --sc-accent: #d7f23f;
+  --sc-accent-content: #17130e;
+  --sc-deco-1: #ff5fa2;
+  --sc-deco-2: #19d3c5;
+  --sc-deco-3: #ffd23f;
+  --sc-deco-4: #ff8a3d;
+  --sc-deco-content: #17130e;
+  --sc-info: #1f5fc4;
+  --sc-info-content: #ffffff;
+  --sc-success: #177a40;
+  --sc-success-content: #ffffff;
+  --sc-warning: #e08a00;
+  --sc-warning-content: #1c1100;
+  --sc-danger: #c62a1f;
+  --sc-danger-content: #ffffff;
+  --sc-rounded: 0.9rem;
   --sc-btn-rounded: 9999px;
-  --sc-border-width: max(2px, 0.125rem);
-
+  --sc-border-width: 2px;
   --sc-font-family-base: "DM Sans", ui-sans-serif, sans-serif;
-  --sc-font-family-headings: "Space Grotesk", ui-sans-serif, sans-serif;
+  --sc-font-family-headings: "Bricolage Grotesque", ui-sans-serif, sans-serif;
   --sc-headings-font-family: var(--sc-font-family-headings);
 }
