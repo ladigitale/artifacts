@@ -419,7 +419,10 @@ export const landingStyles = css`
   .ticker .serif {
     text-transform: none;
     font-size: 1.25em;
-    color: var(--art-accent);
+    padding: 0 0.25em 0.05em;
+    border-radius: 999px;
+    background: var(--art-accent);
+    color: var(--art-on-accent);
   }
   .ticker .out {
     color: transparent;

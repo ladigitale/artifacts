@@ -2,8 +2,8 @@
 @import "./default-theme.css";
 
 /*
-Fallback : default-theme.css (= Tadaaa default). Autres thèmes : themes.css via html[data-theme].
-Runtime : GET /api/appearance?theme= (sync + fontsCssUrl).
+Fallback : default-theme.css (= Affiche). Thèmes : themes.css via html[data-theme].
+Thèmes propres à Artefacts, sans appel réseau (src/app/appearance.ts).
 */
 
 :root {

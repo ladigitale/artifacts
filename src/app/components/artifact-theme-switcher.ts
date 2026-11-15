@@ -5,26 +5,9 @@ import {css, html, LitElement} from "lit";
 import {customElement, state} from "lit/decorators.js";
 import {chooseTheme, loadStoredThemeId} from "../appearance";
 import {uiStyles} from "../styles/ui";
+import {THEMES, type ArtifactTheme} from "../themes";
 
-type ThemeOption = {id: string; label: string; dark: boolean; base: string; ink: string; primary: string};
-
-/** Miroir du catalogue Tadaaa (`config/appearance/themes.json`) : de quoi dessiner les pastilles. */
-const THEMES: ThemeOption[] = [
-  {id: "affiche", label: "Affiche", dark: false, base: "#f3ede1", ink: "#17130e", primary: "#d7f23f"},
-  {id: "lavande", label: "Lavande", dark: false, base: "#f0e8ff", ink: "#1e0840", primary: "#7c2cff"},
-  {id: "matcha", label: "Matcha", dark: false, base: "#eef8e4", ink: "#142416", primary: "#2f8f3a"},
-  {id: "bubblegum", label: "Bubblegum", dark: false, base: "#fff5fb", ink: "#5a0848", primary: "#ff1aad"},
-  {id: "cafe", label: "Café", dark: false, base: "#efe2d0", ink: "#1c0e08", primary: "#8b2e0e"},
-  {id: "encre", label: "Encre", dark: false, base: "#f2eee6", ink: "#0c1020", primary: "#121a6e"},
-  {id: "windows", label: "Windows 95", dark: false, base: "#c0c0c0", ink: "#000000", primary: "#000080"},
-  {id: "dark", label: "Sombre", dark: true, base: "#07070c", ink: "#eef0ff", primary: "#a78bfa"},
-  {id: "nord", label: "Nord", dark: true, base: "#1b2430", ink: "#eceff4", primary: "#5eead4"},
-  {id: "dracula", label: "Dracula", dark: true, base: "#191a22", ink: "#f8f8ff", primary: "#d580ff"},
-  {id: "coraline", label: "Coraline", dark: true, base: "#0a1220", ink: "#ff3d4a", primary: "#8b4a28"},
-  {id: "crepuscule", label: "Crépuscule", dark: true, base: "#14081c", ink: "#ffe8d0", primary: "#ff6a1a"},
-  {id: "synthwave", label: "Synthwave", dark: true, base: "#12001f", ink: "#ffe8ff", primary: "#ff1fa8"},
-  {id: "terminal", label: "Terminal", dark: true, base: "#020805", ink: "#39ff88", primary: "#39ff88"},
-];
+type ThemeOption = ArtifactTheme;
 
 @customElement("artifact-theme-switcher")
 export class ArtifactThemeSwitcher extends LitElement {
@@ -53,14 +36,6 @@ export class ArtifactThemeSwitcher extends LitElement {
         border: 1px solid var(--ui-line);
         border-radius: var(--ui-radius);
         box-shadow: var(--ui-shadow-pop);
-      }
-      .group-title {
-        padding: var(--ui-2) var(--ui-3) var(--ui-1);
-        color: var(--ui-muted);
-        font-size: var(--ui-fs-xs);
-        font-weight: 600;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
       }
       .grid {
         display: grid;
@@ -137,7 +112,7 @@ export class ArtifactThemeSwitcher extends LitElement {
 
   private pick(id: string) {
     this.themeId = id;
-    void chooseTheme(id);
+    chooseTheme(id);
   }
 
   private current(): ThemeOption {
@@ -153,7 +128,7 @@ export class ArtifactThemeSwitcher extends LitElement {
         aria-checked=${t.id === this.themeId ? "true" : "false"}
         @click=${() => this.pick(t.id)}
       >
-        <span class="sw" style=${`--b:${t.base};--i:${t.ink};--p:${t.primary}`} aria-hidden="true">Aa</span>
+        <span class="sw" style=${`--b:${t.base};--i:${t.ink};--p:${t.accent}`} aria-hidden="true">Aa</span>
         <span class="name">${t.label}</span>
         ${t.id === this.themeId
           ? html`<sonic-icon library="custom" name="check" size="xs"></sonic-icon>`
@@ -170,19 +145,14 @@ export class ArtifactThemeSwitcher extends LitElement {
           <span
             slot="prefix"
             class="dot"
-            style=${`--b:${cur.base};--p:${cur.primary}`}
+            style=${`--b:${cur.base};--p:${cur.accent}`}
             aria-hidden="true"
           ></span>
           <span class="label">${cur.label}</span>
         </sonic-button>
         <div slot="content" class="panel">
-          <div role="radiogroup" aria-label="Thème clair">
-            <div class="group-title">Clairs</div>
-            <div class="grid">${THEMES.filter((t) => !t.dark).map((t) => this.option(t))}</div>
-          </div>
-          <div role="radiogroup" aria-label="Thème sombre">
-            <div class="group-title">Sombres</div>
-            <div class="grid">${THEMES.filter((t) => t.dark).map((t) => this.option(t))}</div>
+          <div role="radiogroup" aria-label="Thème">
+            <div class="grid">${THEMES.map((t) => this.option(t))}</div>
           </div>
         </div>
       </sonic-pop>

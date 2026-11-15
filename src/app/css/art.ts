@@ -3,8 +3,8 @@ import {css} from "lit";
 /**
  * Mise en page « affiche » de l'accueil et du parcours « Démarrer ». Toutes les couleurs
  * viennent des jetons du thème courant (`--sc-*`), partagés par tout Artefacts : changer de
- * thème change ces pages comme les autres. `--sc-accent` (rehauts) est défini par le thème
- * maison « Affiche » ; les thèmes qui ne l'ont pas retombent sur leur primaire.
+ * thème change ces pages comme les autres. `--sc-accent` et les aplats `--sc-deco-*` sont
+ * définis par les trois thèmes d'Artefacts (`src/css/themes.css`).
  * Net et de travers : aplats, traits fins, ombres franches, aucune couleur floue.
  */
 export const artStyles = css`
@@ -58,10 +58,15 @@ export const artStyles = css`
     stroke-linecap: round;
     vector-effect: non-scaling-stroke;
   }
-  /* Rehaut au surligneur : le mot reste à l'encre, l'accent passe derrière. */
+  /* Rehaut : le mot sur un aplat d'accent. */
   .mark {
-    background: linear-gradient(to top, var(--art-accent) 0 42%, transparent 42%);
-    padding-inline: 0.08em;
+    /* Aplat plein : le texte prend la couleur prévue sur l'accent, lisible dans tous les thèmes. */
+    background: var(--art-accent);
+    color: var(--art-on-accent);
+    padding: 0 0.14em 0.04em;
+    border-radius: 0.25em;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
   }
   .serif {
     font-family: var(--art-serif);
