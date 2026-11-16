@@ -21,6 +21,7 @@ import {loadScriptAssets} from "../script-loader";
 import {ensureAddonsFor} from "../addons";
 import {startSinks, type SinkDef} from "../sinks";
 import {persistDecl, persistKey, plain, readSaved, writeSaved} from "../persist";
+import {OnlineSave, onlineDecl} from "../online-save";
 import {runFromLocation, startIoRun, type IoDef, type IoStatus} from "../io-run";
 import {applyDocFontFiles, applyDocFonts} from "../doc-fonts";
 import {claimNamespace, transformDocument, type NamespaceClaim} from "../doc-transform";
@@ -75,6 +76,8 @@ type StoreDef = {
   budgetMs?: number;
   bootAction?: string;
   historySkip?: string;
+  /** Taille maximale de l'état (octets, JSON) : 256 Ko par défaut, 1,2 Mo au plus (images d'un monde). */
+  maxStateBytes?: number;
 };
 
 @customElement("artifact-viewer")
@@ -220,6 +223,7 @@ export class ArtifactViewer extends LitElement {
     this.removeEventListener("click", this.onAnchorClick);
     this.removeEventListener("click", this.onEmbeddedClick);
     this.clearTransformWatchers();
+    this.stopOnline();
     this.viewUnsub?.();
     this.viewUnsub = null;
     this.clearLiveData();
@@ -474,11 +478,15 @@ export class ArtifactViewer extends LitElement {
       const doc = this.data.document as {
         data?: {stores?: Record<string, StoreDef>};
       };
+      // sauvegarde en ligne : la plus récente remplace la locale avant que les stores démarrent
+      this.stopOnline();
+      if (!this.guardErrors.length && !this.previewDocument && !this.embedded) await this.startOnline();
       this.docStores = doc.data?.stores ?? {};
       if (!this.guardErrors.length) {
         await Promise.all([loadScriptAssets(this.data.scriptAssets), ensureAddonsFor(this.data.document)]);
         this.scriptsReady = true;
         await this.applyDataProviders();
+        this.watchOnline();
         const sinks = (this.data.document as {data?: {sinks?: Record<string, SinkDef>}}).data?.sinks;
         if (!this.previewDocument) this.stopSinks = startSinks(this.slug, this.linkToken(), this.nsSinks(sinks));
         this.startIo();
@@ -537,11 +545,86 @@ export class ArtifactViewer extends LitElement {
       // data.persist : au premier calcul, la sauvegarde l'emporte (puis elle suit les changements)
       const key = this.persistKeyOf(name);
       const saved = key && !this.persistWatched.has(name) ? readSaved(key) : undefined;
-      const value = saved !== undefined && typeof saved === typeof computed && Array.isArray(saved) === Array.isArray(computed) ? saved : computed;
+      const same = saved !== undefined && typeof saved === typeof computed && Array.isArray(saved) === Array.isArray(computed);
+      // objet : les clés ajoutées au document depuis la sauvegarde gardent leur valeur calculée
+      const isObj = (v: unknown) => !!v && typeof v === "object" && !Array.isArray(v);
+      const value = same && isObj(saved) && isObj(computed) ? {...(computed as object), ...(saved as object)} : same ? saved : computed;
       set(this.n(name), value);
       set(this.n(`artifact:${this.slug}:transform:${name}`), value);
       if (key && !this.persistWatched.has(name)) this.watchPersisted(name, key);
     }
+  }
+
+  /* ---------------------------------------------------------------- sauvegarde en ligne (data.persist.online) */
+
+  private online: OnlineSave | null = null;
+  private onlineUnsubs: Array<() => void> = [];
+  private onlineStatus = "";
+  private readonly onPageHide = () => this.online?.flush();
+
+  private async startOnline() {
+    const doc = this.data?.document;
+    const on = onlineDecl(doc);
+    const decl = persistDecl(doc);
+    if (!on || !decl || !this.data) return;
+    const id = (this.data as {id?: string}).id || this.slug;
+    this.onlineStatus = on.status;
+    this.online = new OnlineSave(
+      this.slug,
+      this.ns ? `${id}:${this.ns}` : id,
+      this.linkToken(),
+      () => {
+        const out: Record<string, unknown> = {};
+        for (const p of decl.providers) {
+          try {
+            const v = plain((dp(this.n(p)) as {get?: () => unknown}).get?.());
+            if (v !== undefined) out[p] = v;
+          } catch {
+            /* DataProvider indisponible */
+          }
+        }
+        return out;
+      },
+      (st) => {
+        if (this.onlineStatus) set(this.n(this.onlineStatus), {...st});
+      },
+    );
+    const pulled = await this.online.pull();
+    if (pulled) for (const p of decl.providers) if (pulled[p] !== undefined) writeSaved(this.persistKeyOf(p), pulled[p]);
+    if (this.onlineStatus) set(this.n(this.onlineStatus), {...this.online.status});
+    window.addEventListener("pagehide", this.onPageHide);
+  }
+
+  /** Chaque changement d'un DataProvider sauvegardé part en ligne (2 s après le dernier). */
+  private watchOnline() {
+    const save = this.online;
+    const decl = persistDecl(this.data?.document);
+    if (!save || !decl) return;
+    for (const p of decl.providers) {
+      try {
+        const provider = dp(this.n(p)) as {onInternalMutation?: (cb: () => void) => void; offInternalMutation?: (cb: () => void) => void};
+        let first = true;
+        const cb = () => {
+          if (first) {
+            first = false;
+            return;
+          }
+          save.changed();
+        };
+        provider.onInternalMutation?.(cb);
+        this.onlineUnsubs.push(() => provider.offInternalMutation?.(cb));
+      } catch {
+        /* DataProvider indisponible */
+      }
+    }
+  }
+
+  private stopOnline() {
+    for (const off of this.onlineUnsubs) off();
+    this.onlineUnsubs = [];
+    this.online?.dispose();
+    this.online = null;
+    window.removeEventListener("pagehide", this.onPageHide);
   }
 
   /** Transforms listées dans data.persist déjà écoutées (une fois par chargement). */
@@ -843,6 +926,7 @@ export class ArtifactViewer extends LitElement {
             boot-action=${def.bootAction ?? ""}
             persist=${this.persistKeyOf(id)}
             history-skip=${def.historySkip ?? ""}
+            max-state-bytes=${Number.isInteger(def.maxStateBytes) && (def.maxStateBytes as number) > 0 ? Math.min(def.maxStateBytes as number, 1200 * 1024) : 256 * 1024}
           ></sonic-store>`;
         })}
       </div>
