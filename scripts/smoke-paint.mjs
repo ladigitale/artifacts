@@ -6,7 +6,8 @@
  *
  * Sert dist/ avec la CSP de prod + une fausse API publique (tests/fixtures/paint.json).
  * Vérifie : réglages du store appliqués, trait à la souris, gomme, annuler / rétablir, source d'images
- * (frameSeq qui avance), enregistrement PNG, aucune erreur JS / CSP.
+ * (frameSeq qui avance), enregistrement PNG, enregistrement local rouvert après rechargement (persist),
+ * aucune erreur JS / CSP.
  */
 import http from "node:http";
 import fs from "node:fs";
@@ -101,6 +102,24 @@ check("enregistrement PNG en blob:", saved && saved.url.startsWith("blob:") && s
 await get((el) => el.clear());
 const cleared = await pixel(100, 200);
 check("effacer tout remet le fond", cleared[0] === 255 && cleared[3] === 255, JSON.stringify(cleared));
+
+// Enregistrement local (persist) : le trait survit au rechargement de la page.
+await get((el) => { el.tool = "paint"; });
+await page.mouse.move(...at(100, 300));
+await page.mouse.down();
+for (let i = 0; i <= 20; i++) await page.mouse.move(...at(100 + i * 20, 300), {steps: 2});
+await page.mouse.up();
+await page.waitForTimeout(1300);
+const stored = await get((el) => el.getState().stored);
+check("persist : image enregistrée après le trait", stored === "saved", String(stored));
+await page.reload();
+await page.waitForTimeout(1800);
+const kept = await pixel(300, 300);
+check("persist : le trait est rouvert après rechargement", Math.abs(kept[0] - 225) < 6 && Math.abs(kept[1] - 29) < 8, JSON.stringify(kept));
+const blank = await pixel(300, 100);
+check("persist : le reste de la toile est inchangé", blank[0] === 255 && blank[3] === 255, JSON.stringify(blank));
+const st2 = await get((el) => el.getState());
+check("persist : état relu", st2.stored === "saved" && st2.strokes === 1, JSON.stringify({stored: st2.stored, strokes: st2.strokes}));
 await page.screenshot({path: "/tmp/smoke-paint.png"});
 check("aucune erreur JS / CSP", errors.length === 0, errors.join(" | ").slice(0, 400));
 await browser.close();

@@ -26,6 +26,7 @@
         "tagName": "sonic-paint",
         "attributes": {
          "id": "toile",
+         "persist": "smoke-paint",
          "width": "600",
          "height": "400",
          "brush-from": "pinceau",
