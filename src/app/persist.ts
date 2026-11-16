@@ -13,8 +13,10 @@
  */
 
 export type PersistDecl = {providers: string[]; version: number};
+// `online: true` (et `status`, nom d'un DataProvider d'état) : voir online-save.ts
 
-const MAX_BYTES = 512 * 1024;
+// une sauvegarde peut porter de petites images (posters) : jusqu'à 1,2 Mo
+const MAX_BYTES = 1200 * 1024;
 
 /** Déclaration valide de `data.persist`, sinon null (même contrôle que la validation Tadaaa). */
 export function persistDecl(doc: unknown): PersistDecl | null {
