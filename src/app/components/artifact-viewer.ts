@@ -20,6 +20,7 @@ import {applySafeTransforms} from "../jsonata-safe";
 import {loadScriptAssets} from "../script-loader";
 import {ensureAddonsFor} from "../addons";
 import {startSinks, type SinkDef} from "../sinks";
+import {persistDecl, persistKey, plain, readSaved, writeSaved} from "../persist";
 import {runFromLocation, startIoRun, type IoDef, type IoStatus} from "../io-run";
 import {applyDocFontFiles, applyDocFonts} from "../doc-fonts";
 import {claimNamespace, transformDocument, type NamespaceClaim} from "../doc-transform";
@@ -73,6 +74,7 @@ type StoreDef = {
   history?: number;
   budgetMs?: number;
   bootAction?: string;
+  historySkip?: string;
 };
 
 @customElement("artifact-viewer")
@@ -531,9 +533,60 @@ export class ArtifactViewer extends LitElement {
     const transforms = await applySafeTransforms(this.sourceData, doc.data?.transforms);
     // Une source a pu changer pendant l’évaluation : seule la dernière publie.
     if (run !== this.transformRun) return;
-    for (const [name, value] of Object.entries(transforms)) {
+    for (const [name, computed] of Object.entries(transforms)) {
+      // data.persist : au premier calcul, la sauvegarde l'emporte (puis elle suit les changements)
+      const key = this.persistKeyOf(name);
+      const saved = key && !this.persistWatched.has(name) ? readSaved(key) : undefined;
+      const value = saved !== undefined && typeof saved === typeof computed && Array.isArray(saved) === Array.isArray(computed) ? saved : computed;
       set(this.n(name), value);
       set(this.n(`artifact:${this.slug}:transform:${name}`), value);
+      if (key && !this.persistWatched.has(name)) this.watchPersisted(name, key);
+    }
+  }
+
+  /** Transforms listées dans data.persist déjà écoutées (une fois par chargement). */
+  private persistWatched = new Set<string>();
+
+  /**
+   * Clé de sauvegarde locale d'un DataProvider listé dans `data.persist` (vide : pas de sauvegarde ; jamais dans
+   * l'aperçu de l'atelier, où le document change à chaque essai).
+   */
+  private persistKeyOf(name: string): string {
+    if (!this.data || this.previewDocument) return "";
+    const decl = persistDecl(this.data.document);
+    if (!decl || !decl.providers.includes(name)) return "";
+    const id = (this.data as {id?: string}).id || this.slug;
+    return persistKey(this.ns ? `${id}:${this.ns}` : id, decl, name);
+  }
+
+  /** Enregistre une transform à chaque changement (formulaires qui écrivent dedans compris), 400 ms après. */
+  private watchPersisted(name: string, key: string) {
+    this.persistWatched.add(name);
+    try {
+      const provider = dp(this.n(name)) as {
+        get?: () => unknown;
+        onInternalMutation?: (cb: () => void) => void;
+        offInternalMutation?: (cb: () => void) => void;
+      };
+      let timer = 0;
+      let first = true;
+      const cb = () => {
+        // appel immédiat à l'abonnement : rien de neuf à enregistrer
+        if (first) {
+          first = false;
+          return;
+        }
+        clearTimeout(timer);
+        timer = window.setTimeout(() => writeSaved(key, plain(provider.get?.())), 400);
+      };
+      provider.onInternalMutation?.(cb);
+      this.transformUnsubs.push(() => {
+        clearTimeout(timer);
+        provider.offInternalMutation?.(cb);
+        this.persistWatched.delete(name);
+      });
+    } catch {
+      /* DataProvider indisponible : pas de sauvegarde */
     }
   }
 
@@ -788,6 +841,8 @@ export class ArtifactViewer extends LitElement {
             history=${def.history ?? 0}
             budget-ms=${def.budgetMs ?? 8}
             boot-action=${def.bootAction ?? ""}
+            persist=${this.persistKeyOf(id)}
+            history-skip=${def.historySkip ?? ""}
           ></sonic-store>`;
         })}
       </div>

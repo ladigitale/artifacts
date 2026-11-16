@@ -17,6 +17,7 @@
  *       {"click": "sonic-button", "index": 0},// sélecteur CSS traversant les shadow roots
  *       {"drag": "sonic-3d", "from": [0.5, 0.5], "to": [0.6, 0.4], "keys": ["r"]}, // glisser (fractions de la boîte de l'élément), touches avant de lâcher
  *       {"tap": "sonic-3d", "at": [0.4, 0.6]},  // tap à une position de l'élément
+ *       {"reload": true, "wait": 1500},          // recharge la page (localStorage conservé)
  *       {"waitText": "Game over", "timeout": 5000}, // attend un texte affiché (échec si absent)
  *       {"expectText": "Score"},              // assertion : texte affiché (shadow DOM compris)
  *       {"expectNoText": "undefined"},        // assertion : texte absent
@@ -160,6 +161,10 @@ try {
         for (const k of Array.isArray(s.keys) ? s.keys.slice(0, 20) : []) await page.keyboard.press(String(k));
         await page.mouse.up();
       }
+    } else if (s.reload) {
+      // recharge la page (sauvegarde locale, data.persist) ; localStorage est conservé
+      await page.reload({waitUntil: "networkidle"});
+      await page.waitForTimeout(Number(s.wait) || 1500);
     } else if (s.tap) {
       // tap (clic bref) à une position de l'élément, en fractions [x, y] de sa boîte
       const r = await page.evaluate(new Function("a", deep + `const e = all(a[0])[a[1]]; if (!e) return null; e.scrollIntoView({block: "center"}); const r = e.getBoundingClientRect(); return r.width ? {x: r.x, y: r.y, w: r.width, h: r.height} : null;`), [s.tap, s.index ?? 0]);
@@ -182,7 +187,7 @@ try {
       if (s.count != null ? n !== s.count : n === 0) fail(i, s, `« ${s.expect} » : ${n} trouvé(s)${s.count != null ? `, ${s.count} attendu(s)` : ""}`);
     } else if (s.shot) await shot(String(s.shot).replace(/[^\w-]/g, "_"));
     // Étape non reconnue (chaîne JSON au lieu d'un objet, clé mal orthographiée) : le dire au lieu de l'ignorer.
-    else out.errors.push(`étape ${i} ignorée : objet attendu parmi wait, press, hold, click, tap, drag, waitText, expectText, expectNoText, expect, shot (reçu ${JSON.stringify(s).slice(0, 80)})`);
+    else out.errors.push(`étape ${i} ignorée : objet attendu parmi wait, press, hold, click, tap, drag, reload, waitText, expectText, expectNoText, expect, shot (reçu ${JSON.stringify(s).slice(0, 80)})`);
   }
   await page.waitForTimeout(Math.min(Number(req.settleMs ?? 800), 10000));
 
