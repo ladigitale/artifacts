@@ -503,9 +503,9 @@
     jsonata "^2.2.2"
     url-pattern "^1.0.3"
 
-"@supersoniks/creative-stack@github:ladigitale/creative-stack#88e1fc82962d49dec10a9445233a6f579a5626a2":
+"@supersoniks/creative-stack@github:ladigitale/creative-stack#97aa535781984b3a3c772ef3b6432dff771867a9":
   version "0.1.0"
-  resolved "https://codeload.github.com/ladigitale/creative-stack/tar.gz/88e1fc82962d49dec10a9445233a6f579a5626a2"
+  resolved "https://codeload.github.com/ladigitale/creative-stack/tar.gz/97aa535781984b3a3c772ef3b6432dff771867a9"
   dependencies:
     jsonata "^2.2.2"
     markdown-it "15.0.3"
