@@ -63,6 +63,7 @@ const MAX_AUDIO: Record<string, number> = {
   "sonic-serial": 2,
   "sonic-grbl": 1,
   "sonic-gcode": 4,
+  "sonic-laser-pattern": 4,
 };
 
 /** Accès sensibles : le composant n'est accepté que si le document les déclare dans `capabilities`. */
