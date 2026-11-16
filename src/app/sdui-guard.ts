@@ -59,18 +59,23 @@ const MAX_AUDIO: Record<string, number> = {
   // Un appareil Bluetooth = un sélecteur du navigateur et une connexion : deux au plus par page.
   "sonic-bluetooth": 2,
   "sonic-label-printer": 2,
+  // Port série : un sélecteur et une connexion par port ; une seule machine pilotée par page.
+  "sonic-serial": 2,
+  "sonic-grbl": 1,
+  "sonic-gcode": 4,
 };
 
 /** Accès sensibles : le composant n'est accepté que si le document les déclare dans `capabilities`. */
-export const CAPABILITY_TAGS: Record<string, "camera" | "microphone" | "midi" | "screen" | "bluetooth"> = {
+export const CAPABILITY_TAGS: Record<string, "camera" | "microphone" | "midi" | "screen" | "bluetooth" | "serial"> = {
   "sonic-camera": "camera",
   "sonic-mic": "microphone",
   "sonic-midi": "midi",
   "sonic-screen": "screen",
   "sonic-bluetooth": "bluetooth",
+  "sonic-serial": "serial",
 };
 
-export const KNOWN_CAPABILITIES = ["camera", "microphone", "midi", "screen", "bluetooth"] as const;
+export const KNOWN_CAPABILITIES = ["camera", "microphone", "midi", "screen", "bluetooth", "serial"] as const;
 
 /** Capacités déclarées par le document (inconnues ignorées). */
 export function docCapabilities(doc: unknown): string[] {

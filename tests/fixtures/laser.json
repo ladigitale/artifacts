@@ -1,0 +1,101 @@
+{
+ "schema": "artifacts/1",
+ "title": "Laser",
+ "theme": "default",
+ "capabilities": [
+  "serial"
+ ],
+ "defaultView": "main",
+ "data": {
+  "stores": {
+   "plan": {
+    "initial": {
+     "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 10 10\"><path d=\"M0 0H10V10H0Z\" fill=\"none\" stroke=\"#ff0000\"/><rect x=\"3\" y=\"3\" width=\"4\" height=\"4\" fill=\"#000000\"/></svg>"
+    },
+    "reducer": "$state"
+   }
+  }
+ },
+ "views": [
+  {
+   "id": "main",
+   "title": "Laser",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "div",
+      "attributes": {
+       "style": "padding:1rem;max-width:40rem;display:grid;gap:1rem"
+      },
+      "nodes": [
+       {
+        "tagName": "sonic-serial",
+        "attributes": {
+         "id": "port",
+         "profile": "ch340",
+         "for": "connecter"
+        }
+       },
+       {
+        "tagName": "sonic-gcode",
+        "attributes": {
+         "id": "prog",
+         "svg-from": "plan",
+         "width-mm": "30",
+         "power": "20",
+         "speed": "2000",
+         "interval": "1",
+         "ops": "[{\"color\": \"#ff0000\", \"mode\": \"line\", \"power\": 80, \"speed\": 400}]",
+         "auto": true,
+         "show-preview": true,
+         "style": "width:240px"
+        }
+       },
+       {
+        "tagName": "sonic-grbl",
+        "attributes": {
+         "id": "laser",
+         "transport": "#port",
+         "source": "#prog",
+         "machine": "atomstack-a5-pro",
+         "for": "lancer",
+         "time-scale": "0.02"
+        }
+       },
+       {
+        "tagName": "sonic-button",
+        "attributes": {
+         "id": "connecter",
+         "type": "primary"
+        },
+        "nodes": [
+         {
+          "tagName": "span",
+          "attributes": {
+           "text": "Connecter le laser"
+          }
+         }
+        ]
+       },
+       {
+        "tagName": "sonic-button",
+        "attributes": {
+         "id": "lancer",
+         "type": "danger"
+        },
+        "nodes": [
+         {
+          "tagName": "span",
+          "attributes": {
+           "text": "Lancer"
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}
