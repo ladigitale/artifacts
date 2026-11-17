@@ -34,6 +34,7 @@
     "smoke:plot": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-plot.mjs",
     "smoke:scenes": "VITE_API_BASE_URL=http://localhost:4455 vite build && node scripts/smoke-scenes.mjs",
     "check:themes": "node scripts/check-theme-contrast.mjs",
+    "smoke:hero-fluidite": "VITE_API_BASE_URL=http://localhost:4455 yarn build && node scripts/smoke-hero-fluidite.mjs",
     "smoke:onboarding": "VITE_API_BASE_URL=http://localhost:4455 VITE_TADAAA_URL=http://localhost:4455 vite build && node scripts/smoke-onboarding.mjs",
     "smoke:embed-fixed": "VITE_API_BASE_URL=http://localhost:4455 yarn build && node scripts/smoke-embed-fixed.mjs"
   },
@@ -53,7 +54,7 @@
   },
   "dependencies": {
     "@ladigitale/agent-stack": "github:ladigitale/agent-stack#db701cfe82bc6623fe29a64da91b6d4cf79f59a6",
-    "@supersoniks/creative-stack": "github:ladigitale/creative-stack#b19ef2884e8bbc84d93889b4e6805d60ef37f649",
+    "@supersoniks/creative-stack": "github:ladigitale/creative-stack#e673cbc78b3da1bc2f30b9e18779d8ad6c5448c3",
     "pixi.js": "8.19.0",
     "three": "0.180.0",
     "maplibre-gl": "5.24.0"
