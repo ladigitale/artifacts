@@ -89,6 +89,8 @@ void drawFish(inout vec3 col, vec2 q, int i, float A, float t) {
   vec2 r = q - p0;
   if (dot(r, r) > 0.012 * sz * sz) return;
   vec2 lp = vec2(dot(r, dir), dot(r, vec2(-dir.y, dir.x))) / sz;
+  /* Le corps ondule, de plus en plus vers la queue. */
+  lp.y += sin(lp.x * 70.0 - t * 11.0 + float(i) * 1.3) * 0.009 * smoothstep(0.035, -0.065, lp.x);
   float wag = sin(t * 9.0 + float(i) * 2.0) * (0.25 + 0.6 * clamp(uParam1, 0.0, 1.0));
   vec2 tailA = vec2(-0.034, 0.0), tailB = vec2(-0.062, 0.022 + wag * 0.012), tailC = vec2(-0.062, -0.022 + wag * 0.012);
   float body = length(lp / vec2(0.04, 0.021)) - 1.0;
@@ -105,6 +107,12 @@ void mainImage(out vec4 o, in vec2 f) {
   PX = 1.0 / iResolution.y;
   float A = iResolution.x / iResolution.y;
   vec2 q = vec2(f.x, iResolution.y - f.y) * PX;
+  /* Réfraction : tout ce qui est dans l'eau ondule (plus fort quand on défile vite). */
+  float wob = 0.012 + 0.03 * clamp(uParam1, 0.0, 1.0);
+  q += wob * vec2(
+    sin(q.y * 9.0 + iTime * 1.6) + 0.5 * sin(q.y * 23.0 + q.x * 4.0 - iTime * 2.3),
+    cos(q.x * 8.0 - iTime * 1.3) + 0.5 * cos(q.x * 19.0 + q.y * 5.0 + iTime * 2.1));
+  q.x += 0.018 * sin(q.y * 3.0 + iTime * 0.7);
   float t = iTime;
   float p = P();
   bool dark = lum(PAPER) < 0.5;
