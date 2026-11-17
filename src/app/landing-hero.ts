@@ -46,7 +46,8 @@ const body = (t: Tile) => ({
     restitution: "0.42",
     friction: "0.5",
     "angular-damping": "0.6",
-    fill: "transparent",
+    // Corps invisibles : les mots HTML de sonic-stage font l'affichage, le canvas n'a rien à peindre.
+    hidden: "",
   },
 });
 
@@ -54,7 +55,7 @@ const tile = (t: Tile) => ({
   tagName: "div",
   attributes: {
     id: t.name,
-    style: `width:${t.w}px;height:${t.h}px;box-sizing:border-box;display:grid;place-items:center;border-radius:${t.round ? "50%" : "999px"};box-shadow:3px 3px 0 var(--art-ink, var(--sc-base-content));font-family:var(--art-display, inherit);font-weight:700;font-size:${t.name === "idee" ? 26 : 19}px;letter-spacing:-0.01em;user-select:none;${LOOKS[t.look]}`,
+    style: `width:${t.w}px;height:${t.h}px;box-sizing:border-box;display:grid;place-items:center;border-radius:${t.round ? "50%" : "999px"};box-shadow:3px 3px 0 var(--art-ink, var(--sc-base-content));will-change:transform;font-family:var(--art-display, inherit);font-weight:700;font-size:${t.name === "idee" ? 26 : 19}px;letter-spacing:-0.01em;user-select:none;${LOOKS[t.look]}`,
   },
   textContent: t.label,
 });
@@ -76,22 +77,11 @@ export const LANDING_HERO_DOC: Record<string, unknown> = {
             attributes: {
               id: "pile",
               "budget-ms": "50",
-              // `input` part de n = 0 pour chaque corps : une impulsion ne part qu'à la hausse du compteur.
-              initial: JSON.stringify({
-                flips: 0,
-                ctl: {gravity: [0, 9.8]},
-                input: Object.fromEntries(TILES.map((t) => [t.name, {impulse: {n: 0, x: 0, y: 0}}])),
-                sound: {play: {toc: 0}},
-              }),
-              // « flip » : la gravité s'inverse ; une petite impulsion réveille chaque corps endormi.
+              initial: JSON.stringify({flips: 0, ctl: {gravity: [0, 9.8]}, sound: {play: {toc: 0}}}),
+              // « flip » : la gravité s'inverse (le moteur réveille lui-même les corps endormis).
               reducer: `(
-  $names := ${JSON.stringify(TILES.map((t) => t.name))};
   $action.type = "collide" ? $merge([$state, {"sound": {"play": {"toc": $state.sound.play.toc + 1}}}])
-  : $action.type = "flip" ? (
-      $n := $state.flips + 1;
-      $g := $state.ctl.gravity[1] > 0 ? -9.8 : 9.8;
-      $merge([$state, {"flips": $n, "ctl": {"gravity": [0, $g]}, "input": $merge($names.{$: {"impulse": {"n": $n, "x": 0, "y": $g > 0 ? 60 : -60}}})}])
-    )
+  : $action.type = "flip" ? $merge([$state, {"flips": $state.flips + 1, "ctl": {"gravity": [0, $state.ctl.gravity[1] > 0 ? -9.8 : 9.8]}}])
   : $state
 )`,
             },
@@ -117,8 +107,11 @@ export const LANDING_HERO_DOC: Record<string, unknown> = {
                   bounds: "walls",
                   store: "pile",
                   control: "pile.ctl",
-                  input: "pile.input",
                   "collide-min": "5",
+                  // Positions publiées à chaque image et posées telles quelles : aucun retard ni à-coup
+                  // entre la physique et les mots (le moteur ne publie plus rien quand tout dort).
+                  rate: "60",
+                  "nodes-ease": "0",
                   drag: "",
                   "nodes-plane": "screen",
                   style: "position:absolute;inset:0",
