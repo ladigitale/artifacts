@@ -9,6 +9,7 @@ import {loadArtifactsAccount} from "../cloud/account";
 import {cloudReturnUrl, tadaaaLoginUrl} from "../cloud/client";
 import {FEATURED, type FeaturedArtifact} from "../featured";
 import {LANDING_HERO_DOC} from "../landing-hero";
+import {LANDING_AQUARIUM_DOC} from "../landing-aquarium";
 import {navigate} from "../navigate";
 import "./artifact-logo";
 import "./artifact-legal-links";
@@ -52,8 +53,60 @@ export class ArtifactLanding extends LitElement {
     window.addEventListener("keydown", this.onKey);
   }
 
+  private io: IntersectionObserver | null = null;
+  private lastScroll = {y: 0, t: 0};
+  private velTarget = 0;
+  private vel = 0;
+  private velRaf = 0;
+
+  protected firstUpdated(): void {
+    const calm = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (calm) return;
+    this.addEventListener("scroll", this.onScroll, {passive: true});
+    if (typeof IntersectionObserver !== "function") return;
+    // Apparitions à l'entrée dans l'écran : une fois, puis l'élément n'est plus suivi.
+    this.io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          e.target.classList.add("in");
+          this.io?.unobserve(e.target);
+        }
+      },
+      {threshold: 0.15, rootMargin: "0px 0px -8% 0px"},
+    );
+    this.renderRoot.querySelectorAll(".rv").forEach((el) => this.io!.observe(el));
+    this.toggleAttribute("data-reveal", true);
+  }
+
+  /** Vitesse de défilement lissée, publiée en `--vel` (−1..1) : le bandeau penche quand on défile vite. */
+  private onScroll = () => {
+    const now = performance.now();
+    const y = this.scrollTop;
+    const dt = Math.max(8, now - this.lastScroll.t);
+    if (this.lastScroll.t) this.velTarget = Math.max(-1, Math.min(1, ((y - this.lastScroll.y) / dt) * 0.35));
+    this.lastScroll = {y, t: now};
+    if (!this.velRaf) this.velRaf = requestAnimationFrame(this.velStep);
+  };
+
+  private velStep = () => {
+    this.velRaf = 0;
+    this.velTarget *= 0.86;
+    this.vel += (this.velTarget - this.vel) * 0.18;
+    if (Math.abs(this.vel) < 0.002 && Math.abs(this.velTarget) < 0.002) {
+      this.vel = 0;
+      this.style.removeProperty("--vel");
+      return;
+    }
+    this.style.setProperty("--vel", this.vel.toFixed(3));
+    this.velRaf = requestAnimationFrame(this.velStep);
+  };
+
   disconnectedCallback(): void {
     window.removeEventListener("keydown", this.onKey);
+    this.removeEventListener("scroll", this.onScroll);
+    this.io?.disconnect();
+    cancelAnimationFrame(this.velRaf);
     clearTimeout(this.partyTimer);
     super.disconnectedCallback();
   }
@@ -246,13 +299,21 @@ export class ArtifactLanding extends LitElement {
             </div>
           </div>
 
+          <div class="aquarium">
+            <artifact-viewer embedded slug="accueil-aquarium" .previewDocument=${LANDING_AQUARIUM_DOC}></artifact-viewer>
+          </div>
+
           <section class="showcase" aria-labelledby="showcase-title">
-            <h2 id="showcase-title">À essayer <span class="serif mark">tout de suite</span> ${this.star(2)}</h2>
-            <p class="showcase-lede">Tous ont été décrits à un assistant, puis publiés ici. Aucun compte requis.</p>
+            <h2 id="showcase-title" class="rv words">
+              <span class="wd" style="--i:0">À</span> <span class="wd" style="--i:1">essayer</span>
+              <span class="wd" style="--i:2"><span class="serif mark">tout de suite</span></span>
+              <span class="wd" style="--i:3">${this.star(2)}</span>
+            </h2>
+            <p class="showcase-lede rv">Tous ont été décrits à un assistant, puis publiés ici. Aucun compte requis.</p>
             <ul>
               ${FEATURED.map(
                 (f, i) => html`
-                  <li>
+                  <li class="rv" style=${`--i:${i}`}>
                     <a
                       href=${`/${f.slug}`}
                       data-featured=${f.slug}

@@ -63,7 +63,7 @@ check("accueil : thème maison appliqué", (await themeOf(page)) === "affiche #1
 const cards = await q(page, "a[data-featured]");
 check("accueil : vitrine de 5 artefacts", cards.length === 5, cards.map((c) => c.href).join(" "));
 await page.waitForTimeout(2500);
-const tiles = await q(page, "sonic-stage > div");
+const tiles = await q(page, "sonic-stage > div:not([id^=aq-])");
 check("accueil : scène creative-stack montée (9 éléments posés par la physique)", tiles.length === 9, String(tiles.length));
 const idee = await page.evaluate(new Function(`${deepFn} const b = deep(document, "#idee")[0].getBoundingClientRect(); return {x: b.x + b.width / 2, y: b.y + b.height / 2};`));
 await page.mouse.move(idee.x, idee.y);

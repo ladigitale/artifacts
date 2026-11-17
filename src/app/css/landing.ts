@@ -452,6 +452,17 @@ export const landingStyles = css`
     }
   }
 
+  /* ───── Aquarium (scène épinglée au défilement, pleine largeur) ───── */
+  .aquarium {
+    width: 100vw;
+    margin-inline: calc(50% - 50vw);
+    margin-block: calc(var(--ui-12) * -0.5) 0;
+    border-block: var(--art-edge);
+  }
+  .aquarium artifact-viewer {
+    display: block;
+  }
+
   /* ───── Vitrine ───── */
   .showcase {
     display: flex;
@@ -712,6 +723,33 @@ export const landingStyles = css`
       min-height: 22rem;
     }
   }
+  /* ───── Apparitions au défilement (posées par le composant, sinon rien n'est caché) ───── */
+  .rv {
+    transition:
+      opacity 0.5s ease-out,
+      transform 0.7s var(--art-spring);
+    transition-delay: calc(var(--i, 0) * 90ms);
+  }
+  :host([data-reveal]) .rv:not(.in, .words) {
+    opacity: 0;
+    transform: translateY(3rem) rotate(calc((var(--i, 0) - 2) * 1.5deg));
+  }
+  .words .wd {
+    display: inline-block;
+    transition:
+      opacity 0.4s ease-out,
+      transform 0.6s var(--art-spring);
+    transition-delay: calc(var(--i, 0) * 80ms);
+  }
+  :host([data-reveal]) .words:not(.in) .wd {
+    opacity: 0;
+    transform: translateY(0.7em) rotate(8deg);
+  }
+  /* Le bandeau penche avec la vitesse de défilement. */
+  .ticker {
+    transform: rotate(-1.6deg) skewX(calc(var(--vel, 0) * -14deg)) scaleY(calc(1 + var(--vel, 0) * var(--vel, 0) * 0.15));
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .ticker-run,
     .stamp,
