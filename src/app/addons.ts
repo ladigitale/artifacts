@@ -87,6 +87,11 @@ export async function ensureAddonsFor(doc: unknown): Promise<void> {
     const {configureViewerHuggingFace} = await import("./hf-config");
     await configureViewerHuggingFace(doc);
   }
+  // Monde infini de procgen : tuiles composées dans un worker du viewer.
+  if (tags.has("sonic-procgen")) {
+    const {configureViewerProcgen} = await import("./procgen-config");
+    configureViewerProcgen();
+  }
   // Suivi ML local : origines de modèles approuvées = défauts + `capabilities.ml` du document.
   if (ML_TRACKERS.some((t) => tags.has(t))) {
     const {configureViewerVision} = await import("./vision-config");
