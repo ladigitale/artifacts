@@ -28,7 +28,7 @@ export type IoDef = {
   input?: {store?: string; action?: string};
   output?: {from?: string; when?: string; files?: Record<string, string>};
   /** Flux en direct (voir run-stream.ts). */
-  stream?: {store?: string; progress?: {from?: string; every?: number}};
+  stream?: {store?: string; progress?: {from?: string; every?: number}; emit?: {from?: string; ack?: string}};
 };
 
 export type IoStatus =

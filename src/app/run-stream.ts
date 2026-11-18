@@ -54,14 +54,19 @@ export type RunStreamOptions = {
   token: string;
   role: "performer" | "watcher";
   join: StreamJoin;
-  /** Store (id résolu) qui reçoit les actions. */
+  /** Store (id résolu) qui reçoit les actions ("" : run qui ne fait qu'émettre). */
   storeId: string;
-  /** DataProvider (nom résolu) de l'état de ce store. */
+  /** DataProvider (nom résolu) de l'état de ce store ("" si aucun). */
   stateDp: string;
   /** Spectateur sans instantané : entrée du run à envoyer au store (le viewer du run le fait déjà). */
   input?: {action: string; payload: unknown} | null;
   /** Progression publiée par le viewer du run : chemin résolu `dp.chemin` et intervalle (ms). */
   progress?: {path: string; every: number} | null;
+  /**
+   * File d'envoi (`io.stream.emit`) publiée par le viewer du run : chemin résolu de la file
+   * (tableau [{id, data}]) et store (id résolu) qui reçoit `emit:ok` {id} après publication.
+   */
+  emit?: {path: string; ack: string | null} | null;
   applyDocumentPatch: (patch: PatchOp[]) => Promise<void> | void;
   /** Message `end` reçu (le viewer du run publie alors sa sortie). */
   onEnd: () => void;
@@ -69,6 +74,10 @@ export type RunStreamOptions = {
 };
 
 const POLL_MS = 1000;
+/** Regroupement des éléments de la file d'envoi (ms) : une requête au plus par intervalle. */
+const EMIT_FLUSH_MS = 120;
+const EMIT_BATCH = 64;
+const MAX_SENT_IDS = 1000;
 const SNAPSHOT_MS = 5000;
 const MAX_SNAPSHOT_BYTES = 30_000;
 
@@ -112,6 +121,11 @@ export class RunStream {
   private snapTimer = 0;
   private progressTimer = 0;
   private progressOff: (() => void) | null = null;
+  private emitOff: (() => void) | null = null;
+  private emitTimer = 0;
+  private emitting = false;
+  private emitRetry = 0;
+  private readonly sentIds = new Set<string>();
   private lastProgress = 0;
   private lastSnapSeq = -1;
   private lastSnapJson = "";
@@ -163,7 +177,9 @@ export class RunStream {
     clearTimeout(this.renewTimer);
     clearInterval(this.snapTimer);
     clearTimeout(this.progressTimer);
+    clearTimeout(this.emitTimer);
     this.progressOff?.();
+    this.emitOff?.();
   }
 
   get seq(): number {
@@ -343,18 +359,76 @@ export class RunStream {
 
   private startPerformer(): void {
     // Instantané d'état pour les spectateurs qui arrivent en cours (seulement s'il a changé).
-    this.snapTimer = window.setInterval(() => void this.postSnapshot(), SNAPSHOT_MS);
+    if (this.opts.stateDp) this.snapTimer = window.setInterval(() => void this.postSnapshot(), SNAPSHOT_MS);
     const p = this.opts.progress;
-    if (!p) return;
-    const root = p.path.split(".")[0];
-    try {
-      const provider = dp(root) as {onAssign?: (cb: () => void) => void; offAssign?: (cb: () => void) => void};
-      const cb = () => this.scheduleProgress();
-      provider.onAssign?.(cb);
-      this.progressOff = () => provider.offAssign?.(cb);
-    } catch {
-      /* DataProvider indisponible */
+    if (p) this.progressOff = watch(p.path, () => this.scheduleProgress());
+    const e = this.opts.emit;
+    if (e) {
+      this.emitOff = watch(e.path, () => this.scheduleEmit());
+      this.scheduleEmit();
     }
+  }
+
+  /* ------------------------------------------------------------ file d'envoi */
+
+  private scheduleEmit(delay = EMIT_FLUSH_MS): void {
+    if (this.emitTimer || this.stopped) return;
+    this.emitTimer = window.setTimeout(() => {
+      this.emitTimer = 0;
+      void this.flushEmit();
+    }, delay);
+  }
+
+  /** Publie les éléments pas encore envoyés de la file (une fois par id), puis les acquitte au store. */
+  private async flushEmit(): Promise<void> {
+    const e = this.opts.emit;
+    if (!e || this.emitting || this.stopped) return;
+    const list = get(e.path) as unknown;
+    if (!Array.isArray(list)) return;
+    const pending: {id: string | number; data: unknown}[] = [];
+    for (const item of list) {
+      const id = (item as {id?: unknown} | null)?.id;
+      if ((typeof id !== "string" || !id) && typeof id !== "number") continue;
+      if (this.sentIds.has(String(id))) continue;
+      pending.push({id, data: clone((item as {data?: unknown}).data ?? null)});
+      if (pending.length >= EMIT_BATCH) break;
+    }
+    if (!pending.length) return;
+    this.emitting = true;
+    let ok = false;
+    try {
+      const res = await fetch(`${streamUrl(this.opts.slug, this.opts.runId)}/stream`, {
+        method: "POST",
+        headers: {Accept: "application/json", "Content-Type": "application/json"},
+        body: JSON.stringify({rt: this.opts.token, events: pending.map((p) => ({type: "emit", id: p.id, data: p.data}))}),
+      });
+      ok = res.ok;
+      if (!ok && res.status >= 400 && res.status < 500 && res.status !== 429) {
+        // Refus définitif (run terminé, élément invalide) : on n'insiste pas.
+        console.warn("[flux] file d'envoi refusée :", res.status);
+        ok = true;
+      }
+    } catch {
+      ok = false;
+    } finally {
+      this.emitting = false;
+    }
+    if (!ok) {
+      this.emitRetry = Math.min(5000, (this.emitRetry || 250) * 2);
+      this.scheduleEmit(this.emitRetry);
+      return;
+    }
+    this.emitRetry = 0;
+    for (const p of pending) {
+      this.sentIds.add(String(p.id));
+      if (e.ack) dispatch(e.ack, {type: "emit:ok", payload: {id: p.id}});
+    }
+    if (this.sentIds.size > MAX_SENT_IDS) {
+      const old = [...this.sentIds].slice(0, this.sentIds.size - MAX_SENT_IDS);
+      for (const id of old) this.sentIds.delete(id);
+    }
+    // D'autres éléments ont pu arriver pendant l'envoi.
+    this.scheduleEmit();
   }
 
   private scheduleProgress(): void {
@@ -370,7 +444,7 @@ export class RunStream {
   }
 
   private async postSnapshot(): Promise<void> {
-    if (this.stopped) return;
+    if (this.stopped || !this.opts.stateDp) return;
     const state = this.readState();
     const json = JSON.stringify(state);
     if (json.length > MAX_SNAPSHOT_BYTES) return;
@@ -393,8 +467,20 @@ export class RunStream {
   }
 }
 
+/** Abonnement aux changements du DataProvider racine d'un chemin `dp.chemin`. */
+function watch(path: string, cb: () => void): () => void {
+  try {
+    const provider = dp(path.split(".")[0]) as {onAssign?: (cb: () => void) => void; offAssign?: (cb: () => void) => void};
+    provider.onAssign?.(cb);
+    return () => provider.offAssign?.(cb);
+  } catch {
+    return () => {};
+  }
+}
+
 /** Attend que l'état du store ne bouge plus (file d'actions vidée), 1 s au plus. */
 async function settle(stateDp: string): Promise<void> {
+  if (!stateDp) return;
   const until = Date.now() + 1000;
   let last = JSON.stringify(get(stateDp) ?? null);
   let calm = 0;
