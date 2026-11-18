@@ -325,6 +325,15 @@ export class ArtifactViewer extends LitElement {
     this.ioStatus = null;
   }
 
+  /**
+   * Store qui reçoit un flux (`io.stream`) : une action qui dépasse le budget du store est ignorée,
+   * et un écran qui saute un message n'est plus synchrone avec les autres. Budget plus large par défaut.
+   */
+  private isStreamStore(id: string): boolean {
+    const io = (this.data?.document as {io?: IoDef} | undefined)?.io;
+    return !!io?.stream && (io.stream.store ?? io.input?.store) === id;
+  }
+
   /** Run en flux : viewer du run (`rt`) ou spectateur (`wt`), d'après la page ou les attributs d'embed. */
   private streamTarget(doc: unknown): {id: string; token: string; role: "performer" | "watcher"} | null {
     if (this.previewDocument) return null;
@@ -1043,7 +1052,7 @@ export class ArtifactViewer extends LitElement {
             initial=${initial}
             reducer=${def.reducer ?? ""}
             history=${def.history ?? 0}
-            budget-ms=${def.budgetMs ?? 8}
+            budget-ms=${def.budgetMs ?? (this.isStreamStore(id) ? STREAM_STORE_BUDGET_MS : 8)}
             boot-action=${def.bootAction ?? ""}
             persist=${this.persistKeyOf(id)}
             history-skip=${def.historySkip ?? ""}
@@ -1226,6 +1235,8 @@ function pickPath(value: unknown, path?: string): unknown {
 function isDenied(e: unknown): boolean {
   return e instanceof ApiError && (e.status === 401 || e.status === 403 || e.status === 404);
 }
+
+const STREAM_STORE_BUDGET_MS = 50;
 
 /** Parties du document qui alimentent les DataProviders (sources, transforms) : relues si elles changent. */
 function dataPart(doc: Record<string, unknown>): unknown {
