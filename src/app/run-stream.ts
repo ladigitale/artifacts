@@ -303,6 +303,9 @@ export class RunStream {
         this.player.stop();
         break;
       case "end":
+        // Les actions envoyées juste avant (même envoi) passent encore dans la file du store :
+        // la sortie publiée doit en tenir compte.
+        await settle(this.opts.stateDp);
         this.end();
         break;
     }
@@ -387,6 +390,19 @@ export class RunStream {
     } catch {
       /* best effort : la progression suivante repartira */
     }
+  }
+}
+
+/** Attend que l'état du store ne bouge plus (file d'actions vidée), 1 s au plus. */
+async function settle(stateDp: string): Promise<void> {
+  const until = Date.now() + 1000;
+  let last = JSON.stringify(get(stateDp) ?? null);
+  let calm = 0;
+  while (Date.now() < until && calm < 3) {
+    await new Promise((r) => setTimeout(r, 60));
+    const now = JSON.stringify(get(stateDp) ?? null);
+    calm = now === last ? calm + 1 : 0;
+    last = now;
   }
 }
 
