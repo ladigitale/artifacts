@@ -22,7 +22,9 @@ import {ensureAddonsFor} from "../addons";
 import {startSinks, type SinkDef} from "../sinks";
 import {persistDecl, persistKey, plain, readSaved, writeSaved} from "../persist";
 import {OnlineSave, onlineDecl} from "../online-save";
-import {runFromLocation, startIoRun, type IoDef, type IoStatus} from "../io-run";
+import {mapPath, runFromLocation, startIoRun, waitForStore, type IoDef, type IoStatus} from "../io-run";
+import {joinStream, RunStream, watchFromLocation, type StreamJoin} from "../run-stream";
+import {applyPatch, type PatchOp} from "../json-patch";
 import {applyDocFontFiles, applyDocFonts} from "../doc-fonts";
 import {claimNamespace, transformDocument, type NamespaceClaim} from "../doc-transform";
 import {withRoomContext} from "../room-context";
@@ -178,6 +180,8 @@ export class ArtifactViewer extends LitElement {
   @property({type: String, attribute: "run-token"}) runToken = "";
   /** Embed : entrée locale du contrat `io` (JSON), sans run serveur. */
   @property({type: String}) input = "";
+  /** Embed : jeton de spectateur d'un run en flux (`io.stream`), avec `run`. */
+  @property({type: String, attribute: "watch-token"}) watchToken = "";
 
   @state() private data: PublicArtifact | null = null;
   @state() private error = "";
@@ -195,6 +199,11 @@ export class ArtifactViewer extends LitElement {
   private refreshTimers: number[] = [];
   private stopSinks: (() => void) | null = null;
   private stopIo: (() => void) | null = null;
+  /** Flux du run (io.stream) et document reçu avant transformation (cible des document.patch). */
+  private runStream: RunStream | null = null;
+  private streamJoin: StreamJoin | null = null;
+  private rawDocument: Record<string, unknown> | null = null;
+  private streamDoc = Promise.resolve();
   /** Préfixe des DataProviders (vide sauf collision entre artefacts intégrés). */
   private ns = "";
   private nsNames = new Set<string>();
@@ -311,14 +320,100 @@ export class ArtifactViewer extends LitElement {
     this.stopSinks = null;
     this.stopIo?.();
     this.stopIo = null;
+    this.runStream?.stop();
+    this.runStream = null;
     this.ioStatus = null;
+  }
+
+  /** Run en flux : viewer du run (`rt`) ou spectateur (`wt`), d'après la page ou les attributs d'embed. */
+  private streamTarget(doc: unknown): {id: string; token: string; role: "performer" | "watcher"} | null {
+    if (this.previewDocument) return null;
+    const io = (doc as {io?: IoDef} | null)?.io;
+    if (!io?.stream) return null;
+    if (this.embedded) {
+      if (!this.run) return null;
+      if (this.watchToken) return {id: this.run, token: this.watchToken, role: "watcher"};
+      return this.runToken ? {id: this.run, token: this.runToken, role: "performer"} : null;
+    }
+    const watch = watchFromLocation(location.search);
+    if (watch) return {...watch, role: "watcher"};
+    const run = runFromLocation(location.search);
+    return run ? {...run, role: "performer"} : null;
+  }
+
+  /** Démarre le flux une fois le store prêt (et, pour le viewer du run, l'entrée envoyée). */
+  private async startStream(join: StreamJoin, target: {id: string; token: string; role: "performer" | "watcher"}, ctl: {finish?: () => void}) {
+    const io = (this.data?.document as {io?: IoDef} | undefined)?.io;
+    const storeName = io?.stream?.store ?? io?.input?.store;
+    if (!io || !storeName) return;
+    const storeId = this.n(storeName);
+    if (!(await waitForStore(storeId, () => !this.isConnected || this.streamJoin !== join))) return;
+    if (this.streamJoin !== join) return;
+    const def = this.docStores[storeName];
+    const progress = target.role === "performer" && io.stream?.progress?.from
+      ? {path: mapPath(io.stream.progress.from, (n) => this.n(n)), every: Math.max(100, io.stream.progress.every ?? 1000)}
+      : null;
+    this.runStream?.stop();
+    const stream = new RunStream({
+      slug: this.slug,
+      runId: target.id,
+      token: target.token,
+      role: target.role,
+      join,
+      storeId,
+      stateDp: this.n(def?.dataProvider || storeName),
+      input: target.role === "watcher" && io.input?.store ? {action: io.input.action || "io:input", payload: join.input ?? {}} : null,
+      progress,
+      applyDocumentPatch: (patch) => this.patchDocument(patch),
+      onEnd: () => {
+        if (target.role === "performer") ctl.finish?.();
+        else this.ioStatus = {state: "closed", message: "Le direct est terminé."};
+      },
+      onStatus: (s) => {
+        this.dataset.stream = s.closed ? "closed" : s.ended ? "ended" : s.transport;
+        if (target.role === "watcher" && s.closed) this.ioStatus = {state: "closed", message: "Le direct est terminé."};
+      },
+    });
+    this.runStream = stream;
+    await stream.start();
+  }
+
+  /**
+   * `document.patch` d'un flux : le document reçu (avant transformation) est patché puis réappliqué
+   * sans recharger : stores, vue et données gardent leur état ; sources et transforms ne sont relues
+   * que si elles ont changé.
+   */
+  private patchDocument(patch: PatchOp[]): Promise<void> {
+    this.streamDoc = this.streamDoc.then(async () => {
+      if (!this.data || !this.rawDocument) return;
+      const before = JSON.stringify(dataPart(this.rawDocument));
+      this.rawDocument = applyPatch(this.rawDocument, patch);
+      const roomContext = {slug: this.slug, api: loadApiBaseUrl(), linkToken: this.linkToken(), preview: false};
+      const document = transformDocument(withRoomContext(withAgentLibraries(this.rawDocument), roomContext));
+      const errors = guardDocument(document);
+      if (errors.length) throw new Error(`${errors[0].path} : ${errors[0].message}`);
+      this.data = {...this.data, document};
+      this.bindingCache.clear();
+      this.rootCache.clear();
+      applyDocFonts((document as {fonts?: unknown}).fonts);
+      applyDocFontFiles((document as {fontFiles?: unknown}).fontFiles);
+      this.docStores = (document as {data?: {stores?: Record<string, StoreDef>}}).data?.stores ?? {};
+      await ensureAddonsFor(document);
+      const views = (document as {views?: ViewDef[]}).views ?? [];
+      if (!views.some((v) => v.id === this.viewId)) this.syncViewFromHash();
+      if (JSON.stringify(dataPart(this.rawDocument)) !== before) {
+        this.clearTransformWatchers();
+        await this.applyDataProviders();
+      }
+    });
+    return this.streamDoc;
   }
 
   /**
    * Contrat `io` : entrée d'un run (`?run=&rt=` sur la page, `run` / `run-token` ou `input` en
    * embed) envoyée au store, sortie émise (`artifact-output`) et publiée quand `when` est vraie.
    */
-  private startIo() {
+  private startIo(stream: {join: StreamJoin; target: {id: string; token: string; role: "performer" | "watcher"}} | null = null) {
     const io = (this.data?.document as {io?: IoDef} | undefined)?.io;
     if (!io?.output?.from) return;
     // Aperçu de l'atelier : jamais de run serveur, seulement l'entrée d'essai (`input`).
@@ -340,11 +435,18 @@ export class ArtifactViewer extends LitElement {
     }
     // Page complète sans run : rien. Intégré (embed, atelier) : la sortie est émise même sans entrée.
     if (!run && input === undefined && !this.embedded) return;
+    const ctl: {finish?: () => void} = {};
     this.stopIo = startIoRun({
       slug: this.slug,
       io,
       run,
       input,
+      controller: ctl,
+      // Reprise d'un run en flux : l'instantané d'état contient déjà l'entrée.
+      skipInput: () => !!stream?.join.snapshot,
+      onReady: () => {
+        if (stream && stream.join.status === "pending") void this.startStream(stream.join, stream.target, ctl);
+      },
       resolve: (name) => this.n(name),
       onStatus: (s) => {
         // En embed local, pas de bandeau : la page hôte reçoit l'événement.
@@ -451,9 +553,23 @@ export class ArtifactViewer extends LitElement {
     this.clearTransformWatchers();
     this.clearLiveData();
     try {
-      const fetched = this.previewDocument
+      let fetched = this.previewDocument
         ? previewArtifact(this.slug, this.previewDocument)
         : await fetchPublicArtifact(this.slug, this.linkToken());
+      // Run en flux : le document courant (déjà patché par le flux) remplace celui de la version.
+      const target = this.streamTarget(fetched.document);
+      let join: StreamJoin | null = null;
+      if (target) {
+        try {
+          join = await joinStream(this.slug, target.id, target.token, target.role);
+          if (join.document) fetched = {...fetched, document: join.document};
+        } catch (e) {
+          if (target.role === "watcher") throw e;
+          join = null;
+        }
+      }
+      this.streamJoin = join;
+      this.rawDocument = fetched.document as Record<string, unknown>;
       const roomContext = {
         slug: this.slug,
         api: loadApiBaseUrl(),
@@ -489,7 +605,12 @@ export class ArtifactViewer extends LitElement {
         this.watchOnline();
         const sinks = (this.data.document as {data?: {sinks?: Record<string, SinkDef>}}).data?.sinks;
         if (!this.previewDocument) this.stopSinks = startSinks(this.slug, this.linkToken(), this.nsSinks(sinks));
-        this.startIo();
+        if (target?.role === "watcher" && join) {
+          if (join.status !== "pending") this.ioStatus = {state: "closed", message: "Le direct est terminé."};
+          void this.startStream(join, target, {});
+        } else {
+          this.startIo(join && target ? {join, target} : null);
+        }
       }
     } catch (e) {
       const raw = e instanceof Error ? e.message : String(e);
@@ -1104,4 +1225,10 @@ function pickPath(value: unknown, path?: string): unknown {
 
 function isDenied(e: unknown): boolean {
   return e instanceof ApiError && (e.status === 401 || e.status === 403 || e.status === 404);
+}
+
+/** Parties du document qui alimentent les DataProviders (sources, transforms) : relues si elles changent. */
+function dataPart(doc: Record<string, unknown>): unknown {
+  const data = (doc.data ?? {}) as {sources?: unknown; transforms?: unknown};
+  return {sources: data.sources ?? null, transforms: data.transforms ?? null};
 }
