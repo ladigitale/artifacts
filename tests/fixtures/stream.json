@@ -1,0 +1,45 @@
+{
+  "schema": "artifacts/1",
+  "title": "Scène en direct",
+  "defaultView": "home",
+  "views": [
+    {
+      "id": "home",
+      "title": "Accueil",
+      "root": {
+        "nodes": [
+          {"tagName": "h1", "attributes": {"id": "titre"}, "textContent": "Avant"},
+          {"tagName": "p", "nodes": [{"tagName": "sonic-value", "attributes": {"id": "count", "dataProvider": "scene", "key": "count"}}]},
+          {"tagName": "p", "nodes": [{"tagName": "sonic-value", "attributes": {"id": "hue", "dataProvider": "scene", "key": "hue"}}]},
+          {"tagName": "p", "nodes": [{"tagName": "sonic-value", "attributes": {"id": "label", "dataProvider": "scene", "key": "label"}}]}
+        ]
+      }
+    }
+  ],
+  "data": {
+    "stores": {
+      "scene": {
+        "initial": {"phase": "idle", "count": 0, "hue": 0, "label": ""},
+        "reducer": "$action.type='io:input' ? $merge([$state,{'phase':'live','count':$action.payload.start}]) : $action.type='pulse' ? $merge([$state,{'count':$state.count+1}]) : $action.type='palette' ? $merge([$state,{'hue':$action.payload.hue}]) : $state"
+      }
+    }
+  },
+  "io": {
+    "title": "Scène en direct",
+    "modes": ["interactive", "embed"],
+    "input": {
+      "schema": {"type": "object", "properties": {"start": {"type": "integer"}}, "required": ["start"]},
+      "store": "scene"
+    },
+    "output": {"schema": {"type": "integer"}, "from": "scene.count", "when": "phase='done'"},
+    "stream": {
+      "store": "scene",
+      "actions": {"pulse": {}, "palette": {"schema": {"type": "object", "properties": {"hue": {"type": "number"}}}}},
+      "state": true,
+      "document": true,
+      "score": true,
+      "rate": 60,
+      "progress": {"from": "scene.count", "every": 200}
+    }
+  }
+}

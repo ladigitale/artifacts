@@ -198,6 +198,8 @@ export class ArtifactEmbed extends LitElement {
   /** Run serveur du contrat `io` (`run_artifact` mode embed) : id et jeton. */
   @property({type: String}) run = "";
   @property({type: String, attribute: "run-token"}) runToken = "";
+  /** Spectateur d'un run en flux (`io.stream`) : jeton de lecture (`stream.watchToken`), avec `run`. */
+  @property({type: String, attribute: "watch-token"}) watchToken = "";
   /** Entrée locale du contrat `io` (JSON) ; la sortie arrive en événement `artifact-output`. */
   @property({type: String}) input = "";
   /** `open-link="false"` masque le lien « Ouvrir dans Artefacts ». */
@@ -270,6 +272,7 @@ export class ArtifactEmbed extends LitElement {
             read-key=${this.readKey}
             run=${this.run}
             run-token=${this.runToken}
+            watch-token=${this.watchToken}
             input=${this.input}
           ></artifact-viewer>
         </sonic-scope>

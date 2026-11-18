@@ -27,6 +27,8 @@ export type IoDef = {
   modes?: string[];
   input?: {store?: string; action?: string};
   output?: {from?: string; when?: string; files?: Record<string, string>};
+  /** Flux en direct (voir run-stream.ts). */
+  stream?: {store?: string; progress?: {from?: string; every?: number}};
 };
 
 export type IoStatus =
@@ -48,6 +50,12 @@ export type IoRunOptions = {
   onStatus: (s: IoStatus) => void;
   /** `files` : clé → URL (blob:, data:…) des fichiers de `io.output.files`. */
   onOutput: (output: unknown, runId: string | null, files: Record<string, string>) => void;
+  /** Entrée envoyée au store (ou sautée) : le run attend sa sortie. Reçoit l'entrée du run. */
+  onReady?: (input: unknown) => void;
+  /** Ne pas renvoyer l'entrée (reprise d'un flux : l'instantané d'état la contient déjà). */
+  skipInput?: () => boolean;
+  /** Rempli par startIoRun : `finish()` publie la sortie tout de suite, sans attendre `when` (fin d'un flux). */
+  controller?: {finish?: () => void};
 };
 
 const STORE_WAIT_MS = 10_000;
@@ -99,11 +107,20 @@ export function startIoRun(opts: IoRunOptions): () => void {
     }
     let armed = false;
     let sent = false;
+    let forced = false;
+    if (opts.controller) {
+      opts.controller.finish = () => {
+        forced = true;
+        queueMicrotask(() => void check());
+      };
+    }
 
     const check = async () => {
       if (!armed || sent || stopped) return;
       const output = get(fromPath) as unknown;
-      if (when) {
+      if (forced) {
+        // Fin du flux : la valeur courante, même incomplète.
+      } else if (when) {
         let ok = false;
         try {
           ok = (await when.evaluate(get(root) ?? {})) === true;
@@ -159,9 +176,10 @@ export function startIoRun(opts: IoRunOptions): () => void {
     opts.onStatus({state: "waiting"});
     armed = true;
     // Sans run ni entrée (embed, aperçu de l'atelier) : la sortie est seulement émise quand `when` devient vraie.
-    if (storeId && (opts.run || input !== undefined)) {
+    if (storeId && (opts.run || input !== undefined) && !opts.skipInput?.()) {
       dispatch(storeId, {type: opts.io.input?.action || "io:input", payload: clone(input ?? {})});
     }
+    opts.onReady?.(input);
     queueMicrotask(() => void check());
   })();
 
@@ -216,12 +234,12 @@ async function postRunFile(slug: string, runId: string, token: string, key: stri
 }
 
 /** `store.chemin` → nom effectif du DataProvider + chemin inchangé. */
-function mapPath(path: string, resolve: (n: string) => string): string {
+export function mapPath(path: string, resolve: (n: string) => string): string {
   const dot = path.indexOf(".");
   return dot < 0 ? resolve(path) : resolve(path.slice(0, dot)) + path.slice(dot);
 }
 
-async function waitForStore(id: string, cancelled: () => boolean): Promise<boolean> {
+export async function waitForStore(id: string, cancelled: () => boolean): Promise<boolean> {
   const start = Date.now();
   while (!getStore(id)) {
     if (cancelled() || Date.now() - start > STORE_WAIT_MS) return false;

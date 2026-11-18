@@ -15,6 +15,7 @@
  *   data-open-link="false"  masque le lien « Ouvrir dans Artefacts »
  *   data-api        URL de l'API Tadaaa (développement uniquement)
  *   data-run, data-run-token  run du contrat io (run_artifact mode embed)
+ *   data-run, data-watch-token  spectateur d'un run en flux (io.stream, stream.watchToken)
  *   data-input      entrée locale du contrat io (JSON), sans run serveur
  *
  * Contrat io : la sortie est émise sur l'élément <artifact-embed> en événement
@@ -54,7 +55,7 @@
 
   var el = document.createElement("artifact-embed");
   el.setAttribute("slug", slug);
-  var attrs = {theme: "theme", view: "view", key: "link-key", readKey: "read-key", height: "height", openLink: "open-link", run: "run", runToken: "run-token", input: "input"};
+  var attrs = {theme: "theme", view: "view", key: "link-key", readKey: "read-key", height: "height", openLink: "open-link", run: "run", runToken: "run-token", watchToken: "watch-token", input: "input"};
   for (var k in attrs) {
     if (Object.prototype.hasOwnProperty.call(attrs, k) && data[k]) el.setAttribute(attrs[k], data[k]);
   }
