@@ -9,7 +9,8 @@
  * (`?wt=`) et un spectateur sans Mercure (relecture). Vérifie : entrée, actions, state.delta,
  * document.patch (état conservé), partition (piste interpolée + événement), trou de numérotation
  * rattrapé, spectateur arrivé en cours (instantané + document patché), spectateur intégré
- * (embed.js `data-watch-token`, build embed requis), progression, fin du flux
+ * (embed.js `data-watch-token`, build embed requis), télécommande (`io.stream.emit` d'un autre
+ * artefact relayée comme par un lien Tadaaa), progression, fin du flux
  * (sortie publiée par le viewer du run, bandeau chez les spectateurs).
  */
 import http from "node:http";
@@ -24,6 +25,14 @@ const PORT = 4455;
 const SLUG = "flux";
 const RUN = "0190f3a2-2222-7222-8333-944455556666";
 let doc = JSON.parse(fs.readFileSync(path.join(ROOT, "tests/fixtures/stream.json"), "utf8"));
+// Télécommande (io.stream.emit) reliée au run du flux, comme un lien Tadaaa (link_artifact_runs).
+const REMOTE_RUN = "0190f3a2-3333-7333-8444-955566667777";
+const remoteDoc = JSON.parse(fs.readFileSync(path.join(ROOT, "tests/fixtures/remote.json"), "utf8"));
+const emitted = [];
+/** map du lien : pad → message du flux cible. */
+const linkMap = (item) => item.data?.pad === "pulse"
+  ? [{type: "action", name: "pulse"}]
+  : item.data?.pad === "titre" ? [{type: "document.patch", patch: [{op: "replace", path: "/views/0/root/nodes/0/textContent", value: "Télécommandé"}]}] : [];
 
 // Même JSON Patch que le viewer, pour tenir le document courant côté faux serveur.
 const out = await build({entryPoints: [path.join(ROOT, "src/app/json-patch.ts")], bundle: true, format: "esm", write: false, platform: "node"});
@@ -88,6 +97,28 @@ const server = http.createServer((q, r) => {
     sse.add(r);
     q.on("close", () => sse.delete(r));
     return;
+  }
+  const rm = /^\/api\/public\/artifacts\/remote\/runs\/([0-9a-f-]{36})(\/stream|\/output)?$/.exec(u.pathname);
+  if (rm) {
+    if (rm[2] === "/stream" && q.method === "GET") {
+      return json(200, {runId: REMOTE_RUN, role: "performer", status: "pending", seq: 0, ended: false, serverTime: Date.now(), events: [], complete: true, stream: {emit: true}, snapshot: null, score: null, input: {}, mercure: null});
+    }
+    if (rm[2] === "/stream" && q.method === "POST") return read((b) => {
+      if (b.rt !== "rtok") return json(404, {});
+      for (const e of b.events) {
+        if (e.type !== "emit") continue;
+        if (emitted.some((x) => x.id === e.id)) continue;
+        emitted.push(e);
+        const msgs = linkMap(e);
+        if (msgs.length) emit(msgs);
+      }
+      json(200, {ok: true});
+    });
+    return json(200, {runId: REMOTE_RUN, slug: "remote", mode: "interactive", status: "pending", input: {}});
+  }
+  if (u.pathname.startsWith("/api/public/artifacts/remote")) {
+    if (u.pathname.includes("/collections/")) return json(200, {member: []});
+    return json(200, {id: "remote", slug: "remote", title: remoteDoc.title, description: "", visibility: "public", document: remoteDoc, scriptAssets: [], version: 1, updatedAt: new Date().toISOString(), collections: [], canWrite: false});
   }
   const m = /^\/api\/public\/artifacts\/flux\/runs\/([0-9a-f-]{36})(\/stream|\/output)?$/.exec(u.pathname);
   if (m) {
@@ -198,10 +229,36 @@ await host.goto(`http://localhost:${PORT}/hote.html`);
 emit([{type: "action", name: "pulse"}]);
 check("intégration : suit le direct (count 13)", (await until(host, (s) => s.count === "13")).count === "13");
 
+console.log("\n== télécommande (file d'envoi d'un autre artefact, lien entre runs)");
+{
+  const remote = await browser.newPage({viewport: {width: 600, height: 400}});
+  remote.on("pageerror", (e) => errors.push(String(e)));
+  await remote.goto(`http://localhost:${PORT}/remote?run=${REMOTE_RUN}&rt=rtok`);
+  const readRemote = () => remote.evaluate(() => {
+    const deep = (r, s, a = []) => { r.querySelectorAll("*").forEach((e) => { if (e.matches(s)) a.push(e); if (e.shadowRoot) deep(e.shadowRoot, s, a); }); return a; };
+    const t = (s) => { const e = deep(document, s)[0]; return e ? (e.shadowRoot?.textContent || e.textContent || "").trim() : null; };
+    return {n: t("#n"), sent: t("#sent")};
+  });
+  for (let i = 0; i < 40 && (await readRemote()).sent !== "0"; i++) await wait(100);
+  const before = Number((await read(watcher)).count);
+  await remote.locator("#pulse").click();
+  await remote.locator("#pulse").click();
+  await remote.locator("#titre").click();
+  for (let i = 0; i < 40 && (await readRemote()).sent !== "3"; i++) await wait(100);
+  const r = await readRemote();
+  check("télécommande : 3 éléments publiés et acquittés (emit:ok)", r.n === "3" && r.sent === "3" && emitted.length === 3, JSON.stringify({...r, emitted: emitted.map((e) => e.id)}));
+  check("éléments publiés une fois chacun, dans l'ordre", JSON.stringify(emitted.map((e) => e.data.pad)) === JSON.stringify(["pulse", "pulse", "titre"]));
+  for (const [name, p] of [["viewer du run", performer], ["spectateur", watcher], ["intégration", host]]) {
+    const s = await until(p, (s) => Number(s.count) === before + 2 && s.titre === "Télécommandé");
+    check(`${name} : piloté par la télécommande`, Number(s.count) === before + 2 && s.titre === "Télécommandé", JSON.stringify(s));
+  }
+  await remote.close();
+}
+
 console.log("\n== fin du flux");
 emit([{type: "end"}]);
 await until(performer, () => outputs.length > 0);
-check("sortie publiée par le viewer du run à la fin (13)", outputs.length === 1 && outputs[0].output === 13 && outputs[0].rt === "tok", JSON.stringify(outputs));
+check("sortie publiée par le viewer du run à la fin (15)", outputs.length === 1 && outputs[0].output === 15 && outputs[0].rt === "tok", JSON.stringify(outputs));
 for (const [name, p] of [["spectateur SSE", watcher], ["spectateur arrivé en cours", late], ["intégration", host]]) {
   const s = await until(p, (s) => s.status.includes("terminé"));
   check(`${name} : bandeau de fin`, s.status.includes("terminé"), s.status);

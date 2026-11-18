@@ -1,0 +1,108 @@
+{
+ "schema": "artifacts/1",
+ "title": "Télécommande",
+ "defaultView": "pads",
+ "data": {
+  "stores": {
+   "pad": {
+    "initial": {
+     "phase": "live",
+     "n": 0,
+     "sent": 0,
+     "outbox": []
+    },
+    "reducer": "$action.type = 'press' ? $merge([$state, {'n': $state.n + 1, 'outbox': $append($state.outbox, [{'id': 'p' & $string($state.n + 1), 'data': $action.payload}])}]) : $action.type = 'emit:ok' ? $merge([$state, {'sent': $state.sent + 1, 'outbox': [$filter($state.outbox, function($i) { $i.id != $action.payload.id })]}]) : $state"
+   }
+  }
+ },
+ "views": [
+  {
+   "id": "pads",
+   "title": "Pads",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "sonic-action",
+      "attributes": {
+       "target": "pad",
+       "type": "press",
+       "payload": "{\"pad\":\"pulse\"}"
+      },
+      "nodes": [
+       {
+        "tagName": "sonic-button",
+        "attributes": {
+         "id": "pulse",
+         "type": "primary"
+        },
+        "textContent": "Pulse"
+       }
+      ]
+     },
+     {
+      "tagName": "sonic-action",
+      "attributes": {
+       "target": "pad",
+       "type": "press",
+       "payload": "{\"pad\":\"titre\"}"
+      },
+      "nodes": [
+       {
+        "tagName": "sonic-button",
+        "attributes": {
+         "id": "titre"
+        },
+        "textContent": "Titre"
+       }
+      ]
+     },
+     {
+      "tagName": "p",
+      "nodes": [
+       {
+        "tagName": "sonic-value",
+        "attributes": {
+         "id": "sent",
+         "dataProvider": "pad",
+         "key": "sent"
+        }
+       }
+      ]
+     },
+     {
+      "tagName": "p",
+      "nodes": [
+       {
+        "tagName": "sonic-value",
+        "attributes": {
+         "id": "n",
+         "dataProvider": "pad",
+         "key": "n"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "io": {
+  "modes": [
+   "interactive",
+   "embed"
+  ],
+  "output": {
+   "schema": {
+    "type": "integer"
+   },
+   "from": "pad.n",
+   "when": "phase = 'done'"
+  },
+  "stream": {
+   "emit": {
+    "from": "pad.outbox",
+    "ack": "pad"
+   }
+  }
+ }
+}

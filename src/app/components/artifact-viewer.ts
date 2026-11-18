@@ -331,7 +331,7 @@ export class ArtifactViewer extends LitElement {
    */
   private isStreamStore(id: string): boolean {
     const io = (this.data?.document as {io?: IoDef} | undefined)?.io;
-    return !!io?.stream && (io.stream.store ?? io.input?.store) === id;
+    return !!io?.stream && ((io.stream.store ?? io.input?.store) === id || io.stream.emit?.ack === id);
   }
 
   /** Run en flux : viewer du run (`rt`) ou spectateur (`wt`), d'après la page ou les attributs d'embed. */
@@ -354,11 +354,17 @@ export class ArtifactViewer extends LitElement {
   private async startStream(join: StreamJoin, target: {id: string; token: string; role: "performer" | "watcher"}, ctl: {finish?: () => void}) {
     const io = (this.data?.document as {io?: IoDef} | undefined)?.io;
     const storeName = io?.stream?.store ?? io?.input?.store;
-    if (!io || !storeName) return;
-    const storeId = this.n(storeName);
-    if (!(await waitForStore(storeId, () => !this.isConnected || this.streamJoin !== join))) return;
+    const emitDef = io?.stream?.emit;
+    // Un run qui ne fait qu'émettre (télécommande) n'a pas forcément de store de flux.
+    if (!io || (!storeName && !emitDef?.from)) return;
+    const storeId = storeName ? this.n(storeName) : "";
+    const waitFor = storeId || (emitDef?.ack ? this.n(emitDef.ack) : "");
+    if (waitFor && !(await waitForStore(waitFor, () => !this.isConnected || this.streamJoin !== join))) return;
     if (this.streamJoin !== join) return;
-    const def = this.docStores[storeName];
+    const def = storeName ? this.docStores[storeName] : undefined;
+    const emit = target.role === "performer" && emitDef?.from
+      ? {path: mapPath(emitDef.from, (n) => this.n(n)), ack: emitDef.ack ? this.n(emitDef.ack) : null}
+      : null;
     const progress = target.role === "performer" && io.stream?.progress?.from
       ? {path: mapPath(io.stream.progress.from, (n) => this.n(n)), every: Math.max(100, io.stream.progress.every ?? 1000)}
       : null;
@@ -370,9 +376,10 @@ export class ArtifactViewer extends LitElement {
       role: target.role,
       join,
       storeId,
-      stateDp: this.n(def?.dataProvider || storeName),
+      stateDp: storeName ? this.n(def?.dataProvider || storeName) : "",
       input: target.role === "watcher" && io.input?.store ? {action: io.input.action || "io:input", payload: join.input ?? {}} : null,
       progress,
+      emit,
       applyDocumentPatch: (patch) => this.patchDocument(patch),
       onEnd: () => {
         if (target.role === "performer") ctl.finish?.();
