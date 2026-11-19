@@ -393,6 +393,11 @@ export class ArtifactViewer extends LitElement {
       progress,
       emit,
       applyDocumentPatch: (patch) => this.patchDocument(patch),
+      onPresence: (p) => {
+        if (!this.runInfo) return;
+        this.runInfo = {...this.runInfo, presence: p};
+        set(this.n(RUN_DP), {...this.runInfo, pair: this.pairInfo} as never);
+      },
       onEnd: () => {
         if (target.role === "performer") ctl.finish?.();
         else this.ioStatus = {state: "closed", message: "Le direct est terminé."};
@@ -409,7 +414,7 @@ export class ArtifactViewer extends LitElement {
 
   /** DataProvider `artifactRun` : ce que le document peut montrer du run (jamais le jeton du run). */
   private publishRun(join: StreamJoin, role: "performer" | "watcher", status: string) {
-    this.runInfo = {runId: join.runId, role, watchUrl: join.watchUrl ?? null, status};
+    this.runInfo = {runId: join.runId, role, watchUrl: join.watchUrl ?? null, status, presence: this.runInfo?.presence ?? join.presence ?? {count: 0, members: []}};
     set(this.n(RUN_DP), {...this.runInfo, pair: this.pairInfo} as never);
   }
 

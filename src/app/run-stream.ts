@@ -39,6 +39,7 @@ export type StreamJoin = {
   store?: string | null;
   stream?: {rate?: number; progress?: boolean} | null;
   snapshot?: {seq: number; state: unknown} | null;
+  presence?: Presence | null;
   score?: {score: Score; t: number; seq: number} | null;
   document?: Record<string, unknown>;
   input?: unknown;
@@ -73,7 +74,12 @@ export type RunStreamOptions = {
   /** Message `end` reçu (le viewer du run publie alors sa sortie). */
   onEnd: () => void;
   onStatus?: (s: StreamStatus) => void;
+  /** Présence des runs reliés (message `presence`, ou état au moment de rejoindre). */
+  onPresence?: (p: Presence) => void;
 };
+
+/** Runs reliés dont le viewer est ouvert (télécommandes, écrans appairés). */
+export type Presence = {count: number; members: {runId: string; slug: string; index: number; since: number; seen: number}[]};
 
 const POLL_MS = 1000;
 /** Regroupement des éléments de la file d'envoi (ms) : une requête au plus par intervalle. */
@@ -81,6 +87,8 @@ const EMIT_FLUSH_MS = 120;
 const EMIT_BATCH = 64;
 const MAX_SENT_IDS = 1000;
 const SNAPSHOT_MS = 5000;
+/** Signe de vie du viewer du run (présence vue par les runs reliés, perdue au bout de 15 s). */
+const ALIVE_MS = 5000;
 const MAX_SNAPSHOT_BYTES = 30_000;
 
 export function streamUrl(slug: string, runId: string): string {
@@ -132,6 +140,8 @@ export class RunStream {
   private lastSnapSeq = -1;
   private lastSnapJson = "";
   private stopped = false;
+  private aliveTimer = 0;
+  private onHide: (() => void) | null = null;
   private ended = false;
   private catchingUp = false;
   private errors = 0;
@@ -165,12 +175,17 @@ export class RunStream {
     for (const m of j.events ?? []) await this.apply(m);
     this.lastSeq = Math.max(this.lastSeq, j.seq);
     if (j.score?.score) this.player.play(j.score.score, j.score.t);
+    if (j.presence) this.opts.onPresence?.(j.presence);
     if (j.ended) this.end();
     if (this.opts.role === "performer") this.startPerformer();
     this.subscribe(j);
   }
 
   stop(): void {
+    if (!this.stopped && this.opts.role === "performer") this.sendBye();
+    clearInterval(this.aliveTimer);
+    if (this.onHide) window.removeEventListener("pagehide", this.onHide);
+    this.onHide = null;
     this.stopped = true;
     this.player.stop();
     this.source?.close();
@@ -320,6 +335,12 @@ export class RunStream {
       case "score.stop":
         this.player.stop();
         break;
+      case "presence": {
+        const p = {count: Number((m as {count?: number}).count) || 0, members: ((m as {members?: Presence["members"]}).members ?? [])};
+        this.opts.onPresence?.(p);
+        if (this.opts.storeId) dispatch(this.opts.storeId, {type: "presence", payload: p});
+        break;
+      }
       case "end":
         // Les actions envoyées juste avant (même envoi) passent encore dans la file du store :
         // la sortie publiée doit en tenir compte.
@@ -360,6 +381,11 @@ export class RunStream {
   /* ------------------------------------------------------------ viewer du run */
 
   private startPerformer(): void {
+    // Présence : signe de vie tout de suite (arrivée annoncée), puis toutes les 5 s ; départ à la fermeture.
+    void this.postOut([{type: "alive"}]);
+    this.aliveTimer = window.setInterval(() => void this.postOut([{type: "alive"}]), ALIVE_MS);
+    this.onHide = () => this.sendBye();
+    window.addEventListener("pagehide", this.onHide);
     // Instantané d'état pour les spectateurs qui arrivent en cours (seulement s'il a changé).
     if (this.opts.stateDp) this.snapTimer = window.setInterval(() => void this.postSnapshot(), SNAPSHOT_MS);
     const p = this.opts.progress;
@@ -454,6 +480,18 @@ export class RunStream {
     this.lastSnapSeq = this.lastSeq;
     this.lastSnapJson = json;
     await this.postOut([{type: "snapshot", seq: this.lastSeq, state}]);
+  }
+
+  /** Départ annoncé même pendant le déchargement de la page (sendBeacon). */
+  private sendBye(): void {
+    const url = `${streamUrl(this.opts.slug, this.opts.runId)}/stream`;
+    const body = JSON.stringify({rt: this.opts.token, events: [{type: "bye"}]});
+    try {
+      if (navigator.sendBeacon?.(url, new Blob([body], {type: "application/json"}))) return;
+    } catch {
+      /* repli ci-dessous */
+    }
+    void fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body, keepalive: true}).catch(() => {});
   }
 
   private async postOut(events: unknown[]): Promise<void> {

@@ -83,6 +83,19 @@
               "text-from": "artifactRun.pair.url",
               "size": 120
             }
+          },
+          {
+            "tagName": "p",
+            "nodes": [
+              {
+                "tagName": "sonic-value",
+                "attributes": {
+                  "id": "presence",
+                  "dataProvider": "artifactRun",
+                  "key": "presence.count"
+                }
+              }
+            ]
           }
         ]
       }
