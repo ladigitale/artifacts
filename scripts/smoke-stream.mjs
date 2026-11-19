@@ -287,6 +287,18 @@ console.log("\n== télécommande (file d'envoi d'un autre artefact, lien entre r
   await remote.close();
 }
 
+console.log("\n== présence");
+check("viewer du run : signe de vie envoyé", outs.some((e) => e.type === "alive"), String(outs.filter((e) => e.type === "alive").length));
+emit([{type: "presence", count: 2, members: [{runId: "a", slug: "ecran", index: 1, since: 0, seen: 0}, {runId: "b", slug: "ecran", index: 2, since: 0, seen: 0}]}]);
+for (const [name, p] of [["viewer du run", performer], ["spectateur SSE", watcher], ["spectateur relecture", poller]]) {
+  const r = await until(p, () => false, 1500).then(() => p.evaluate(() => {
+    const deep = (r, s, a = []) => { r.querySelectorAll("*").forEach((e) => { if (e.matches(s)) a.push(e); if (e.shadowRoot) deep(e.shadowRoot, s, a); }); return a; };
+    const e = deep(document, "#presence")[0];
+    return (e?.shadowRoot?.textContent || e?.textContent || "").trim();
+  }));
+  check(`${name} : artifactRun.presence.count = 2`, r === "2", r);
+}
+
 console.log("\n== appairage");
 {
   const phone = await open(`pair=ABCDEFGH`);
@@ -308,6 +320,9 @@ for (const [name, p] of [["spectateur SSE", watcher], ["spectateur arrivé en co
   const s = await until(p, (s) => s.status.includes("terminé"));
   check(`${name} : bandeau de fin`, s.status.includes("terminé"), s.status);
 }
+await performer.close({runBeforeUnload: true});
+await wait(800);
+check("viewer du run fermé : départ annoncé (bye)", outs.some((e) => e.type === "bye"), String(outs.filter((e) => e.type === "bye").length));
 check("aucune sortie publiée par un spectateur", outputs.every((o) => o.rt === "tok"));
 check("aucune erreur JS", errors.length === 0, errors.join(" | ").slice(0, 400));
 
