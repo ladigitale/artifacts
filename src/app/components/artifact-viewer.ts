@@ -1,3 +1,4 @@
+import {applyAppIdentity, clearAppIdentity} from "../app-identity";
 import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/menu";
 import "@supersoniks/concorde/menu-item";
@@ -243,6 +244,7 @@ export class ArtifactViewer extends LitElement {
     this.releaseNamespace();
     applyDocFonts(null);
     applyDocFontFiles(null);
+    if (!this.previewDocument && !this.embedded) clearAppIdentity();
     super.disconnectedCallback();
   }
 
@@ -662,6 +664,8 @@ export class ArtifactViewer extends LitElement {
       this.guardErrors = guardDocument(this.data.document);
       applyDocFonts(this.guardErrors.length ? null : (this.data.document as {fonts?: unknown}).fonts);
       applyDocFontFiles(this.guardErrors.length ? null : (this.data.document as {fontFiles?: unknown}).fontFiles);
+      // Page d'artefact (ni aperçu ni intégration) : titre, icônes et manifeste propres, installable.
+      if (!this.previewDocument && !this.embedded) applyAppIdentity(this.slug, String(fetched.title ?? ""), this.rawDocument, this.linkToken());
       this.syncViewFromHash();
       this.watchView();
       if (this.viewId) this.publishView(this.viewId);
