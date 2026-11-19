@@ -1,0 +1,28 @@
+{
+  "linkset": [
+    {
+      "anchor": "https://api.tadaaa.space/api/public/artifacts",
+      "service-doc": [
+        {"href": "https://artifacts.tadaaa.space/llms.txt", "type": "text/plain"}
+      ],
+      "service-meta": [
+        {"href": "https://artifacts.tadaaa.space/auth.md", "type": "text/markdown"}
+      ],
+      "status": [
+        {"href": "https://api.tadaaa.space/api/health", "type": "application/ld+json"}
+      ]
+    },
+    {
+      "anchor": "https://api.tadaaa.space/mcp",
+      "service-desc": [
+        {"href": "https://artifacts.tadaaa.space/.well-known/mcp/server-card.json", "type": "application/json"}
+      ],
+      "service-doc": [
+        {"href": "https://artifacts.tadaaa.space/auth.md", "type": "text/markdown"}
+      ],
+      "service-meta": [
+        {"href": "https://api.tadaaa.space/.well-known/oauth-protected-resource", "type": "application/json"}
+      ]
+    }
+  ]
+}

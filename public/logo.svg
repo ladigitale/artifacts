@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img">
+  <title>Artefacts</title>
+  <rect width="32" height="32" rx="8" fill="#4f1fff"/>
+  <g fill="none" stroke="#f8f6ff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="7" width="12" height="16" rx="1.5"/>
+    <path d="M11 11h6M11 15h6M11 19h4"/>
+    <path d="M20 11h3.5a1.5 1.5 0 0 1 1.5 1.5V22a1.5 1.5 0 0 1-1.5 1.5H14"/>
+  </g>
+</svg>

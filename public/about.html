@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>À propos — Artefacts</title>
+<meta name="description" content="Artefacts : visionneuse publique des documents SDUI Concorde publiés via l'API et le serveur MCP Tadaaa." />
+<link rel="canonical" href="https://artifacts.tadaaa.space/about.html" />
+<link rel="icon" type="image/svg+xml" href="/logo.svg" />
+<style>
+:root{color-scheme:light dark;--fg:#1d1a2b;--muted:#5b5670;--bg:#fbfaff;--accent:#4f1fff}
+@media (prefers-color-scheme:dark){:root{--fg:#ece9f7;--muted:#a9a3c2;--bg:#141220;--accent:#9d84ff}}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:44rem;margin:0 auto;padding:2.5rem 1rem 4rem}
+a{color:var(--accent)}h1{line-height:1.2}nav{font-size:.95rem;color:var(--muted)}
+footer{margin-top:3rem;font-size:.9rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+<nav><a href="/">Artefacts</a> · <a href="/about.html">À propos</a> · <a href="/contact.html">Contact</a> · <a href="/privacy.html">Confidentialité</a> · <a href="/llms.txt">llms.txt</a></nav>
+<h1>À propos d'Artefacts</h1>
+<p><strong>Artefacts</strong> est la visionneuse publique des artefacts publiés avec <a href="https://app.tadaaa.space">Tadaaa</a>. Un artefact est un document déclaratif (JSON SDUI) décrit avec les composants web <a href="https://www.npmjs.com/package/@supersoniks/concorde">Concorde</a> d'une liste blanche : il ne contient jamais de code exécutable. Chaque artefact a sa propre adresse, <code>https://artifacts.tadaaa.space/&lt;slug&gt;</code>.</p>
+<h2>Comment ça marche</h2>
+<ul>
+<li>Un agent IA (Claude, Cursor ou tout client MCP) ou une personne publie un artefact via le serveur MCP Tadaaa (<code>https://api.tadaaa.space/mcp</code>) : validation, publication, mise à jour versionnée.</li>
+<li>Chaque artefact appartient à un jeu de données (dataset) Tadaaa ; les membres du dataset (lecteur ou rédacteur) héritent des droits.</li>
+<li>Visibilité : <em>publique</em> (tout le monde), <em>par lien</em> (jeton secret <code>?k=</code>) ou <em>privée</em> (membres du dataset).</li>
+<li>La page lit le document via l'API publique Tadaaa et l'affiche en pleine page ; certaines collections de données peuvent être alimentées depuis la page.</li>
+</ul>
+<h2>Projet</h2>
+<p>Artefacts et Tadaaa sont des logiciels libres sous licence MIT : <a href="https://github.com/ladigitale/artifacts">ladigitale/artifacts</a> (visionneuse, Lit + Concorde) et <a href="https://github.com/ladigitale/tadaaa">ladigitale/tadaaa</a> (API Symfony / API Platform, serveur MCP, application de tâches).</p>
+<p>Pour les agents : <a href="/llms.txt">llms.txt</a>, <a href="/agents.md">agents.md</a>, <a href="/auth.md">auth.md</a>, <a href="/pricing.md">tarifs</a> (gratuit).</p>
+<footer>Artefacts — logiciel libre (licence MIT) · <a href="https://github.com/ladigitale/artifacts">github.com/ladigitale/artifacts</a></footer>
+</main>
+</body>
+</html>

@@ -9,3 +9,8 @@ import {applyTheme, loadStoredThemeId} from "./app/appearance";
 applyTheme(loadStoredThemeId());
 
 import "./app-router-host";
+import {registerWebMcpTools} from "./app/webmcp";
+
+// Bloc statique lisible sans JS (index.html) : l'app prend le relais.
+document.getElementById("static-intro")?.remove();
+registerWebMcpTools();

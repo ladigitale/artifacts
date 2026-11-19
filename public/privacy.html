@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Confidentialité — Artefacts</title>
+<meta name="description" content="Données traitées par la visionneuse Artefacts : stockage local, appels à l'API Tadaaa, ressources tierces (jsDelivr, Google Fonts)." />
+<link rel="canonical" href="https://artifacts.tadaaa.space/privacy.html" />
+<link rel="icon" type="image/svg+xml" href="/logo.svg" />
+<style>
+:root{color-scheme:light dark;--fg:#1d1a2b;--muted:#5b5670;--bg:#fbfaff;--accent:#4f1fff}
+@media (prefers-color-scheme:dark){:root{--fg:#ece9f7;--muted:#a9a3c2;--bg:#141220;--accent:#9d84ff}}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:44rem;margin:0 auto;padding:2.5rem 1rem 4rem}
+a{color:var(--accent)}h1{line-height:1.2}nav{font-size:.95rem;color:var(--muted)}
+footer{margin-top:3rem;font-size:.9rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+<nav><a href="/">Artefacts</a> · <a href="/about.html">À propos</a> · <a href="/contact.html">Contact</a> · <a href="/privacy.html">Confidentialité</a> · <a href="/llms.txt">llms.txt</a></nav>
+<h1>Confidentialité</h1>
+<p>Cette page décrit ce que fait la visionneuse <code>artifacts.tadaaa.space</code>. Les comptes et les artefacts eux-mêmes sont gérés par l'API Tadaaa (<code>api.tadaaa.space</code>).</p>
+<h2>Sans compte</h2>
+<ul>
+<li>Lire un artefact public ou par lien ne demande aucun compte. La page appelle l'API publique Tadaaa (<code>/api/public/artifacts/&lt;slug&gt;</code>) ; l'adresse IP sert à limiter le débit des requêtes.</li>
+<li>Pas de cookie publicitaire, pas d'outil de mesure d'audience dans la visionneuse.</li>
+<li>Stockage local du navigateur (<code>localStorage</code>) : thème choisi (<code>artifacts-theme</code>) et, le cas échéant, adresse de l'API (<code>artifacts-api-base-url</code>).</li>
+</ul>
+<h2>Avec un compte Tadaaa</h2>
+<ul>
+<li>La connexion passe par Tadaaa (authentification unique) ; le jeton de session est conservé dans le stockage local (<code>artifacts-account</code>) et la page de retour après connexion dans <code>sessionStorage</code>. La déconnexion efface le jeton.</li>
+<li>Les artefacts, leurs versions et les données écrites dans leurs collections sont stockés par l'API Tadaaa, dans le dataset du propriétaire.</li>
+</ul>
+<h2>Ressources tierces</h2>
+<ul>
+<li><a href="https://www.jsdelivr.com/">jsDelivr</a> (<code>cdn.jsdelivr.net</code>) : icônes Iconoir et bibliothèques de la liste blanche utilisées par certains artefacts.</li>
+<li><a href="https://fonts.google.com/">Google Fonts</a> (<code>fonts.googleapis.com</code>, <code>fonts.gstatic.com</code>) : polices des thèmes.</li>
+</ul>
+<p>Ces services reçoivent l'adresse IP du navigateur lors du chargement de ces fichiers.</p>
+<h2>Responsable et droits</h2>
+<p>Pour toute demande (accès, suppression de compte ou d'artefact) : <a href="mailto:app@tadaaa.space">app@tadaaa.space</a> ou la page <a href="/contact.html">contact</a>. L'éditeur et l'hébergeur sont indiqués dans les <a href="https://app.tadaaa.space/legal/mentions">mentions légales de Tadaaa</a> ; la politique de confidentialité des comptes est sur <a href="https://app.tadaaa.space/legal/privacy">app.tadaaa.space/legal/privacy</a>.</p>
+<footer>Artefacts — logiciel libre (licence MIT) · <a href="https://github.com/ladigitale/artifacts">github.com/ladigitale/artifacts</a></footer>
+</main>
+</body>
+</html>
