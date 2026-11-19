@@ -73,7 +73,7 @@ function join(u) {
   const events = log.filter((m) => m.seq > from && (after >= 0 || ["action", "state.snapshot", "state.delta"].includes(m.type)));
   const body = {runId: RUN, role, status, version: 1, store: "scene", seq, ended, serverTime: Date.now(), events, complete: true,
     stream: {actions: {pulse: {}, palette: {}}, state: true, document: true, score: true, rate: 60, progress: true}};
-  if (after < 0) Object.assign(body, {snapshot, score, input: {start: 5}, ...(patched ? {document: patched} : {})});
+  if (after < 0) Object.assign(body, {snapshot, score, input: {start: 5}, watchUrl: `https://artifacts.example/${SLUG}?run=${RUN}&wt=wtok`, ...(patched ? {document: patched} : {})});
   // `poll` : spectateur sans Mercure (suivi par relecture).
   if (status === "pending" && token !== "poll") {
     body.mercure = {hubUrl: `http://localhost:${PORT}/hub`, token: "jwt", topics: {in: `https://tadaaa.app/runs/${RUN}/k/in`, out: `https://tadaaa.app/runs/${RUN}/k/out`}, expiresIn: 3600};
@@ -176,6 +176,16 @@ const all = [["viewer du run", performer], ["spectateur SSE", watcher], ["specta
 for (const [name, p] of all) {
   const s = await until(p, (s) => s.count === "5");
   check(`${name} : entrée du run appliquée (count 5)`, s.count === "5", JSON.stringify(s));
+}
+for (const [name, p] of [["viewer du run", performer], ["spectateur SSE", watcher]]) {
+  const r = await p.evaluate(() => {
+    const deep = (r, s, a = []) => { r.querySelectorAll("*").forEach((e) => { if (e.matches(s)) a.push(e); if (e.shadowRoot) deep(e.shadowRoot, s, a); }); return a; };
+    const qr = deep(document, "sonic-qr")[0];
+    const svg = qr?.shadowRoot?.querySelector("svg");
+    const role = deep(document, "#role")[0];
+    return {label: svg?.getAttribute("aria-label") ?? null, path: svg?.querySelector("path")?.getAttribute("d")?.length ?? 0, role: (role?.shadowRoot?.textContent || role?.textContent || "").trim()};
+  });
+  check(`${name} : artifactRun.watchUrl en QR code, rôle publié`, !!r.label?.includes("wt=wtok") && r.path > 100 && r.role === (p === performer ? "performer" : "watcher"), JSON.stringify(r));
 }
 check("transports", (await read(watcher)).stream === "mercure" && (await read(poller)).stream === "polling", `${(await read(watcher)).stream} / ${(await read(poller)).stream}`);
 

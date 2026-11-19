@@ -14,6 +14,8 @@ const STORE_TAG = "sonic-store";
 
 /** DataProvider publié par le viewer : `{view}` = id de la vue affichée (onglets en `sonic-menu-item radio name="view"`). */
 export const VIEW_DP = "artifactView";
+/** Run en cours, publié par le viewer : `{runId, role, watchUrl, status}` (lien « regarder », QR code). */
+export const RUN_DP = "artifactRun";
 const NAME = /^[A-Za-z_][\w:-]*$/;
 
 type Node = Record<string, unknown>;
@@ -50,7 +52,7 @@ function collectFromNode(node: unknown, out: Set<string>, depth = 0): void {
 
 /** Noms que le document publie ou lit dans le PublisherManager. */
 export function declaredNames(doc: unknown, slug: string): Set<string> {
-  const out = new Set<string>([`artifact:${slug}`, VIEW_DP]);
+  const out = new Set<string>([`artifact:${slug}`, VIEW_DP, RUN_DP]);
   const d = (doc ?? {}) as {
     data?: {
       sources?: Record<string, {collection?: string; asset?: string}>;

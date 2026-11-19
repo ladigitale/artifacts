@@ -42,6 +42,8 @@ export type StreamJoin = {
   score?: {score: Score; t: number; seq: number} | null;
   document?: Record<string, unknown>;
   input?: unknown;
+  /** Lien « regarder » (viewer du run et spectateurs). */
+  watchUrl?: string | null;
   mercure?: {hubUrl: string; token: string; topics: {in: string; out: string}; expiresIn: number} | null;
 };
 

@@ -28,7 +28,7 @@ import {applyPatch, type PatchOp} from "../json-patch";
 import {applyDocFontFiles, applyDocFonts} from "../doc-fonts";
 import {claimNamespace, transformDocument, type NamespaceClaim} from "../doc-transform";
 import {withRoomContext} from "../room-context";
-import {VIEW_DP, declaredNames, nsName, nsTree, nsValue} from "../dp-namespace";
+import {RUN_DP, VIEW_DP, declaredNames, nsName, nsTree, nsValue} from "../dp-namespace";
 import {dp, set} from "@supersoniks/concorde/utils";
 import DataBindObserver from "@supersoniks/concorde/core/utils/DataBindObserver";
 import tailwind from "../../css/tailwind";
@@ -369,6 +369,7 @@ export class ArtifactViewer extends LitElement {
       ? {path: mapPath(io.stream.progress.from, (n) => this.n(n)), every: Math.max(100, io.stream.progress.every ?? 1000)}
       : null;
     this.runStream?.stop();
+    this.publishRun(join, target.role, join.status);
     const stream = new RunStream({
       slug: this.slug,
       runId: target.id,
@@ -387,11 +388,17 @@ export class ArtifactViewer extends LitElement {
       },
       onStatus: (s) => {
         this.dataset.stream = s.closed ? "closed" : s.ended ? "ended" : s.transport;
+        if (s.closed) this.publishRun(join, target.role, s.closed);
         if (target.role === "watcher" && s.closed) this.ioStatus = {state: "closed", message: "Le direct est terminé."};
       },
     });
     this.runStream = stream;
     await stream.start();
+  }
+
+  /** DataProvider `artifactRun` : ce que le document peut montrer du run (jamais le jeton du run). */
+  private publishRun(join: StreamJoin, role: "performer" | "watcher", status: string) {
+    set(this.n(RUN_DP), {runId: join.runId, role, watchUrl: join.watchUrl ?? null, status} as never);
   }
 
   /**
