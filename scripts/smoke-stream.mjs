@@ -24,6 +24,9 @@ const DIST = path.join(ROOT, "dist");
 const PORT = 4455;
 const SLUG = "flux";
 const RUN = "0190f3a2-2222-7222-8333-944455556666";
+const RUN2 = "0190f3a2-3333-7222-8333-944455556666";
+let pairClaims = 0;
+const pairRequests = [];
 let doc = JSON.parse(fs.readFileSync(path.join(ROOT, "tests/fixtures/stream.json"), "utf8"));
 // Télécommande (io.stream.emit) reliée au run du flux, comme un lien Tadaaa (link_artifact_runs).
 const REMOTE_RUN = "0190f3a2-3333-7333-8444-955566667777";
@@ -120,8 +123,15 @@ const server = http.createServer((q, r) => {
     if (u.pathname.includes("/collections/")) return json(200, {member: []});
     return json(200, {id: "remote", slug: "remote", title: remoteDoc.title, description: "", visibility: "public", document: remoteDoc, scriptAssets: [], version: 1, updatedAt: new Date().toISOString(), collections: [], canWrite: false});
   }
-  const m = /^\/api\/public\/artifacts\/flux\/runs\/([0-9a-f-]{36})(\/stream|\/output)?$/.exec(u.pathname);
+  const pm = /^\/api\/public\/artifacts\/flux\/pair\/([A-Za-z0-9]+)$/.exec(u.pathname);
+  if (pm && q.method === "POST") {
+    if (pm[1] !== "ABCDEFGH") return json(404, {detail: "Code inconnu."});
+    pairClaims++;
+    return json(201, {runId: RUN2, runToken: "tok2", slug: SLUG});
+  }
+  const m = /^\/api\/public\/artifacts\/flux\/runs\/([0-9a-f-]{36})(\/stream|\/output|\/pair)?$/.exec(u.pathname);
   if (m) {
+    if (m[2] === "/pair") return read((b) => { pairRequests.push(b.rt); json(200, {code: "ABCDEFGH", url: `http://localhost:${PORT}/${SLUG}?pair=ABCDEFGH`, expiresAt: new Date(Date.now() + 9e5).toISOString(), remaining: 4 - pairClaims, max: 4, paired: pairClaims, remote: SLUG}); });
     if (m[2] === "/stream" && q.method === "GET") return json(200, join(u));
     if (m[2] === "/stream" && q.method === "POST") return read((b) => {
       for (const e of b.events) {
@@ -186,6 +196,18 @@ for (const [name, p] of [["viewer du run", performer], ["spectateur SSE", watche
     return {label: svg?.getAttribute("aria-label") ?? null, path: svg?.querySelector("path")?.getAttribute("d")?.length ?? 0, role: (role?.shadowRoot?.textContent || role?.textContent || "").trim()};
   });
   check(`${name} : artifactRun.watchUrl en QR code, rôle publié`, !!r.label?.includes("wt=wtok") && r.path > 100 && r.role === (p === performer ? "performer" : "watcher"), JSON.stringify(r));
+}
+{
+  const r = await performer.evaluate(() => {
+    const deep = (r, s, a = []) => { r.querySelectorAll("*").forEach((e) => { if (e.matches(s)) a.push(e); if (e.shadowRoot) deep(e.shadowRoot, s, a); }); return a; };
+    return deep(document, "#qrpair")[0]?.shadowRoot?.querySelector("svg")?.getAttribute("aria-label") ?? null;
+  });
+  check("hôte : code d'appairage demandé avec le jeton du run, QR affiché", pairRequests.includes("tok") && !!r?.includes("pair=ABCDEFGH"), String(r));
+  const w = await watcher.evaluate(() => {
+    const deep = (r, s, a = []) => { r.querySelectorAll("*").forEach((e) => { if (e.matches(s)) a.push(e); if (e.shadowRoot) deep(e.shadowRoot, s, a); }); return a; };
+    return deep(document, "#qrpair")[0]?.shadowRoot?.querySelector("svg") ? "qr" : "vide";
+  });
+  check("spectateur : pas de code d'appairage", w === "vide", w);
 }
 check("transports", (await read(watcher)).stream === "mercure" && (await read(poller)).stream === "polling", `${(await read(watcher)).stream} / ${(await read(poller)).stream}`);
 
@@ -263,6 +285,19 @@ console.log("\n== télécommande (file d'envoi d'un autre artefact, lien entre r
     check(`${name} : piloté par la télécommande`, Number(s.count) === before + 2 && s.titre === "Télécommandé", JSON.stringify(s));
   }
   await remote.close();
+}
+
+console.log("\n== appairage");
+{
+  const phone = await open(`pair=ABCDEFGH`);
+  await until(phone, (s) => s.count !== null);
+  const url = phone.url();
+  check("lien d'appairage : place réclamée, adresse passée en run + jeton", pairClaims === 1 && url.includes(`run=${RUN2}`) && url.includes("rt=tok2") && !url.includes("pair="), url);
+  const bad = await open(`pair=ZZZZZZZZ`);
+  const s = await until(bad, (s) => s.status.includes("Appairage"));
+  check("code inconnu : bandeau d'erreur", s.status.includes("Appairage impossible") && s.status.includes("Code inconnu"), s.status);
+  await phone.close();
+  await bad.close();
 }
 
 console.log("\n== fin du flux");

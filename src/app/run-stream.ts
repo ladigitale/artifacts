@@ -501,3 +501,44 @@ function clone<T>(v: T): T {
     return v;
   }
 }
+
+/* ------------------------------------------------------------ appairage (io.stream.pair) */
+
+/** Code d'appairage d'un run hôte, publié dans `artifactRun.pair`. */
+export type PairInfo = {
+  code: string | null;
+  url: string | null;
+  expiresAt: string | null;
+  remaining: number;
+  max: number;
+  paired: number;
+  remote: string;
+};
+
+async function postJson<T>(url: string, body: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {Accept: "application/json", "Content-Type": "application/json"},
+    body: JSON.stringify(body ?? {}),
+  });
+  const json = (await res.json().catch(() => ({}))) as T & {detail?: string; error?: string};
+  if (!res.ok) throw new Error(json.detail || json.error || `Erreur ${res.status}`);
+  return json;
+}
+
+/** Hôte : code en cours (réutilisé par le serveur tant qu'il reste valide), places restantes. */
+export function requestPair(slug: string, runId: string, runToken: string): Promise<PairInfo> {
+  return postJson<PairInfo>(`${streamUrl(slug, runId)}/pair`, {rt: runToken});
+}
+
+/** Appareil qui a ouvert le lien : réclame la place, reçoit son propre run. */
+export function claimPair(slug: string, code: string): Promise<{runId: string; runToken: string}> {
+  const base = `${normalizeApiBase(loadApiBaseUrl())}/api/public/artifacts/${encodeURIComponent(slug)}`;
+  return postJson<{runId: string; runToken: string}>(`${base}/pair/${encodeURIComponent(code)}`, {});
+}
+
+/** `?pair=<code>` sur la page. */
+export function pairFromLocation(search: string): string | null {
+  const code = new URLSearchParams(search).get("pair") ?? "";
+  return /^[A-Za-z0-9]{4,16}$/.test(code) ? code : null;
+}
