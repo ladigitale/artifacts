@@ -75,6 +75,14 @@
                 }
               }
             ]
+          },
+          {
+            "tagName": "sonic-qr",
+            "attributes": {
+              "id": "qrpair",
+              "text-from": "artifactRun.pair.url",
+              "size": 120
+            }
           }
         ]
       }
@@ -142,6 +150,11 @@
       "progress": {
         "from": "scene.count",
         "every": 200
+      },
+      "pair": {
+        "remote": "flux",
+        "map": "data",
+        "max": 4
       }
     }
   }

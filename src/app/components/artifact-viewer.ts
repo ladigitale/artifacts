@@ -23,7 +23,7 @@ import {startSinks, type SinkDef} from "../sinks";
 import {persistDecl, persistKey, plain, readSaved, writeSaved} from "../persist";
 import {OnlineSave, onlineDecl} from "../online-save";
 import {mapPath, runFromLocation, startIoRun, waitForStore, type IoDef, type IoStatus} from "../io-run";
-import {joinStream, RunStream, watchFromLocation, type StreamJoin} from "../run-stream";
+import {claimPair, joinStream, pairFromLocation, requestPair, RunStream, watchFromLocation, type PairInfo, type StreamJoin} from "../run-stream";
 import {applyPatch, type PatchOp} from "../json-patch";
 import {applyDocFontFiles, applyDocFonts} from "../doc-fonts";
 import {claimNamespace, transformDocument, type NamespaceClaim} from "../doc-transform";
@@ -204,6 +204,10 @@ export class ArtifactViewer extends LitElement {
   private streamJoin: StreamJoin | null = null;
   private rawDocument: Record<string, unknown> | null = null;
   private streamDoc = Promise.resolve();
+  /** Appairage : code de l'hôte (renouvelé) et erreur de réclamation d'un code ouvert ici. */
+  private pairTimer = 0;
+  private pairInfo: PairInfo | null = null;
+  private runInfo: Record<string, unknown> | null = null;
   /** Préfixe des DataProviders (vide sauf collision entre artefacts intégrés). */
   private ns = "";
   private nsNames = new Set<string>();
@@ -322,6 +326,10 @@ export class ArtifactViewer extends LitElement {
     this.stopIo = null;
     this.runStream?.stop();
     this.runStream = null;
+    clearInterval(this.pairTimer);
+    this.pairTimer = 0;
+    this.pairInfo = null;
+    this.runInfo = null;
     this.ioStatus = null;
   }
 
@@ -370,6 +378,9 @@ export class ArtifactViewer extends LitElement {
       : null;
     this.runStream?.stop();
     this.publishRun(join, target.role, join.status);
+    if (target.role === "performer" && join.status === "pending" && (io.stream as {pair?: unknown} | undefined)?.pair) {
+      this.startPairing(target.id, target.token);
+    }
     const stream = new RunStream({
       slug: this.slug,
       runId: target.id,
@@ -398,7 +409,26 @@ export class ArtifactViewer extends LitElement {
 
   /** DataProvider `artifactRun` : ce que le document peut montrer du run (jamais le jeton du run). */
   private publishRun(join: StreamJoin, role: "performer" | "watcher", status: string) {
-    set(this.n(RUN_DP), {runId: join.runId, role, watchUrl: join.watchUrl ?? null, status} as never);
+    this.runInfo = {runId: join.runId, role, watchUrl: join.watchUrl ?? null, status};
+    set(this.n(RUN_DP), {...this.runInfo, pair: this.pairInfo} as never);
+  }
+
+  /**
+   * Hôte d'un appairage (io.stream.pair, viewer du run) : demande le code et le renouvelle (le
+   * serveur rend le même tant qu'il reste valide) ; `artifactRun.pair` suit aussi les places prises.
+   */
+  private startPairing(runId: string, runToken: string) {
+    clearInterval(this.pairTimer);
+    const refresh = async () => {
+      try {
+        this.pairInfo = await requestPair(this.slug, runId, runToken);
+      } catch (e) {
+        this.pairInfo = {code: null, url: null, expiresAt: null, remaining: 0, max: 0, paired: 0, remote: "", error: e instanceof Error ? e.message : String(e)} as PairInfo;
+      }
+      if (this.runInfo) set(this.n(RUN_DP), {...this.runInfo, pair: this.pairInfo} as never);
+    };
+    void refresh();
+    this.pairTimer = window.setInterval(() => void refresh(), PAIR_REFRESH_MS);
   }
 
   /**
@@ -575,7 +605,23 @@ export class ArtifactViewer extends LitElement {
     this.error = "";
     this.clearTransformWatchers();
     this.clearLiveData();
+    let pairError = "";
     try {
+      // Lien d'appairage ouvert ici (?pair=<code>) : réclamer la place, puis continuer comme le
+      // viewer du run reçu (l'adresse prend ?run=&rt= : un rechargement garde la même place).
+      const pairCode = !this.embedded && !this.previewDocument ? pairFromLocation(location.search) : null;
+      if (pairCode) {
+        try {
+          const claimed = await claimPair(this.slug, pairCode);
+          const url = new URL(location.href);
+          url.searchParams.delete("pair");
+          url.searchParams.set("run", claimed.runId);
+          url.searchParams.set("rt", claimed.runToken);
+          history.replaceState(history.state, "", url.toString());
+        } catch (e) {
+          pairError = e instanceof Error ? e.message : String(e);
+        }
+      }
       let fetched = this.previewDocument
         ? previewArtifact(this.slug, this.previewDocument)
         : await fetchPublicArtifact(this.slug, this.linkToken());
@@ -634,6 +680,7 @@ export class ArtifactViewer extends LitElement {
         } else {
           this.startIo(join && target ? {join, target} : null);
         }
+        if (pairError) this.ioStatus = {state: "error", message: `Appairage impossible : ${pairError}`};
       }
     } catch (e) {
       const raw = e instanceof Error ? e.message : String(e);
@@ -1251,6 +1298,8 @@ function isDenied(e: unknown): boolean {
 }
 
 const STREAM_STORE_BUDGET_MS = 50;
+/** Hôte d'un appairage : relecture du code et des places prises. */
+const PAIR_REFRESH_MS = 20_000;
 
 /** Parties du document qui alimentent les DataProviders (sources, transforms) : relues si elles changent. */
 function dataPart(doc: Record<string, unknown>): unknown {
