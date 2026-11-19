@@ -1,0 +1,43 @@
+{
+  "specVersion": "1.0",
+  "host": {
+    "displayName": "Artefacts (Tadaaa)",
+    "identifier": "artifacts.tadaaa.space",
+    "documentationUrl": "https://artifacts.tadaaa.space/llms.txt",
+    "logoUrl": "https://artifacts.tadaaa.space/logo.svg"
+  },
+  "entries": [
+    {
+      "identifier": "urn:air:artifacts.tadaaa.space:mcp:tadaaa",
+      "displayName": "Tadaaa MCP server",
+      "type": "application/mcp-server-card+json",
+      "url": "https://artifacts.tadaaa.space/.well-known/mcp/server-card.json",
+      "description": "Publish, update, list and read Artefacts (shareable Concorde SDUI pages) and Tadaaa todos. OAuth 2.1, scope mcp.",
+      "tags": ["mcp", "artifacts", "sdui", "publishing", "todos"]
+    },
+    {
+      "identifier": "urn:air:artifacts.tadaaa.space:docs:llms-txt",
+      "displayName": "Artefacts llms.txt",
+      "type": "text/plain",
+      "url": "https://artifacts.tadaaa.space/llms.txt",
+      "description": "Overview for agents: public JSON endpoints, MCP tools, authentication.",
+      "tags": ["docs", "llms.txt"]
+    },
+    {
+      "identifier": "urn:air:artifacts.tadaaa.space:docs:auth",
+      "displayName": "Artefacts authentication guide",
+      "type": "text/markdown",
+      "url": "https://artifacts.tadaaa.space/auth.md",
+      "description": "OAuth 2.1 + PKCE and personal access tokens for the Tadaaa MCP server.",
+      "tags": ["docs", "oauth", "auth"]
+    },
+    {
+      "identifier": "urn:air:artifacts.tadaaa.space:api:catalog",
+      "displayName": "Artefacts API catalog",
+      "type": "application/linkset+json",
+      "url": "https://artifacts.tadaaa.space/.well-known/api-catalog",
+      "description": "RFC 9727 API catalog: public artefact read API and MCP endpoint.",
+      "tags": ["api", "rfc9727"]
+    }
+  ]
+}

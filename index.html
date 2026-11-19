@@ -8,8 +8,89 @@
     <link rel="stylesheet" href="/src/css/app.css" />
     <link rel="stylesheet" href="/src/css/themes.css" />
     <title>Artefacts</title>
+    <meta name="description" content="Visionneuse publique des artefacts Tadaaa : documents SDUI Concorde publiés par des agents IA via MCP, partageables en pleine page à artifacts.tadaaa.space/<slug>." />
+    <link rel="canonical" href="https://artifacts.tadaaa.space/" />
+    <link rel="alternate" type="text/markdown" href="/index.md" />
+    <link rel="describedby" type="text/plain" href="/llms.txt" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Artefacts" />
+    <meta property="og:title" content="Artefacts — pages SDUI publiées via Tadaaa" />
+    <meta property="og:description" content="Documents SDUI Concorde publiés par des agents IA via le serveur MCP Tadaaa, partageables en pleine page." />
+    <meta property="og:url" content="https://artifacts.tadaaa.space/" />
+    <meta property="og:image" content="https://artifacts.tadaaa.space/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Artefacts — pages SDUI publiées via Tadaaa" />
+    <meta name="twitter:description" content="Documents SDUI Concorde publiés par des agents IA via le serveur MCP Tadaaa, partageables en pleine page." />
+    <meta name="twitter:image" content="https://artifacts.tadaaa.space/og.png" />
+    <!-- Données structurées : bloc JSON non exécuté (compatible CSP sans inline script). -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://artifacts.tadaaa.space/#organization",
+            "name": "Tadaaa",
+            "url": "https://app.tadaaa.space/",
+            "logo": "https://artifacts.tadaaa.space/logo.svg",
+            "sameAs": [
+              "https://github.com/ladigitale/artifacts",
+              "https://github.com/ladigitale/tadaaa"
+            ]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://artifacts.tadaaa.space/#website",
+            "name": "Artefacts",
+            "url": "https://artifacts.tadaaa.space/",
+            "inLanguage": "fr",
+            "publisher": {"@id": "https://artifacts.tadaaa.space/#organization"}
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://artifacts.tadaaa.space/#app",
+            "name": "Artefacts",
+            "url": "https://artifacts.tadaaa.space/",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "description": "Visionneuse publique des documents SDUI Concorde publiés via l'API et le serveur MCP Tadaaa.",
+            "license": "https://opensource.org/licenses/MIT",
+            "codeRepository": "https://github.com/ladigitale/artifacts",
+            "image": "https://artifacts.tadaaa.space/og.png",
+            "isAccessibleForFree": true,
+            "offers": {"@type": "Offer", "price": "0", "priceCurrency": "EUR"},
+            "publisher": {"@id": "https://artifacts.tadaaa.space/#organization"},
+            "isPartOf": {"@id": "https://artifacts.tadaaa.space/#website"}
+          }
+        ]
+      }
+    </script>
   </head>
   <body class="m-0 p-0">
+    <!-- Contenu lisible sans JS (agents, aperçus) — retiré au boot par src/main.ts. -->
+    <main id="static-intro" style="max-width:44rem;margin:0 auto;padding:2.5rem 1rem;font-family:system-ui,sans-serif;line-height:1.6">
+      <h1>Artefacts</h1>
+      <p>
+        Visionneuse publique des artefacts publiés avec Tadaaa : documents SDUI déclaratifs (JSON, composants web
+        Concorde d'une liste blanche, jamais de code exécutable) affichés en pleine page à
+        <code>https://artifacts.tadaaa.space/&lt;slug&gt;</code>.
+      </p>
+      <p>
+        Les agents IA publient et mettent à jour les artefacts via le serveur MCP Tadaaa
+        (<code>https://api.tadaaa.space/mcp</code>, OAuth 2.1). Un artefact public se lit en JSON via
+        <code>GET https://api.tadaaa.space/api/public/artifacts/{slug}</code>. Gratuit, open source (MIT).
+      </p>
+      <ul>
+        <li><a href="/llms.txt">llms.txt</a> — vue d'ensemble pour les agents</li>
+        <li><a href="/agents.md">agents.md</a> — quand et comment utiliser Artefacts</li>
+        <li><a href="/auth.md">auth.md</a> — authentification OAuth / MCP</li>
+        <li><a href="/index.md">Version markdown de cette page</a> · <a href="/pricing.md">Tarifs (gratuit)</a></li>
+        <li><a href="/about.html">À propos</a> · <a href="/contact.html">Contact</a> · <a href="/privacy.html">Confidentialité</a></li>
+        <li><a href="https://github.com/ladigitale/artifacts">Code source sur GitHub</a></li>
+      </ul>
+    </main>
     <sonic-theme background color font>
       <app-router-host></app-router-host>
     </sonic-theme>

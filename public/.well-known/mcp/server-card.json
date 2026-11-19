@@ -1,0 +1,22 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/mcp-server-card/v1.json",
+  "name": "space.tadaaa/tadaaa",
+  "title": "Tadaaa (todos, datasets, artefacts)",
+  "version": "1.0.0",
+  "description": "Tadaaa MCP server: publish, update, list and read Artefacts (Concorde SDUI pages served at https://artifacts.tadaaa.space/<slug>), plus Tadaaa todos, tags and link detectors. OAuth 2.1 (scope mcp) or personal access token.",
+  "websiteUrl": "https://artifacts.tadaaa.space/llms.txt",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://api.tadaaa.space/mcp"
+    }
+  ],
+  "authentication": {
+    "required": true,
+    "schemes": ["oauth2", "bearer"]
+  },
+  "capabilities": {
+    "tools": {}
+  },
+  "tools": "dynamic"
+}

@@ -1,0 +1,40 @@
+# Artefacts
+
+> Artefacts (artifacts.tadaaa.space) is the public viewer for artefacts published with Tadaaa: declarative SDUI documents (JSON, Concorde web components, allow-listed, never executable code) rendered full page at `https://artifacts.tadaaa.space/<slug>`. Artefacts are created, updated and listed through the Tadaaa MCP server (`https://api.tadaaa.space/mcp`, OAuth 2.1) and read anonymously through the public JSON API when their visibility is `public`.
+
+Key facts for agents:
+
+- One artefact = one slug (`[a-z0-9][a-z0-9-]{2,63}`) = one page `https://artifacts.tadaaa.space/<slug>`.
+- Visibility: `public` (anyone), `link` (needs the `?k=<token>` from the share URL), `private` (members of the owning Tadaaa dataset only).
+- There is no public index of artefacts: you discover a slug from a share link, or list your own artefacts with the MCP tool `list_artifacts` once authenticated.
+- Reading a public artefact needs no account. Publishing needs a Tadaaa account (free, self-serve) and the MCP server.
+- The viewer page is a JavaScript SPA; prefer the JSON API below to read an artefact's content.
+
+## Read a published artefact (no auth)
+
+- Public artefact JSON: `GET https://api.tadaaa.space/api/public/artifacts/{slug}` returns `{id, slug, title, description, document, version, updatedAt, collections, visibility, concordeVersion}`. Add `?k={token}` for `link` artefacts. 404 when the slug does not exist or is not readable.
+- `GET https://api.tadaaa.space/api/public/artifacts/{slug}/meta` returns `{title, description, slug, updatedAt, url}` (lightweight, cacheable 60 s).
+- `GET https://api.tadaaa.space/api/public/artifacts/{slug}/collections/{name}` returns `{member: [...]}` for collections flagged public-read (names listed in `collections`).
+- Rate-limited per IP. Browser CORS is limited to Tadaaa origins: call it server-side (curl, fetch tool).
+
+## Publish and manage artefacts (MCP, OAuth)
+
+- [Authentication guide](https://artifacts.tadaaa.space/auth.md): OAuth 2.1 + PKCE, dynamic client registration, scopes `mcp` and `offline_access`.
+- [MCP server card](https://artifacts.tadaaa.space/.well-known/mcp/server-card.json): remote `https://api.tadaaa.space/mcp` (streamable HTTP).
+- Artefact tools: `get_artifact_catalog` (allowed SDUI components), `validate_artifact`, `publish_artifact`, `update_artifact`, `get_artifact`, `list_artifacts`, `delete_artifact`, `read_artifact_data`, `write_artifact_data`.
+- [Agent instructions](https://artifacts.tadaaa.space/agents.md): when to use Artefacts, and how.
+
+## Site
+
+- [Home (markdown)](https://artifacts.tadaaa.space/index.md)
+- [About](https://artifacts.tadaaa.space/about.html)
+- [Contact](https://artifacts.tadaaa.space/contact.html)
+- [Privacy](https://artifacts.tadaaa.space/privacy.html)
+- [Pricing](https://artifacts.tadaaa.space/pricing.md)
+- [AI catalog](https://artifacts.tadaaa.space/.well-known/ai-catalog.json)
+
+## Optional
+
+- [Source code (MIT)](https://github.com/ladigitale/artifacts): this viewer (Lit + Concorde).
+- [Tadaaa source code (MIT)](https://github.com/ladigitale/tadaaa): API, MCP server, todo app.
+- [Tadaaa app](https://app.tadaaa.space): account creation and datasets.

@@ -1,0 +1,33 @@
+{
+  "entries": [
+    {
+      "@context": "https://agenticresourcediscovery.org/context/v1",
+      "identifier": "urn:air:artifacts.tadaaa.space:mcp:tadaaa",
+      "displayName": "Tadaaa MCP server",
+      "type": "application/mcp-server-card+json",
+      "url": "https://artifacts.tadaaa.space/.well-known/mcp/server-card.json",
+      "description": "Publish, update, list and read Artefacts (shareable Concorde SDUI pages at artifacts.tadaaa.space/<slug>) and Tadaaa todos. OAuth 2.1, scope mcp.",
+      "capabilities": ["PublishArtifact", "UpdateArtifact", "ListArtifacts", "GetArtifact", "ValidateArtifact", "ReadArtifactData", "WriteArtifactData"],
+      "representativeQueries": [
+        "publish this report as a shareable web page",
+        "turn this table into a public dashboard link",
+        "update my published artefact with new data",
+        "list the artefacts I have published"
+      ],
+      "tags": ["mcp", "artifacts", "sdui", "publishing"]
+    },
+    {
+      "@context": "https://agenticresourcediscovery.org/context/v1",
+      "identifier": "urn:air:artifacts.tadaaa.space:docs:llms-txt",
+      "displayName": "Artefacts llms.txt",
+      "type": "text/plain",
+      "url": "https://artifacts.tadaaa.space/llms.txt",
+      "description": "How to read published artefacts as JSON and how to publish them through MCP.",
+      "representativeQueries": [
+        "read the content of an artifacts.tadaaa.space page",
+        "how do I publish an artefact on Tadaaa"
+      ],
+      "tags": ["docs"]
+    }
+  ]
+}

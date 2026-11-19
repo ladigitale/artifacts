@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Static pages only: the Tadaaa API exposes no public listing of artefacts. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://artifacts.tadaaa.space/</loc><lastmod>2026-11-19</lastmod></url>
+  <url><loc>https://artifacts.tadaaa.space/about.html</loc><lastmod>2026-11-19</lastmod></url>
+  <url><loc>https://artifacts.tadaaa.space/contact.html</loc><lastmod>2026-11-19</lastmod></url>
+  <url><loc>https://artifacts.tadaaa.space/privacy.html</loc><lastmod>2026-11-19</lastmod></url>
+  <url><loc>https://artifacts.tadaaa.space/index.md</loc><lastmod>2026-11-19</lastmod></url>
+  <url><loc>https://artifacts.tadaaa.space/llms.txt</loc><lastmod>2026-11-19</lastmod></url>
+  <url><loc>https://artifacts.tadaaa.space/auth.md</loc><lastmod>2026-11-19</lastmod></url>
+  <url><loc>https://artifacts.tadaaa.space/agents.md</loc><lastmod>2026-11-19</lastmod></url>
+  <url><loc>https://artifacts.tadaaa.space/pricing.md</loc><lastmod>2026-11-19</lastmod></url>
+</urlset>
