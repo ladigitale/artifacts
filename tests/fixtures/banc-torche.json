@@ -1,0 +1,928 @@
+{
+ "schema": "artifacts/1",
+ "title": "Banc torche",
+ "theme": "default",
+ "defaultView": "banc",
+ "icon": {
+  "emoji": "🔦",
+  "background": "#101014",
+  "color": "#ffffff"
+ },
+ "capabilities": [
+  "camera"
+ ],
+ "files": {
+  "banc.jsonata": "(\n  $s := $state;\n  $t := $action.type;\n  $p := $action.payload;\n  $now := $action.t;\n\n  $stat := function($a) {\n    $count($a) = 0 ? {\"n\": 0, \"mean\": null, \"sd\": null, \"min\": null, \"max\": null} : (\n      $m := $average($a);\n      {\n        \"n\": $count($a),\n        \"mean\": $round($m, 1),\n        \"sd\": $count($a) > 1 ? $round($sqrt($sum($map($a, function($v) { ($v - $m) * ($v - $m) })) / ($count($a) - 1)), 1) : 0,\n        \"min\": $round($min($a), 1),\n        \"max\": $round($max($a), 1)\n      }\n    )\n  };\n\n  $finish := function($st, $why) {(\n    $on := $stat($st.latOn);\n    $off := $stat($st.latOff);\n    $rows := $map([400, 300, 200, 150, 100, 70, 50], function($d) {(\n      $ps := $filter($st.pulses, function($x) { $x.d = $d });\n      $obs := $stat($map($ps, function($x) { $x.obs }));\n      {\n        \"d\": $d,\n        \"sent\": 4,\n        \"seen\": $count($ps),\n        \"cmd\": $count($ps) > 0 ? $round($average($map($ps, function($x) { $x.cmd })), 1) : null,\n        \"obs\": $obs,\n        \"ok\": $count($ps) = 4 and $obs.sd <= 0.2 * $d\n      }\n    )});\n    $chain := $reduce($rows, function($acc, $r) { $acc.ok and $r.ok ? {\"ok\": true, \"min\": $r.d} : {\"ok\": false, \"min\": $acc.min} }, {\"ok\": true, \"min\": 0});\n    $torchOk := $on.n >= 3 and $off.n >= 3;\n    $sigma := $torchOk ? $sqrt($on.sd * $on.sd + $off.sd * $off.sd) : 0;\n    $frame := $st.fps > 0 ? 1000 / $st.fps : 33.3;\n    $dot := $torchOk and $chain.min > 0 ? $ceil($max([$chain.min, 6 * $sigma, 4 * $frame]) / 10) * 10 : 0;\n    $verdict := $why != \"\" ? $why\n      : $not($torchOk) ? \"La torche ne répond pas, ou son reflet est trop faible\"\n      : $dot = 0 ? \"Torche trop irrégulière, même à 400 ms\"\n      : \"Point conseillé : \" & $dot & \" ms, soit \" & $round(1200 / $dot, 1) & \" mots/minute\";\n    $merge([$st, {\n      \"phase\": $why != \"\" ? \"error\" : \"done\",\n      \"torch\": false,\n      \"msg\": $verdict,\n      \"notice\": $dot > 0 ? $st.notice : $verdict,\n      \"result\": {\n        \"ok\": $dot > 0,\n        \"verdict\": $verdict,\n        \"appareil\": $st.appareil,\n        \"dotMs\": $dot,\n        \"wpm\": $dot > 0 ? $round(1200 / $dot, 1) : 0,\n        \"fps\": $st.fps,\n        \"frameMs\": $round($frame, 1),\n        \"clock\": $st.clock,\n        \"on\": $on,\n        \"off\": $off,\n        \"stretchMs\": $torchOk ? $round($off.mean - $on.mean, 1) : null,\n        \"pulses\": $rows,\n        \"latOn\": $st.latOn,\n        \"latOff\": $st.latOff,\n        \"camError\": $st.camError,\n        \"torchError\": $st.torchError\n      }\n    }])\n  )};\n\n  $t = \"io:input\" ? $merge([$s, {\"appareil\": $string($p.appareil ? $p.appareil : \"\")}]) :\n  $t = \"camReady\" ? $merge([$s, {\"cam\": true}]) :\n  $t = \"torchError\" ? $merge([$s, {\"torchError\": $string($p.value)}]) :\n  $t = \"camError\" ? (\n    $s.phase = \"done\" or $s.phase = \"error\" ? $s\n      : $finish($merge([$s, {\"camError\": $string($p.value)}]), \"Caméra indisponible : \" & $string($p.value))\n  ) :\n  $t = \"edge\" ? (\n    $s.phase = \"p1\" and $p.sinceMark != null ? (\n      $p.on\n        ? $merge([$s, {\"latOn\": $append($s.latOn, [$p.sinceMark]), \"fps\": $p.fps, \"clock\": $p.clock}])\n        : $merge([$s, {\"latOff\": $append($s.latOff, [$p.sinceMark]), \"fps\": $p.fps, \"clock\": $p.clock}])\n    ) :\n    $s.phase = \"p2\" and $p.on = false and $p.markGap != null ? (\n      $merge([$s, {\"pulses\": $append($s.pulses, [{\"d\": $s.plan[$s.i].d, \"cmd\": $p.markGap, \"obs\": $p.dur}]), \"fps\": $p.fps}])\n    )\n  ) :\n  $t = \"tick\" ? (\n    $s.phase = \"idle\" ? ($s.run = \"1\" ? $merge([$s, {\"phase\": \"wait\", \"msg\": \"Ouverture de la caméra\"}])) :\n    $s.phase = \"wait\" ? ($s.cam ? $merge([$s, {\"phase\": \"settle\", \"nextT\": $now + 1500, \"msg\": \"Stabilisation\"}])) :\n    $s.phase = \"settle\" or $s.phase = \"p1\" or $s.phase = \"p2\" ? (\n      $now >= $s.nextT ? (\n        $n := $s.i + 1;\n        $total := $count($s.plan);\n        $n >= $total ? $finish($s, \"\") : (\n          $st := $s.plan[$n];\n          $st.d > 0 and $s.phase = \"p1\" and ($count($s.latOn) < 3 or $count($s.latOff) < 3) ? $finish($s, \"\") :\n          $merge([$s, {\n            \"i\": $n,\n            \"torch\": $st.on,\n            \"nextT\": $s.nextT + $st.hold,\n            \"phase\": $st.d > 0 ? \"p2\" : \"p1\",\n            \"msg\": \"Mesure \" & ($n + 1) & \" / \" & $total\n          }])\n        )\n      )\n    )\n  ) :\n  $s\n)\n"
+ },
+ "data": {
+  "stores": {
+   "banc": {
+    "initial": {
+     "run": "",
+     "phase": "idle",
+     "torch": false,
+     "cam": false,
+     "i": -1,
+     "nextT": 0,
+     "msg": "",
+     "notice": "",
+     "appareil": "",
+     "fps": 0,
+     "clock": "",
+     "camError": "",
+     "torchError": "",
+     "latOn": [],
+     "latOff": [],
+     "pulses": [],
+     "result": null,
+     "plan": [
+      {
+       "on": true,
+       "hold": 830,
+       "d": 0
+      },
+      {
+       "on": false,
+       "hold": 910,
+       "d": 0
+      },
+      {
+       "on": true,
+       "hold": 1010,
+       "d": 0
+      },
+      {
+       "on": false,
+       "hold": 760,
+       "d": 0
+      },
+      {
+       "on": true,
+       "hold": 740,
+       "d": 0
+      },
+      {
+       "on": false,
+       "hold": 1050,
+       "d": 0
+      },
+      {
+       "on": true,
+       "hold": 960,
+       "d": 0
+      },
+      {
+       "on": false,
+       "hold": 820,
+       "d": 0
+      },
+      {
+       "on": true,
+       "hold": 880,
+       "d": 0
+      },
+      {
+       "on": false,
+       "hold": 990,
+       "d": 0
+      },
+      {
+       "on": true,
+       "hold": 1090,
+       "d": 0
+      },
+      {
+       "on": false,
+       "hold": 730,
+       "d": 0
+      },
+      {
+       "on": true,
+       "hold": 720,
+       "d": 0
+      },
+      {
+       "on": false,
+       "hold": 1080,
+       "d": 0
+      },
+      {
+       "on": true,
+       "hold": 1040,
+       "d": 0
+      },
+      {
+       "on": false,
+       "hold": 870,
+       "d": 0
+      },
+      {
+       "on": true,
+       "hold": 790,
+       "d": 0
+      },
+      {
+       "on": false,
+       "hold": 940,
+       "d": 0
+      },
+      {
+       "on": true,
+       "hold": 930,
+       "d": 0
+      },
+      {
+       "on": false,
+       "hold": 780,
+       "d": 0
+      },
+      {
+       "on": true,
+       "hold": 1070,
+       "d": 0
+      },
+      {
+       "on": false,
+       "hold": 1020,
+       "d": 0
+      },
+      {
+       "on": true,
+       "hold": 860,
+       "d": 0
+      },
+      {
+       "on": false,
+       "hold": 890,
+       "d": 0
+      },
+      {
+       "on": true,
+       "hold": 400,
+       "d": 400
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 400
+      },
+      {
+       "on": true,
+       "hold": 400,
+       "d": 400
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 400
+      },
+      {
+       "on": true,
+       "hold": 400,
+       "d": 400
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 400
+      },
+      {
+       "on": true,
+       "hold": 400,
+       "d": 400
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 400
+      },
+      {
+       "on": true,
+       "hold": 300,
+       "d": 300
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 300
+      },
+      {
+       "on": true,
+       "hold": 300,
+       "d": 300
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 300
+      },
+      {
+       "on": true,
+       "hold": 300,
+       "d": 300
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 300
+      },
+      {
+       "on": true,
+       "hold": 300,
+       "d": 300
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 300
+      },
+      {
+       "on": true,
+       "hold": 200,
+       "d": 200
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 200
+      },
+      {
+       "on": true,
+       "hold": 200,
+       "d": 200
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 200
+      },
+      {
+       "on": true,
+       "hold": 200,
+       "d": 200
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 200
+      },
+      {
+       "on": true,
+       "hold": 200,
+       "d": 200
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 200
+      },
+      {
+       "on": true,
+       "hold": 150,
+       "d": 150
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 150
+      },
+      {
+       "on": true,
+       "hold": 150,
+       "d": 150
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 150
+      },
+      {
+       "on": true,
+       "hold": 150,
+       "d": 150
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 150
+      },
+      {
+       "on": true,
+       "hold": 150,
+       "d": 150
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 150
+      },
+      {
+       "on": true,
+       "hold": 100,
+       "d": 100
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 100
+      },
+      {
+       "on": true,
+       "hold": 100,
+       "d": 100
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 100
+      },
+      {
+       "on": true,
+       "hold": 100,
+       "d": 100
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 100
+      },
+      {
+       "on": true,
+       "hold": 100,
+       "d": 100
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 100
+      },
+      {
+       "on": true,
+       "hold": 70,
+       "d": 70
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 70
+      },
+      {
+       "on": true,
+       "hold": 70,
+       "d": 70
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 70
+      },
+      {
+       "on": true,
+       "hold": 70,
+       "d": 70
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 70
+      },
+      {
+       "on": true,
+       "hold": 70,
+       "d": 70
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 70
+      },
+      {
+       "on": true,
+       "hold": 50,
+       "d": 50
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 50
+      },
+      {
+       "on": true,
+       "hold": 50,
+       "d": 50
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 50
+      },
+      {
+       "on": true,
+       "hold": 50,
+       "d": 50
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 50
+      },
+      {
+       "on": true,
+       "hold": 50,
+       "d": 50
+      },
+      {
+       "on": false,
+       "hold": 800,
+       "d": 50
+      }
+     ]
+    },
+    "reducer": "@file:banc.jsonata",
+    "budgetMs": 200
+   }
+  }
+ },
+ "io": {
+  "title": "Banc torche",
+  "description": "Mesure sur un téléphone la latence d'allumage et d'extinction de la torche, vue par sa propre caméra (reflet sur un mur), puis la tenue d'impulsions de 400 à 50 ms. Renvoie les statistiques et une durée de point conseillée pour du morse à la torche.",
+  "modes": [
+   "interactive"
+  ],
+  "input": {
+   "schema": {
+    "type": "object",
+    "properties": {
+     "appareil": {
+      "type": "string",
+      "maxLength": 80,
+      "description": "Nom libre du téléphone testé"
+     }
+    },
+    "additionalProperties": false
+   },
+   "store": "banc"
+  },
+  "output": {
+   "from": "banc.result",
+   "when": "phase = 'done' or phase = 'error'",
+   "schema": {
+    "type": "object",
+    "required": [
+     "ok",
+     "verdict"
+    ],
+    "properties": {
+     "ok": {
+      "type": "boolean"
+     },
+     "verdict": {
+      "type": "string"
+     },
+     "appareil": {
+      "type": "string"
+     },
+     "dotMs": {
+      "type": "number"
+     },
+     "wpm": {
+      "type": "number"
+     },
+     "fps": {
+      "type": "number"
+     },
+     "frameMs": {
+      "type": "number"
+     },
+     "clock": {
+      "type": "string"
+     },
+     "on": {
+      "type": "object",
+      "properties": {
+       "n": {
+        "type": "integer"
+       },
+       "mean": {
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "sd": {
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "min": {
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "max": {
+        "type": [
+         "number",
+         "null"
+        ]
+       }
+      }
+     },
+     "off": {
+      "type": "object",
+      "properties": {
+       "n": {
+        "type": "integer"
+       },
+       "mean": {
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "sd": {
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "min": {
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "max": {
+        "type": [
+         "number",
+         "null"
+        ]
+       }
+      }
+     },
+     "stretchMs": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "pulses": {
+      "type": "array",
+      "items": {
+       "type": "object"
+      }
+     },
+     "latOn": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "latOff": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "camError": {
+      "type": "string"
+     },
+     "torchError": {
+      "type": "string"
+     }
+    }
+   }
+  }
+ },
+ "views": [
+  {
+   "id": "banc",
+   "title": "Banc",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "sonic-wake-lock",
+      "attributes": {
+       "id": "veille",
+       "auto": true
+      }
+     },
+     {
+      "tagName": "sonic-ticker",
+      "attributes": {
+       "target": "banc",
+       "interval": "16"
+      }
+     },
+     {
+      "tagName": "sonic-luma",
+      "attributes": {
+       "id": "sonde",
+       "source": "#cam",
+       "target": "banc",
+       "mark-from": "banc.torch"
+      }
+     },
+     {
+      "tagName": "sonic-trigger",
+      "attributes": {
+       "source": "camState",
+       "key": "status",
+       "equals": "ready",
+       "target": "banc",
+       "type": "camReady"
+      }
+     },
+     {
+      "tagName": "sonic-trigger",
+      "attributes": {
+       "source": "camState",
+       "key": "error",
+       "truthy": true,
+       "target": "banc",
+       "type": "camError"
+      }
+     },
+     {
+      "tagName": "sonic-trigger",
+      "attributes": {
+       "source": "camSettings",
+       "key": "errors.torch",
+       "truthy": true,
+       "target": "banc",
+       "type": "torchError"
+      }
+     },
+     {
+      "tagName": "sonic-notify",
+      "attributes": {
+       "watch": "banc.notice",
+       "status": "warning"
+      }
+     },
+     {
+      "tagName": "div",
+      "attributes": {
+       "style": "display:flex;flex-direction:column;gap:24px;max-width:32rem;margin:0 auto"
+      },
+      "nodes": [
+       {
+        "tagName": "h1",
+        "attributes": {
+         "style": "font-family:var(--sc-font-family-headings);font-weight:700;line-height:1.05;letter-spacing:-.02em;margin:0;font-size:clamp(28px,8vw,40px)"
+        },
+        "textContent": "Banc torche"
+       },
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "border-radius:var(--sc-rounded-lg);overflow:hidden;aspect-ratio:4/3;background:#000"
+        },
+        "nodes": [
+         {
+          "tagName": "sonic-camera",
+          "attributes": {
+           "id": "cam",
+           "facing": "environment",
+           "autostart": true,
+           "keep-running": true,
+           "width": "640",
+           "height": "480",
+           "fps": "30",
+           "max-width": "640",
+           "adjust": "banc",
+           "style": "width:100%;height:100%"
+          }
+         }
+        ]
+       },
+       {
+        "tagName": "sonic-if",
+        "attributes": {
+         "dataProvider": "banc",
+         "key": "phase",
+         "equals": "idle"
+        },
+        "nodes": [
+         {
+          "tagName": "div",
+          "attributes": {
+           "style": "display:flex;flex-direction:column;gap:16px"
+          },
+          "nodes": [
+           {
+            "tagName": "p",
+            "attributes": {
+             "style": "margin:0;font-size:17px;line-height:1.5"
+            },
+            "textContent": "Pose le téléphone, caméra arrière face à un mur clair à 30 cm, dans une pièce sombre. La mesure dure une minute."
+           },
+           {
+            "tagName": "sonic-button",
+            "attributes": {
+             "type": "primary",
+             "size": "lg",
+             "shape": "block",
+             "radio": true,
+             "formDataProvider": "banc",
+             "name": "run",
+             "value": "1"
+            },
+            "textContent": "Lancer la mesure"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tagName": "sonic-if",
+        "attributes": {
+         "dataProvider": "banc",
+         "key": "phase",
+         "not": "idle"
+        },
+        "nodes": [
+         {
+          "tagName": "p",
+          "attributes": {
+           "style": "font-family:var(--sc-font-family-headings);font-weight:700;line-height:1.05;letter-spacing:-.02em;margin:0;font-size:22px"
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-value",
+            "attributes": {
+             "dataProvider": "banc",
+             "key": "msg"
+            }
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tagName": "sonic-if",
+        "attributes": {
+         "dataProvider": "banc",
+         "key": "phase",
+         "equals": "done"
+        },
+        "nodes": [
+         {
+          "tagName": "div",
+          "nodes": [
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid color-mix(in oklab,var(--sc-base-content) 12%,transparent);font-variant-numeric:tabular-nums"
+            },
+            "nodes": [
+             {
+              "tagName": "span",
+              "textContent": "Allumage, moyenne (ms)"
+             },
+             {
+              "tagName": "strong",
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "banc",
+                 "key": "result.on.mean"
+                }
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid color-mix(in oklab,var(--sc-base-content) 12%,transparent);font-variant-numeric:tabular-nums"
+            },
+            "nodes": [
+             {
+              "tagName": "span",
+              "textContent": "Allumage, écart-type (ms)"
+             },
+             {
+              "tagName": "strong",
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "banc",
+                 "key": "result.on.sd"
+                }
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid color-mix(in oklab,var(--sc-base-content) 12%,transparent);font-variant-numeric:tabular-nums"
+            },
+            "nodes": [
+             {
+              "tagName": "span",
+              "textContent": "Extinction, moyenne (ms)"
+             },
+             {
+              "tagName": "strong",
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "banc",
+                 "key": "result.off.mean"
+                }
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid color-mix(in oklab,var(--sc-base-content) 12%,transparent);font-variant-numeric:tabular-nums"
+            },
+            "nodes": [
+             {
+              "tagName": "span",
+              "textContent": "Extinction, écart-type (ms)"
+             },
+             {
+              "tagName": "strong",
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "banc",
+                 "key": "result.off.sd"
+                }
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid color-mix(in oklab,var(--sc-base-content) 12%,transparent);font-variant-numeric:tabular-nums"
+            },
+            "nodes": [
+             {
+              "tagName": "span",
+              "textContent": "Images par seconde"
+             },
+             {
+              "tagName": "strong",
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "banc",
+                 "key": "result.fps"
+                }
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid color-mix(in oklab,var(--sc-base-content) 12%,transparent);font-variant-numeric:tabular-nums"
+            },
+            "nodes": [
+             {
+              "tagName": "span",
+              "textContent": "Horloge"
+             },
+             {
+              "tagName": "strong",
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "banc",
+                 "key": "result.clock"
+                }
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}
