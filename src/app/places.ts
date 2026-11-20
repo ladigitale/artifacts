@@ -91,7 +91,8 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
       if (def.radius) q.set("radius", String(def.radius));
       const list = await call<{items: Item[]}>(`/places/${encodeURIComponent(name)}?${q}`, slug);
       const mine = tokens(tokensKey);
-      const near = list.items.slice(0, fetchN);
+      const listed = Array.isArray(list?.items) ? list.items : [];
+      const near = listed.slice(0, fetchN);
       for (const it of near) {
         if (stopped || bodies.has(it.id)) continue;
         try {
@@ -101,7 +102,7 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
           /* corps indisponible : le lieu reste listé sans lui */
         }
       }
-      items = list.items.map((it) => ({...(bodies.get(it.id) ?? {}), ...it, id: it.id, mine: it.id in mine}));
+      items = listed.map((it) => ({...(bodies.get(it.id) ?? {}), ...it, id: it.id, mine: it.id in mine}));
       last = pos;
       lastAt = Date.now();
       publish({status: "ready", items, count: items.length, error: null, at: new Date().toISOString()});
@@ -215,11 +216,13 @@ function startArea(slug: string, linkToken: string | null, name: string, def: Pl
       if (linkToken) q.set("k", linkToken);
       const res = await call<{items: Item[]; clusters: {lat: number; lon: number; count: number}[]; total: number}>(`/places/${encodeURIComponent(name)}?${q}`, slug);
       if (stopped || mine !== seq) return;
+      const found = Array.isArray(res?.items) ? res.items : [];
+      const groups = Array.isArray(res?.clusters) ? res.clusters : [];
       const points = [
-        ...res.items.map((it) => ({...it, label: typeof it.message === "string" ? it.message : undefined})),
-        ...res.clusters.map((c, i) => ({id: `groupe-${i}`, lat: c.lat, lon: c.lon, count: c.count, label: String(c.count), groupe: true})),
+        ...found.map((it) => ({...it, label: typeof it.message === "string" ? it.message : undefined})),
+        ...groups.map((c, i) => ({id: `groupe-${i}`, lat: c.lat, lon: c.lon, count: c.count, label: String(c.count), groupe: true})),
       ];
-      publish({status: "ready", items: res.items, clusters: res.clusters, points, total: res.total, error: null, at: new Date().toISOString()});
+      publish({status: "ready", items: found, clusters: groups, points, total: Number(res?.total) || found.length, error: null, at: new Date().toISOString()});
     } catch (e) {
       if (mine === seq) publish({status: "error", error: message(e)});
     }
