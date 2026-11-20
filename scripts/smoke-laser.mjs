@@ -104,8 +104,7 @@ const open = async (slug) => {
 };
 
 let page = await open("laser");
-const banner = await page.locator(".artifact-capabilities").textContent().catch(() => "");
-check("bandeau : appareil branché en USB", /port série/.test(banner ?? ""), banner?.trim());
+check("pas de bandeau d'avertissement (la permission est demandée au clic)", (await page.locator(".artifact-capabilities").count()) === 0);
 let port = await state(page, "port");
 check("aucune demande de port au chargement", (await page.evaluate(() => __serial.calls())) === 0 && port?.status === "idle" && port.supported === true, JSON.stringify({status: port?.status, supported: port?.supported, allowed: port?.allowed}));
 check("Permissions-Policy : serial autorisé", port?.allowed !== false, String(port?.allowed));

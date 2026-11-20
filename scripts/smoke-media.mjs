@@ -109,11 +109,7 @@ async function open(slug) {
 console.log("\n== miroir");
 {
   const {page, errors, gum} = await open("miroir");
-  const notice = await page.evaluate(() => {
-    const deep = (r, s, a = []) => { r.querySelectorAll("*").forEach((e) => { if (e.matches(s)) a.push(e); if (e.shadowRoot) deep(e.shadowRoot, s, a); }); return a; };
-    return deep(document, ".artifact-capabilities")[0]?.textContent?.trim() ?? "";
-  });
-  check("bandeau : l'artefact peut demander la caméra", /la caméra/.test(notice), notice.slice(0, 80));
+  check("pas de bandeau d'avertissement", (await deepQuery(page, ".artifact-capabilities")) === 0);
   check("aucune demande d'accès au chargement", gum() === 0 && (await state(page, "cam"))?.status === "idle");
   await page.locator("sonic-media-start").locator("button").click({timeout: 3000});
   await page.waitForTimeout(1500);

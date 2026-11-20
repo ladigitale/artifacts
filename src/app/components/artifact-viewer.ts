@@ -16,7 +16,7 @@ import {
   type PublicArtifact,
 } from "../cloud/client";
 import {explainFetchError, loadApiBaseUrl} from "../cloud/api-base";
-import {docCapabilities, docMlOrigins, guardDocument} from "../sdui-guard";
+import {guardDocument} from "../sdui-guard";
 import {applySafeTransforms} from "../jsonata-safe";
 import {loadScriptAssets} from "../script-loader";
 import {ensureAddonsFor} from "../addons";
@@ -1153,42 +1153,6 @@ export class ArtifactViewer extends LitElement {
     `;
   }
 
-  /** Bandeau : l'artefact peut demander caméra / micro / MIDI / écran / Bluetooth / port série (jamais sans un clic de l'utilisateur). */
-  private renderCapabilities() {
-    const caps = docCapabilities(this.data?.document);
-    const mlOrigins = docMlOrigins(this.data?.document);
-    if (!caps.length && !mlOrigins.length) return nothing;
-    const label: Record<string, string> = {
-      camera: "la caméra",
-      microphone: "le micro",
-      midi: "vos appareils MIDI",
-      screen: "un partage d’écran",
-      bluetooth: "un appareil Bluetooth",
-      serial: "un appareil branché en USB (port série)",
-    };
-    const names = caps.map((c) => label[c] ?? c);
-    const list = names.length > 1 ? `${names.slice(0, -1).join(", ")} et ${names[names.length - 1]}` : names[0];
-    const models = mlOrigins.length
-      ? html` Elle peut aussi télécharger des modèles d’analyse depuis ${mlOrigins.map((o) => new URL(o).host).join(", ")} : ils s’exécutent sur votre appareil, aucune image n’est envoyée.`
-      : nothing;
-    if (!caps.length) {
-      return html`<p
-        class="artifact-capabilities m-0 mx-3 mt-3 sm:mx-4 px-3 py-2 rounded-md text-sm print:hidden"
-        style="background:rgba(127,127,127,.12)"
-        role="note"
-      >
-        Cet artefact peut télécharger des modèles d’analyse depuis ${mlOrigins.map((o) => new URL(o).host).join(", ")} : ils s’exécutent sur votre appareil, aucune image n’est envoyée.
-      </p>`;
-    }
-    return html`<p
-      class="artifact-capabilities m-0 mx-3 mt-3 sm:mx-4 px-3 py-2 rounded-md text-sm print:hidden"
-      style="background:rgba(127,127,127,.12)"
-      role="note"
-    >
-      Cet artefact peut demander l’accès à ${list}. Rien n’est activé sans votre clic, et vous pourrez refuser.${models}
-    </p>`;
-  }
-
   protected firstUpdated() {
     // CSS des libraries agent-stack : les styles du document ne traversent pas le shadow root.
     if (this.renderRoot instanceof ShadowRoot) injectAgentStackStyles(this.renderRoot);
@@ -1285,7 +1249,7 @@ export class ArtifactViewer extends LitElement {
               </nav>
             `
           : nothing}
-        ${this.renderCapabilities()} ${this.renderIoStatus()}
+        ${this.renderIoStatus()}
         <div class="artifact-sdui flex-1 min-h-[12rem] ${paddingClass(frame.padding)}">
           ${this.renderBody(root)}
         </div>
