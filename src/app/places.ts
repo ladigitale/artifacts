@@ -17,6 +17,10 @@ import {getApiRoot, loadArtifactsAccount} from "./cloud/account";
  *   "places": {"balises": {"near": "geoState", "radius": 300, "fetch": 6, "from": "balises.outbox", "ack": "balises"}}
  */
 export type PlacesDef = {
+  /** Collection côté serveur (défaut : le nom) : deux DataProviders peuvent lire la même collection. */
+  collection?: string;
+  /** Zone d'une carte (DP : état de sonic-map, `bounds [[o, s], [e, n]]`) : lieux de la zone ou groupes, au lieu des proches. */
+  area?: string;
   near?: string;
   radius?: number;
   fetch?: number;
@@ -44,7 +48,9 @@ export function startPlaces(
   return () => offs.forEach((off) => off());
 }
 
-function startOne(slug: string, linkToken: string | null, name: string, def: PlacesDef, out: string): () => void {
+function startOne(slug: string, linkToken: string | null, dpName: string, def: PlacesDef, out: string): () => void {
+  const name = typeof def.collection === "string" && def.collection ? def.collection : dpName;
+  if (def.area) return startArea(slug, linkToken, name, def, out);
   const tokensKey = `artifacts-places:${slug}:${name}`;
   const bodies = new Map<string, Record<string, unknown>>();
   const sent = new Set<string>();
@@ -175,6 +181,66 @@ function startOne(slug: string, linkToken: string | null, name: string, def: Pla
     stopped = true;
     clearInterval(timer);
     offs.forEach((off) => off());
+  };
+}
+
+/** Mode carte : lieux (champs courts) ou groupes de la zone visible, rechargés à chaque fin de déplacement. */
+function startArea(slug: string, linkToken: string | null, name: string, def: PlacesDef, out: string): () => void {
+  let stopped = false;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let lastKey = "";
+  let seq = 0;
+  const publish = (patch: Record<string, unknown>) => {
+    const prev = (get(out) as Record<string, unknown> | undefined) ?? {};
+    set(out, {...prev, ...patch} as never);
+  };
+  publish({status: "idle", items: [], clusters: [], points: [], total: 0, error: null});
+  const bbox = (): [number, number, number, number] | null => {
+    const v = get(def.area as string) as {bounds?: unknown} | null | undefined;
+    const b = v && Array.isArray(v.bounds) ? (v.bounds as unknown[]) : null;
+    if (!b || b.length !== 2 || !Array.isArray(b[0]) || !Array.isArray(b[1])) return null;
+    const [w, s] = (b[0] as unknown[]).map(Number), [e, n] = (b[1] as unknown[]).map(Number);
+    return [w, s, e, n].every(Number.isFinite) ? [w, s, e, n] : null;
+  };
+  const load = async () => {
+    const box = bbox();
+    if (!box || stopped) return;
+    const key = box.map((x) => x.toFixed(4)).join(",");
+    if (key === lastKey) return;
+    lastKey = key;
+    const mine = ++seq;
+    publish({status: "loading"});
+    try {
+      const q = new URLSearchParams({bbox: key});
+      if (linkToken) q.set("k", linkToken);
+      const res = await call<{items: Item[]; clusters: {lat: number; lon: number; count: number}[]; total: number}>(`/places/${encodeURIComponent(name)}?${q}`, slug);
+      if (stopped || mine !== seq) return;
+      const points = [
+        ...res.items.map((it) => ({...it, label: typeof it.message === "string" ? it.message : undefined})),
+        ...res.clusters.map((c, i) => ({id: `groupe-${i}`, lat: c.lat, lon: c.lon, count: c.count, label: String(c.count), groupe: true})),
+      ];
+      publish({status: "ready", items: res.items, clusters: res.clusters, points, total: res.total, error: null, at: new Date().toISOString()});
+    } catch (e) {
+      if (mine === seq) publish({status: "error", error: message(e)});
+    }
+  };
+  let off: (() => void) | null = null;
+  try {
+    const provider = dp((def.area as string).split(".")[0]) as {onAssign?: (f: (v: unknown) => void) => void; offAssign?: (f: (v: unknown) => void) => void};
+    const f = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => void load(), 250);
+    };
+    provider.onAssign?.(f);
+    off = () => provider.offAssign?.(f);
+  } catch {
+    /* ignore */
+  }
+  void load();
+  return () => {
+    stopped = true;
+    if (timer) clearTimeout(timer);
+    off?.();
   };
 }
 
