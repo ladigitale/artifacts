@@ -21,6 +21,7 @@ import {applySafeTransforms} from "../jsonata-safe";
 import {loadScriptAssets} from "../script-loader";
 import {ensureAddonsFor} from "../addons";
 import {startSinks, type SinkDef} from "../sinks";
+import {startPlaces, type PlacesDef} from "../places";
 import {persistDecl, persistKey, plain, readSaved, writeSaved} from "../persist";
 import {OnlineSave, onlineDecl} from "../online-save";
 import {mapPath, runFromLocation, startIoRun, waitForStore, type IoDef, type IoStatus} from "../io-run";
@@ -199,6 +200,7 @@ export class ArtifactViewer extends LitElement {
   private viewUnsub: (() => void) | null = null;
   private refreshTimers: number[] = [];
   private stopSinks: (() => void) | null = null;
+  private stopPlaces: (() => void) | null = null;
   private stopIo: (() => void) | null = null;
   /** Flux du run (io.stream) et document reçu avant transformation (cible des document.patch). */
   private runStream: RunStream | null = null;
@@ -324,6 +326,8 @@ export class ArtifactViewer extends LitElement {
     this.refreshTimers = [];
     this.stopSinks?.();
     this.stopSinks = null;
+    this.stopPlaces?.();
+    this.stopPlaces = null;
     this.stopIo?.();
     this.stopIo = null;
     this.runStream?.stop();
@@ -683,6 +687,8 @@ export class ArtifactViewer extends LitElement {
         this.watchOnline();
         const sinks = (this.data.document as {data?: {sinks?: Record<string, SinkDef>}}).data?.sinks;
         if (!this.previewDocument) this.stopSinks = startSinks(this.slug, this.linkToken(), this.nsSinks(sinks));
+        const places = (this.data.document as {data?: {places?: Record<string, PlacesDef>}}).data?.places;
+        if (!this.previewDocument && places) this.stopPlaces = startPlaces(this.slug, this.linkToken(), this.nsPlaces(places), (n) => this.nsPlaceName(n));
         if (target?.role === "watcher" && join) {
           if (join.status !== "pending") this.ioStatus = {state: "closed", message: "Le direct est terminé."};
           void this.startStream(join, target, {});
@@ -1009,6 +1015,20 @@ export class ArtifactViewer extends LitElement {
       this.rootCache.set(view.id, root);
     }
     return root;
+  }
+
+  private nsPlaceName(name: string): string {
+    return this.ns ? nsValue(this.ns, this.nsNames, name) : name;
+  }
+
+  private nsPlaces(places: Record<string, PlacesDef>): Record<string, PlacesDef> {
+    if (!this.ns) return places;
+    const v = (x: string | undefined) => (typeof x === "string" ? nsValue(this.ns, this.nsNames, x) : x);
+    const out: Record<string, PlacesDef> = {};
+    for (const [name, p] of Object.entries(places)) {
+      if (p) out[name] = {...p, near: v(p.near), from: v(p.from), ack: v(p.ack)};
+    }
+    return out;
   }
 
   private nsSinks(sinks: Record<string, SinkDef> | undefined): Record<string, SinkDef> | undefined {

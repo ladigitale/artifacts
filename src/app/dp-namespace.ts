@@ -58,6 +58,7 @@ export function declaredNames(doc: unknown, slug: string): Set<string> {
       sources?: Record<string, {collection?: string; asset?: string}>;
       transforms?: Record<string, unknown>;
       stores?: Record<string, {dataProvider?: string}>;
+      places?: Record<string, unknown>;
     };
     views?: {root?: unknown}[];
   };
@@ -70,6 +71,7 @@ export function declaredNames(doc: unknown, slug: string): Set<string> {
     addName(out, id);
     addName(out, def?.dataProvider);
   }
+  for (const name of Object.keys(d.data?.places ?? {})) addName(out, name);
   for (const v of d.views ?? []) collectFromNode(v?.root, out);
   return out;
 }
