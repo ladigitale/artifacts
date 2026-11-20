@@ -1,0 +1,559 @@
+{
+ "schema": "artifacts/1",
+ "title": "Morse torche",
+ "theme": "default",
+ "defaultView": "chat",
+ "icon": {
+  "emoji": "🔦",
+  "background": "#101014",
+  "color": "#ffffff"
+ },
+ "capabilities": [
+  "camera"
+ ],
+ "files": {
+  "chat.jsonata": "(\n  $s := $state;\n  $t := $action.type;\n  $p := $action.payload;\n  $add := function($who, $text) {\n    $merge([$s, {\n      \"seq\": $s.seq + 1,\n      \"messages\": $append($s.messages, [{\"id\": \"m\" & ($s.seq + 1), \"who\": $who, \"text\": $text}])\n    }])\n  };\n\n  $t = \"tick\" ? (\n    $s.go = \"1\" ? (\n      $txt := $trim($string($s.draft));\n      $txt = \"\" ? $merge([$s, {\"go\": \"\"}])\n        : $merge([$add(\"moi\", $txt), {\"go\": \"\", \"draft\": \"\", \"outgoing\": $txt, \"txN\": $s.txN + 1}])\n    )\n  ) :\n  $t = \"morse:message\" ? $add(\"autre\", $string($p.text)) :\n  $t = \"torchError\" ? ($s.notice = \"\" ? $merge([$s, {\"notice\": \"Pas de torche sur cet appareil : réception seule\"}]) : $s) :\n  $s\n)\n"
+ },
+ "data": {
+  "stores": {
+   "chat": {
+    "initial": {
+     "draft": "",
+     "go": "",
+     "outgoing": "",
+     "txN": 0,
+     "seq": 0,
+     "notice": "",
+     "messages": []
+    },
+    "reducer": "@file:chat.jsonata",
+    "budgetMs": 50
+   },
+   "lampe": {
+    "initial": {
+     "torch": false
+    },
+    "reducer": "$state"
+   },
+   "reglages": {
+    "initial": {
+     "unit": "300",
+     "measure": "mean"
+    },
+    "reducer": "$state"
+   }
+  }
+ },
+ "views": [
+  {
+   "id": "chat",
+   "title": "Chat",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "sonic-wake-lock",
+      "attributes": {
+       "id": "veille",
+       "auto": true
+      }
+     },
+     {
+      "tagName": "sonic-ticker",
+      "attributes": {
+       "target": "chat",
+       "interval": "100"
+      }
+     },
+     {
+      "tagName": "sonic-luma",
+      "attributes": {
+       "id": "sonde",
+       "source": "#cam",
+       "detect": "jump",
+       "max-on-ms": "4000",
+       "params": "reglages"
+      }
+     },
+     {
+      "tagName": "sonic-morse",
+      "attributes": {
+       "id": "morse",
+       "unit": "300",
+       "trim": "30",
+       "drive": "lampe.torch",
+       "text-from": "chat.outgoing",
+       "send-from": "chat.txN",
+       "source": "sondeState",
+       "target": "chat",
+       "params": "reglages"
+      }
+     },
+     {
+      "tagName": "sonic-trigger",
+      "attributes": {
+       "source": "camSettings",
+       "key": "errors.torch",
+       "truthy": true,
+       "target": "chat",
+       "type": "torchError"
+      }
+     },
+     {
+      "tagName": "sonic-notify",
+      "attributes": {
+       "watch": "chat.notice",
+       "status": "warning"
+      }
+     },
+     {
+      "tagName": "sonic-jsonata",
+      "attributes": {
+       "inputProvider": "chat",
+       "outputProvider": "fil",
+       "expression": "$append([], $input.messages.{\"id\": id, \"who\": who, \"text\": text})"
+      }
+     },
+     {
+      "tagName": "div",
+      "attributes": {
+       "style": "display:flex;flex-direction:column;gap:16px;max-width:32rem;margin:0 auto"
+      },
+      "nodes": [
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap"
+        },
+        "nodes": [
+         {
+          "tagName": "h1",
+          "attributes": {
+           "style": "font-family:var(--sc-font-family-headings);font-weight:700;line-height:1.05;letter-spacing:-.02em;margin:0;font-size:clamp(28px,8vw,40px)"
+          },
+          "textContent": "Morse torche"
+         },
+         {
+          "tagName": "div",
+          "attributes": {
+           "style": "display:flex;gap:8px;align-items:end"
+          },
+          "nodes": [
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "display:flex;flex-direction:column;gap:4px"
+            },
+            "nodes": [
+             {
+              "tagName": "small",
+              "attributes": {
+               "style": "text-transform:uppercase;letter-spacing:.08em;font-size:12px"
+              },
+              "textContent": "Point"
+             },
+             {
+              "tagName": "sonic-pop",
+              "nodes": [
+               {
+                "tagName": "sonic-button",
+                "attributes": {
+                 "variant": "outline",
+                 "size": "sm",
+                 "minWidth": "6.5rem",
+                 "justify": "space-between"
+                },
+                "nodes": [
+                 {
+                  "tagName": "span",
+                  "nodes": [
+                   {
+                    "tagName": "sonic-value",
+                    "attributes": {
+                     "dataProvider": "reglages",
+                     "key": "unit"
+                    }
+                   },
+                   {
+                    "tagName": "span",
+                    "textContent": " ms"
+                   }
+                  ]
+                 },
+                 {
+                  "tagName": "sonic-icon",
+                  "attributes": {
+                   "library": "iconoir",
+                   "name": "nav-arrow-down",
+                   "slot": "suffix"
+                  }
+                 }
+                ]
+               },
+               {
+                "tagName": "sonic-menu",
+                "attributes": {
+                 "slot": "content",
+                 "direction": "column",
+                 "align": "left",
+                 "size": "sm",
+                 "min-width": "8rem"
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-menu-item",
+                  "attributes": {
+                   "radio": true,
+                   "formDataProvider": "reglages",
+                   "name": "unit",
+                   "value": "250"
+                  },
+                  "textContent": "250 ms"
+                 },
+                 {
+                  "tagName": "sonic-menu-item",
+                  "attributes": {
+                   "radio": true,
+                   "formDataProvider": "reglages",
+                   "name": "unit",
+                   "value": "300"
+                  },
+                  "textContent": "300 ms"
+                 },
+                 {
+                  "tagName": "sonic-menu-item",
+                  "attributes": {
+                   "radio": true,
+                   "formDataProvider": "reglages",
+                   "name": "unit",
+                   "value": "400"
+                  },
+                  "textContent": "400 ms"
+                 },
+                 {
+                  "tagName": "sonic-menu-item",
+                  "attributes": {
+                   "radio": true,
+                   "formDataProvider": "reglages",
+                   "name": "unit",
+                   "value": "500"
+                  },
+                  "textContent": "500 ms"
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "display:flex;flex-direction:column;gap:4px"
+            },
+            "nodes": [
+             {
+              "tagName": "small",
+              "attributes": {
+               "style": "text-transform:uppercase;letter-spacing:.08em;font-size:12px"
+              },
+              "textContent": "Lecture"
+             },
+             {
+              "tagName": "sonic-group",
+              "attributes": {
+               "formDataProvider": "reglages"
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-button",
+                "attributes": {
+                 "radio": true,
+                 "name": "measure",
+                 "value": "mean",
+                 "size": "sm",
+                 "variant": "outline"
+                },
+                "textContent": "Scène"
+               },
+               {
+                "tagName": "sonic-button",
+                "attributes": {
+                 "radio": true,
+                 "name": "measure",
+                 "value": "peak",
+                 "size": "sm",
+                 "variant": "outline"
+                },
+                "textContent": "Point"
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "border-radius:var(--sc-rounded-lg);overflow:hidden;aspect-ratio:16/9;background:#000"
+        },
+        "nodes": [
+         {
+          "tagName": "sonic-camera",
+          "attributes": {
+           "id": "cam",
+           "facing": "environment",
+           "keep-running": true,
+           "width": "640",
+           "height": "480",
+           "fps": "30",
+           "max-width": "640",
+           "fit": "cover",
+           "adjust": "lampe",
+           "style": "width:100%;height:100%"
+          }
+         }
+        ]
+       },
+       {
+        "tagName": "sonic-media-start",
+        "attributes": {
+         "for": "cam",
+         "label": "Activer la caméra"
+        }
+       },
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "display:flex;flex-direction:column;min-height:6rem"
+        },
+        "nodes": [
+         {
+          "tagName": "sonic-list",
+          "attributes": {
+           "dataProvider": "fil",
+           "templateKey": "who"
+          },
+          "nodes": [
+           {
+            "tagName": "template",
+            "attributes": {
+             "data-value": "moi"
+            },
+            "nodes": [
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;flex-direction:column;padding:3px 0"
+              },
+              "nodes": [
+               {
+                "tagName": "div",
+                "attributes": {
+                 "style": "align-self:flex-end;background:var(--sc-primary);color:var(--sc-primary-content);max-width:85%;padding:10px 14px;border-radius:var(--sc-rounded-lg);font-size:17px;line-height:1.35;overflow-wrap:anywhere"
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-value",
+                  "attributes": {
+                   "key": "text"
+                  }
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "tagName": "template",
+            "attributes": {
+             "data-value": "autre"
+            },
+            "nodes": [
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;flex-direction:column;padding:3px 0"
+              },
+              "nodes": [
+               {
+                "tagName": "div",
+                "attributes": {
+                 "style": "align-self:flex-start;background:color-mix(in oklab,var(--sc-base-content) 8%,var(--sc-base));max-width:85%;padding:10px 14px;border-radius:var(--sc-rounded-lg);font-size:17px;line-height:1.35;overflow-wrap:anywhere"
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-value",
+                  "attributes": {
+                   "key": "text"
+                  }
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tagName": "sonic-if",
+        "attributes": {
+         "dataProvider": "morseState",
+         "key": "status",
+         "equals": "receiving"
+        },
+        "nodes": [
+         {
+          "tagName": "div",
+          "attributes": {
+           "style": "display:flex;flex-direction:column;gap:4px;padding:12px 14px;border:1px solid color-mix(in oklab,var(--sc-base-content) 12%,transparent);border-radius:var(--sc-rounded-lg)"
+          },
+          "nodes": [
+           {
+            "tagName": "small",
+            "attributes": {
+             "style": "text-transform:uppercase;letter-spacing:.08em;font-size:12px"
+            },
+            "textContent": "Réception"
+           },
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "font-size:17px;min-height:1.35em"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "morseState",
+               "key": "rx.text"
+              }
+             }
+            ]
+           },
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "font-family:ui-monospace,monospace;font-size:20px;letter-spacing:.12em;min-height:1.2em;overflow-wrap:anywhere"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "morseState",
+               "key": "rx.signs"
+              }
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tagName": "sonic-if",
+        "attributes": {
+         "dataProvider": "morseState",
+         "key": "status",
+         "equals": "sending"
+        },
+        "nodes": [
+         {
+          "tagName": "div",
+          "attributes": {
+           "style": "display:flex;flex-direction:column;gap:4px;padding:12px 14px;border:1px solid color-mix(in oklab,var(--sc-base-content) 12%,transparent);border-radius:var(--sc-rounded-lg)"
+          },
+          "nodes": [
+           {
+            "tagName": "small",
+            "attributes": {
+             "style": "text-transform:uppercase;letter-spacing:.08em;font-size:12px"
+            },
+            "textContent": "Émission"
+           },
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "font-size:17px;min-height:1.35em"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "morseState",
+               "key": "tx.text"
+              }
+             }
+            ]
+           },
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "font-family:ui-monospace,monospace;font-size:20px;letter-spacing:.12em;min-height:1.2em;overflow-wrap:anywhere"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "morseState",
+               "key": "tx.signs"
+              }
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "display:flex;gap:8px;align-items:end"
+        },
+        "nodes": [
+         {
+          "tagName": "div",
+          "attributes": {
+           "style": "flex:1;min-width:0"
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-input",
+            "attributes": {
+             "formDataProvider": "chat",
+             "name": "draft",
+             "label": "Message",
+             "maxlength": "80",
+             "autocomplete": "off",
+             "size": "lg"
+            }
+           }
+          ]
+         },
+         {
+          "tagName": "sonic-button",
+          "attributes": {
+           "type": "primary",
+           "size": "lg",
+           "radio": true,
+           "formDataProvider": "chat",
+           "name": "go",
+           "value": "1"
+          },
+          "textContent": "Envoyer"
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}
