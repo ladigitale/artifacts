@@ -259,7 +259,14 @@ async function call<T>(path: string, slug: string, init: RequestInit = {}): Prom
   } catch {
     /* envoi anonyme */
   }
-  const res = await fetch(`${base}/public/artifacts/${encodeURIComponent(slug)}${path}`, {...init, headers});
+  let res: Response;
+  try {
+    res = await fetch(`${base}/public/artifacts/${encodeURIComponent(slug)}${path}`, {...init, headers});
+  } catch (e) {
+    // Réseau coupé, requête bloquée (CORS, extension) : message lisible, détail en console.
+    console.warn(`[places] ${init.method ?? "GET"} ${path.split("?")[0]} :`, e);
+    throw new Error("Serveur des balises injoignable : vérifie la connexion puis réessaie.");
+  }
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
     try {
