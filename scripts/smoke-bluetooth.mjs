@@ -97,8 +97,7 @@ const open = async (slug) => {
 };
 
 let page = await open("etiquette");
-const banner = await page.locator(".artifact-capabilities").textContent().catch(() => "");
-check("bandeau : appareil Bluetooth", /appareil Bluetooth/.test(banner ?? ""), banner?.trim());
+check("pas de bandeau d'avertissement (la permission est demandée au clic)", (await page.locator(".artifact-capabilities").count()) === 0);
 let bt = await state(page, "bt");
 check("aucune demande Bluetooth au chargement", (await page.evaluate(() => __bt.calls())) === 0 && bt?.status === "idle" && bt.supported === true, JSON.stringify({status: bt?.status, supported: bt?.supported, allowed: bt?.allowed}));
 check("Permissions-Policy : bluetooth autorisé", bt?.allowed !== false, String(bt?.allowed));

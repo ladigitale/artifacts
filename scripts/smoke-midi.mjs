@@ -86,8 +86,7 @@ const open = async (slug) => {
 /* Jam MIDI */
 let page = await open("jam-midi");
 const btn = (a) => page.locator(`sonic-button[data-action="${a}"]`).click({timeout: 3000});
-const banner = await page.locator(".artifact-capabilities").textContent().catch(() => "");
-check("bandeau : appareils MIDI", /appareils MIDI/.test(banner ?? ""), banner?.trim());
+check("pas de bandeau d'avertissement (la permission est demandée au clic)", (await page.locator(".artifact-capabilities").count()) === 0);
 check("aucun accès MIDI au chargement", (await page.evaluate(() => __midi.calls())) === 0 && (await state(page, "midi"))?.status === "idle");
 await btn("midi-start");
 await page.waitForTimeout(600);
@@ -124,7 +123,6 @@ check("Stop externe", (await state(page, "beat")).playing === false);
 
 /* Écran */
 page = await open("ecran");
-check("bandeau : partage d'écran", /partage d’écran/.test((await page.locator(".artifact-capabilities").textContent().catch(() => "")) ?? ""));
 check("pas de partage avant le clic", (await state(page, "screen"))?.status === "idle");
 await page.locator("sonic-media-start").locator("button").click({timeout: 3000});
 await page.waitForTimeout(1500);
