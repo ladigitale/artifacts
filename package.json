@@ -36,13 +36,15 @@
     "check:themes": "node scripts/check-theme-contrast.mjs",
     "smoke:hero-fluidite": "VITE_API_BASE_URL=http://localhost:4455 yarn build && node scripts/smoke-hero-fluidite.mjs",
     "smoke:onboarding": "VITE_API_BASE_URL=http://localhost:4455 VITE_TADAAA_URL=http://localhost:4455 vite build && node scripts/smoke-onboarding.mjs",
-    "smoke:embed-fixed": "VITE_API_BASE_URL=http://localhost:4455 yarn build && node scripts/smoke-embed-fixed.mjs"
+    "smoke:embed-fixed": "VITE_API_BASE_URL=http://localhost:4455 yarn build && node scripts/smoke-embed-fixed.mjs",
+    "smoke:class-fields": "VITE_API_BASE_URL=http://localhost:4455 yarn build && node scripts/smoke-class-fields.mjs"
   },
   "devDependencies": {
-    "@supersoniks/concorde": "5.1.3",
+    "@supersoniks/concorde": "7.0.1",
     "@tailwindcss/container-queries": "^0.1.1",
     "autoprefixer": "^10.4.16",
     "dotenv": "^16.3.1",
+    "esbuild": "^0.21.5",
     "lit": "^3.1.3",
     "playwright": "^1.55.0",
     "postcss": "^8.4.14",
@@ -50,14 +52,17 @@
     "rollup-plugin-postcss-lit": "^2.1.0",
     "tailwindcss": "^3.3.3",
     "typescript": "^5.2.2",
-    "vite": "^5.4.11"
+    "vite": "^8.3.8"
   },
   "dependencies": {
-    "@ladigitale/agent-stack": "github:ladigitale/agent-stack#db701cfe82bc6623fe29a64da91b6d4cf79f59a6",
-    "@supersoniks/creative-stack": "github:ladigitale/creative-stack#df2427dc667206970938265521e0c44bfcf95fd9",
+    "@ladigitale/agent-stack": "github:ladigitale/agent-stack#39606aa8141e621a5ffa1d36db984d36cda075f2",
+    "@supersoniks/creative-stack": "github:ladigitale/creative-stack#a5dedb503243a192c86bff5f8a2a5d2d458c6f37",
     "pixi.js": "8.19.0",
     "three": "0.180.0",
     "maplibre-gl": "5.24.0"
   },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
+  "engines": {
+    "node": ">=22.12"
+  }
 }
