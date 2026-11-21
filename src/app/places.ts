@@ -12,7 +12,7 @@ import {getApiRoot, loadArtifactsAccount} from "./cloud/account";
  *   avec ses champs courts, `mine` (posé depuis cet appareil) et, pour les `fetch` plus proches, son corps complet ;
  * - lit la boîte d'envoi `from` (tableau du store) : `{id, op: "add", lat, lon, data}` pose un lieu,
  *   `{id, op: "delete", place}` retire un lieu posé ici (jeton gardé dans ce navigateur), `{id, op: "report", place}`
- *   le signale ; puis envoie `place:ok` {id, op, placeId} ou `place:error` {id, op, error} au store `ack`.
+ *   le signale, `{id, op: "addRef", place, ref}` lui ajoute une surface de remplacement ; puis envoie `place:ok` {id, op, placeId} ou `place:error` {id, op, error} au store `ack`.
  *
  *   "places": {"balises": {"near": "geoState", "radius": 300, "fetch": 6, "from": "balises.outbox", "ack": "balises"}}
  */
@@ -30,7 +30,7 @@ export type PlacesDef = {
 };
 
 type Item = Record<string, unknown> & {id: string; lat: number; lon: number; distance?: number};
-type OutboxItem = {id?: unknown; op?: unknown; lat?: unknown; lon?: unknown; data?: unknown; place?: unknown};
+type OutboxItem = {id?: unknown; op?: unknown; lat?: unknown; lon?: unknown; data?: unknown; place?: unknown; ref?: unknown};
 
 const MOVE_M = 25;
 
@@ -123,7 +123,7 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
       const id = typeof raw.id === "string" || typeof raw.id === "number" ? String(raw.id) : "";
       if (!id || sent.has(id)) continue;
       sent.add(id);
-      const op = raw.op === "delete" || raw.op === "report" ? raw.op : "add";
+      const op = raw.op === "delete" || raw.op === "report" || raw.op === "addRef" ? raw.op : "add";
       void runOp(op, raw).then(
         (placeId) => { ack({type: "place:ok", payload: {id, op, placeId, places: name}}); void refresh(true); },
         (e: unknown) => ack({type: "place:error", payload: {id, op, places: name, error: message(e)}}),
@@ -151,6 +151,12 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
       delete t[place];
       saveTokens(tokensKey, t);
       bodies.delete(place);
+      return place;
+    }
+    if (op === "addRef") {
+      if (!raw.ref || typeof raw.ref !== "object" || Array.isArray(raw.ref)) throw new Error("ref : nouvelle surface manquante");
+      await call(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/refs${k}`, slug, {method: "POST", body: JSON.stringify({ref: raw.ref})});
+      bodies.delete(place); // le corps rechargé portera la nouvelle surface
       return place;
     }
     await call(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/report${k}`, slug, {method: "POST"});
