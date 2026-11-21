@@ -1,0 +1,544 @@
+{
+ "schema": "artifacts/1",
+ "title": "Photo par QR",
+ "theme": "default",
+ "defaultView": "qr",
+ "icon": {
+  "emoji": "🔳",
+  "background": "#101014",
+  "color": "#ffffff"
+ },
+ "capabilities": [
+  "camera"
+ ],
+ "data": {
+  "stores": {
+   "etat": {
+    "initial": {
+     "mode": "envoyer",
+     "go": "",
+     "snapshot": 0,
+     "notice": ""
+    },
+    "reducer": "(\n  $s := $state;\n  $t := $action.type;\n  $t = \"tick\" ? ($s.go = \"1\" ? $merge([$s, {\"go\": \"\", \"snapshot\": $s.snapshot + 1}])) :\n  $t = \"qr:received\" ? $merge([$s, {\"notice\": \"Photo reçue\"}]) :\n  $s\n)",
+    "budgetMs": 50
+   }
+  }
+ },
+ "views": [
+  {
+   "id": "qr",
+   "title": "QR",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "sonic-wake-lock",
+      "attributes": {
+       "id": "veille",
+       "auto": true
+      }
+     },
+     {
+      "tagName": "sonic-ticker",
+      "attributes": {
+       "target": "etat",
+       "interval": "100"
+      }
+     },
+     {
+      "tagName": "sonic-jsonata",
+      "attributes": {
+       "inputProvider": "etat",
+       "outputProvider": "lecture",
+       "expression": "{\"active\": $input.mode = \"recevoir\"}"
+      }
+     },
+     {
+      "tagName": "sonic-qr-sender",
+      "attributes": {
+       "id": "envoi",
+       "from": "photo",
+       "auto": true,
+       "fps": "8",
+       "chunk": "300",
+       "image-max": "320",
+       "image-quality": "0.6",
+       "name": "photo.jpg"
+      }
+     },
+     {
+      "tagName": "sonic-qr-reader",
+      "attributes": {
+       "id": "lecteur",
+       "source": "#cam",
+       "interval": "40",
+       "params": "lecture"
+      }
+     },
+     {
+      "tagName": "sonic-qr-receiver",
+      "attributes": {
+       "id": "recu",
+       "source": "lecteurState.text",
+       "file-provider": "fichier",
+       "target": "etat"
+      }
+     },
+     {
+      "tagName": "sonic-notify",
+      "attributes": {
+       "watch": "etat.notice",
+       "status": "success"
+      }
+     },
+     {
+      "tagName": "div",
+      "attributes": {
+       "style": "display:flex;flex-direction:column;gap:16px;max-width:32rem;margin:0 auto"
+      },
+      "nodes": [
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap"
+        },
+        "nodes": [
+         {
+          "tagName": "h1",
+          "attributes": {
+           "style": "font-family:var(--sc-font-family-headings);font-weight:700;line-height:1.05;letter-spacing:-.02em;margin:0;font-size:clamp(28px,8vw,40px)"
+          },
+          "textContent": "Photo par QR"
+         },
+         {
+          "tagName": "sonic-group",
+          "attributes": {
+           "formDataProvider": "etat"
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-button",
+            "attributes": {
+             "radio": true,
+             "name": "mode",
+             "value": "envoyer",
+             "size": "sm",
+             "variant": "outline"
+            },
+            "textContent": "Envoyer"
+           },
+           {
+            "tagName": "sonic-button",
+            "attributes": {
+             "radio": true,
+             "name": "mode",
+             "value": "recevoir",
+             "size": "sm",
+             "variant": "outline"
+            },
+            "textContent": "Recevoir"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tagName": "sonic-if",
+        "attributes": {
+         "dataProvider": "etat",
+         "key": "mode",
+         "equals": "envoyer"
+        },
+        "nodes": [
+         {
+          "tagName": "sonic-if",
+          "attributes": {
+           "dataProvider": "envoiState",
+           "key": "status",
+           "equals": "sending"
+          },
+          "nodes": [
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "display:flex;flex-direction:column;gap:10px"
+            },
+            "nodes": [
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "background:#fff;border-radius:var(--sc-rounded-lg);padding:10px;display:flex;justify-content:center"
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-qr",
+                "attributes": {
+                 "text-from": "envoiState.frame",
+                 "ecc": "L",
+                 "margin": "3",
+                 "style": "--qr-size:min(84vw,27rem)"
+                }
+               }
+              ]
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;justify-content:space-between;align-items:baseline;gap:12px"
+              },
+              "nodes": [
+               {
+                "tagName": "small",
+                "attributes": {
+                 "style": "text-transform:uppercase;letter-spacing:.08em;font-size:12px"
+                },
+                "textContent": "Trame"
+               },
+               {
+                "tagName": "span",
+                "attributes": {
+                 "style": "font-variant-numeric:tabular-nums;font-size:14px"
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-value",
+                  "attributes": {
+                   "dataProvider": "envoiState",
+                   "key": "index"
+                  }
+                 },
+                 {
+                  "tagName": "span",
+                  "textContent": " / "
+                 },
+                 {
+                  "tagName": "sonic-value",
+                  "attributes": {
+                   "dataProvider": "envoiState",
+                   "key": "frames"
+                  }
+                 },
+                 {
+                  "tagName": "span",
+                  "textContent": " · tour "
+                 },
+                 {
+                  "tagName": "sonic-value",
+                  "attributes": {
+                   "dataProvider": "envoiState",
+                   "key": "loops"
+                  }
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "border-radius:var(--sc-rounded-lg);overflow:hidden;aspect-ratio:4/3;background:#000"
+        },
+        "nodes": [
+         {
+          "tagName": "sonic-camera",
+          "attributes": {
+           "id": "cam",
+           "facing": "environment",
+           "keep-running": true,
+           "width": "1280",
+           "height": "720",
+           "fps": "30",
+           "max-width": "1280",
+           "fit": "cover",
+           "control": "etat",
+           "snapshot-provider": "photo",
+           "snapshot-type": "jpeg",
+           "style": "width:100%;height:100%"
+          }
+         }
+        ]
+       },
+       {
+        "tagName": "sonic-media-start",
+        "attributes": {
+         "for": "cam",
+         "label": "Activer la caméra"
+        }
+       },
+       {
+        "tagName": "sonic-if",
+        "attributes": {
+         "dataProvider": "etat",
+         "key": "mode",
+         "equals": "envoyer"
+        },
+        "nodes": [
+         {
+          "tagName": "div",
+          "attributes": {
+           "style": "display:flex;flex-direction:column;gap:12px"
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-button",
+            "attributes": {
+             "type": "primary",
+             "size": "lg",
+             "shape": "block",
+             "radio": true,
+             "formDataProvider": "etat",
+             "name": "go",
+             "value": "1"
+            },
+            "textContent": "Prendre la photo et l'envoyer"
+           },
+           {
+            "tagName": "sonic-if",
+            "attributes": {
+             "dataProvider": "envoiState",
+             "key": "status",
+             "equals": "error"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-alert",
+              "attributes": {
+               "status": "error"
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "envoiState",
+                 "key": "error"
+                }
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tagName": "sonic-if",
+        "attributes": {
+         "dataProvider": "etat",
+         "key": "mode",
+         "equals": "recevoir"
+        },
+        "nodes": [
+         {
+          "tagName": "div",
+          "attributes": {
+           "style": "display:flex;flex-direction:column;gap:12px"
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-if",
+            "attributes": {
+             "dataProvider": "recuState",
+             "key": "status",
+             "equals": "receiving"
+            },
+            "nodes": [
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid color-mix(in oklab,var(--sc-base-content) 12%,transparent);border-radius:var(--sc-rounded-lg)"
+              },
+              "nodes": [
+               {
+                "tagName": "div",
+                "attributes": {
+                 "style": "display:flex;justify-content:space-between;align-items:baseline;gap:12px"
+                },
+                "nodes": [
+                 {
+                  "tagName": "small",
+                  "attributes": {
+                   "style": "text-transform:uppercase;letter-spacing:.08em;font-size:12px"
+                  },
+                  "textContent": "Réception"
+                 },
+                 {
+                  "tagName": "span",
+                  "attributes": {
+                   "style": "font-variant-numeric:tabular-nums;font-size:14px"
+                  },
+                  "nodes": [
+                   {
+                    "tagName": "sonic-value",
+                    "attributes": {
+                     "dataProvider": "recuState",
+                     "key": "received"
+                    }
+                   },
+                   {
+                    "tagName": "span",
+                    "textContent": " / "
+                   },
+                   {
+                    "tagName": "sonic-value",
+                    "attributes": {
+                     "dataProvider": "recuState",
+                     "key": "total"
+                    }
+                   }
+                  ]
+                 }
+                ]
+               },
+               {
+                "tagName": "div",
+                "attributes": {
+                 "dataProvider": "recuState"
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-progress",
+                  "attributes": {
+                   "data-bind": "",
+                   "::value": "$percent",
+                   "max": "100",
+                   "type": "primary",
+                   "size": "sm"
+                  }
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "tagName": "sonic-if",
+            "attributes": {
+             "dataProvider": "recuState",
+             "key": "status",
+             "equals": "error"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-alert",
+              "attributes": {
+               "status": "error"
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "recuState",
+                 "key": "error"
+                }
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "tagName": "sonic-if",
+            "attributes": {
+             "dataProvider": "recuState",
+             "key": "status",
+             "equals": "done"
+            },
+            "nodes": [
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;flex-direction:column;gap:12px"
+              },
+              "nodes": [
+               {
+                "tagName": "div",
+                "attributes": {
+                 "style": "border-radius:var(--sc-rounded-lg);overflow:hidden;aspect-ratio:4/3;background:color-mix(in oklab,var(--sc-base-content) 8%,var(--sc-base))"
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-still",
+                  "attributes": {
+                   "id": "image",
+                   "in-data-provider": "fichier",
+                   "fit": "contain",
+                   "style": "width:100%;height:100%"
+                  }
+                 }
+                ]
+               },
+               {
+                "tagName": "div",
+                "attributes": {
+                 "style": "display:flex;justify-content:space-between;align-items:baseline;gap:12px"
+                },
+                "nodes": [
+                 {
+                  "tagName": "small",
+                  "attributes": {
+                   "style": "text-transform:uppercase;letter-spacing:.08em;font-size:12px"
+                  },
+                  "textContent": "Reçu"
+                 },
+                 {
+                  "tagName": "span",
+                  "attributes": {
+                   "style": "font-variant-numeric:tabular-nums;font-size:14px"
+                  },
+                  "nodes": [
+                   {
+                    "tagName": "sonic-value",
+                    "attributes": {
+                     "dataProvider": "recuState",
+                     "key": "size"
+                    }
+                   },
+                   {
+                    "tagName": "span",
+                    "textContent": " octets en "
+                   },
+                   {
+                    "tagName": "sonic-value",
+                    "attributes": {
+                     "dataProvider": "recuState",
+                     "key": "seconds"
+                    }
+                   },
+                   {
+                    "tagName": "span",
+                    "textContent": " s"
+                   }
+                  ]
+                 }
+                ]
+               },
+               {
+                "tagName": "sonic-media-download",
+                "attributes": {
+                 "source": "fichier",
+                 "filename": "photo-qr.jpg",
+                 "label": "Enregistrer la photo"
+                }
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}
