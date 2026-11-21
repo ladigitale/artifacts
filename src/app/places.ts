@@ -20,6 +20,8 @@ export type PlacesDef = {
   /** Collection côté serveur (défaut : le nom) : deux DataProviders peuvent lire la même collection. */
   collection?: string;
   /** Zone d'une carte (DP : état de sonic-map, `bounds [[o, s], [e, n]]`) : lieux de la zone ou groupes, au lieu des proches. */
+  /** DP donnant l'id d'un lieu : sa discussion est publiée dans `<nom>Fil` (rechargée toutes les 15 s). */
+  thread?: string;
   area?: string;
   near?: string;
   radius?: number;
@@ -30,7 +32,9 @@ export type PlacesDef = {
 };
 
 type Item = Record<string, unknown> & {id: string; lat: number; lon: number; distance?: number};
-type OutboxItem = {id?: unknown; op?: unknown; lat?: unknown; lon?: unknown; data?: unknown; place?: unknown; ref?: unknown};
+type OutboxItem = {id?: unknown; op?: unknown; lat?: unknown; lon?: unknown; data?: unknown; place?: unknown; ref?: unknown; text?: unknown; media?: unknown; pseudo?: unknown; message?: unknown};
+type ThreadMessage = {id: string; kind: string; text?: string; pseudo?: string | null; at?: string; origin?: boolean; hasMedia?: boolean; media?: string; mine?: boolean};
+const OPS = ["delete", "report", "addRef", "message", "reportMessage"];
 
 const MOVE_M = 25;
 
@@ -123,7 +127,7 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
       const id = typeof raw.id === "string" || typeof raw.id === "number" ? String(raw.id) : "";
       if (!id || sent.has(id)) continue;
       sent.add(id);
-      const op = raw.op === "delete" || raw.op === "report" || raw.op === "addRef" ? raw.op : "add";
+      const op = typeof raw.op === "string" && OPS.includes(raw.op) ? raw.op : "add";
       void runOp(op, raw).then(
         (placeId) => { ack({type: "place:ok", payload: {id, op, placeId, places: name}}); void refresh(true); },
         (e: unknown) => ack({type: "place:error", payload: {id, op, places: name, error: message(e)}}),
@@ -153,6 +157,27 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
       bodies.delete(place);
       return place;
     }
+    if (op === "message") {
+      const text = typeof raw.text === "string" ? raw.text : "";
+      const media = typeof raw.media === "string" && raw.media ? raw.media : undefined;
+      if (!text.trim() && !media) throw new Error("message vide");
+      const res = await call<{id: string; deleteToken: string}>(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/messages${k}`, slug, {
+        method: "POST",
+        body: JSON.stringify({text, media, pseudo: typeof raw.pseudo === "string" ? raw.pseudo : undefined}),
+      });
+      const t = tokens(msgKey);
+      t[res.id] = res.deleteToken;
+      saveTokens(msgKey, t);
+      void loadThread(true);
+      return res.id;
+    }
+    if (op === "reportMessage") {
+      const message = typeof raw.message === "string" ? raw.message : "";
+      if (!message) throw new Error("message : id manquant");
+      await call(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/messages/${encodeURIComponent(message)}${k}`, slug, {method: "POST"});
+      void loadThread(true);
+      return message;
+    }
     if (op === "addRef") {
       if (!raw.ref || typeof raw.ref !== "object" || Array.isArray(raw.ref)) throw new Error("ref : nouvelle surface manquante");
       await call(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/refs${k}`, slug, {method: "POST", body: JSON.stringify({ref: raw.ref})});
@@ -165,6 +190,64 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
 
   const ack = (action: {type: string; payload: unknown}) => {
     if (def.ack) dispatch(def.ack, action);
+  };
+
+  // ---- discussion du lieu choisi (def.thread) ----
+  const msgKey = `${tokensKey}:messages`;
+  const threadOut = `${out}Fil`;
+  const media = new Map<string, string>();
+  let threadPlace = "";
+  let threadBusy = false;
+  const threadTarget = (): string => {
+    if (!def.thread) return "";
+    const v = get(def.thread) as unknown;
+    return typeof v === "string" && /^[0-9a-fA-F-]{36}$/.test(v) ? v : "";
+  };
+  const publishThread = (patch: Record<string, unknown>) => {
+    const prev = (get(threadOut) as Record<string, unknown> | undefined) ?? {};
+    set(threadOut, {...prev, ...patch} as never);
+  };
+  const loadThread = async (force = false): Promise<void> => {
+    if (!def.thread || stopped) return;
+    const place = threadTarget();
+    if (!place) {
+      if (threadPlace) publishThread({place: null, status: "idle", messages: [], drawings: [], count: 0, error: null});
+      threadPlace = "";
+      return;
+    }
+    if (place === threadPlace && (threadBusy || !force)) return;
+    const changed = place !== threadPlace;
+    threadPlace = place;
+    threadBusy = true;
+    if (changed) publishThread({place, status: "loading", messages: [], drawings: [], count: 0, error: null});
+    try {
+      const k = linkToken ? `?k=${encodeURIComponent(linkToken)}` : "";
+      const res = await call<{messages?: ThreadMessage[]; count?: number}>(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/messages${k}`, slug);
+      if (stopped || threadPlace !== place) return;
+      const mine = tokens(msgKey);
+      const list = (Array.isArray(res?.messages) ? res.messages : []).map((m) => ({...m, mine: m.id in mine, media: m.media ?? media.get(m.id)}));
+      const publishList = () => {
+        const msgs = list.map((m) => ({...m, media: m.media ?? media.get(m.id)}));
+        publishThread({place, status: "ready", messages: msgs, drawings: msgs.filter((m) => m.kind === "drawing" && m.media), count: msgs.length, error: null, at: new Date().toISOString()});
+      };
+      publishList();
+      // Vocaux et dessins : chargés à part, une fois.
+      for (const m of list) {
+        if (stopped || threadPlace !== place) return;
+        if (!m.hasMedia || media.has(m.id)) continue;
+        try {
+          const r = await call<{media?: string}>(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/messages/${encodeURIComponent(m.id)}${k}`, slug);
+          if (typeof r?.media === "string") media.set(m.id, r.media);
+        } catch {
+          /* média indisponible : le message reste listé */
+        }
+      }
+      publishList();
+    } catch (e) {
+      if (threadPlace === place) publishThread({status: "error", error: message(e)});
+    } finally {
+      threadBusy = false;
+    }
   };
 
   const offs: Array<() => void> = [];
@@ -181,12 +264,15 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
   };
   watch(def.near, () => void refresh());
   watch(def.from, flush);
+  watch(def.thread, () => void loadThread());
+  const threadTimer = def.thread ? setInterval(() => void loadThread(true), 15000) : null;
   const timer = setInterval(() => void refresh(true), refreshMs);
   void refresh(true);
   flush();
   return () => {
     stopped = true;
     clearInterval(timer);
+    if (threadTimer) clearInterval(threadTimer);
     offs.forEach((off) => off());
   };
 }
