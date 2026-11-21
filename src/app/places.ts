@@ -159,7 +159,7 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
     }
     if (op === "message") {
       const text = typeof raw.text === "string" ? raw.text : "";
-      const media = typeof raw.media === "string" && raw.media ? raw.media : undefined;
+      const media = await asDataUrl(raw.media);
       if (!text.trim() && !media) throw new Error("message vide");
       const res = await call<{id: string; deleteToken: string}>(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/messages${k}`, slug, {
         method: "POST",
@@ -371,6 +371,25 @@ async function call<T>(path: string, slug: string, init: RequestInit = {}): Prom
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
+}
+
+/**
+ * Média d'un message : data: URL telle quelle ; URL blob: (dernier export de sonic-sketch, prise de
+ * sonic-audio-recorder) ou {url} lue et convertie, pour être envoyée au serveur.
+ */
+async function asDataUrl(v: unknown): Promise<string | undefined> {
+  const url = typeof v === "string" ? v : v && typeof v === "object" && typeof (v as {url?: unknown}).url === "string" ? (v as {url: string}).url : "";
+  if (!url) return undefined;
+  if (url.startsWith("data:")) return url;
+  if (!url.startsWith("blob:")) throw new Error("média : data: ou blob: attendu");
+  const blob = await (await fetch(url)).blob();
+  if (blob.size > 350_000) throw new Error("média trop lourd (350 Ko au plus)");
+  return await new Promise<string>((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(new Error("média illisible"));
+    r.readAsDataURL(blob);
+  });
 }
 
 function tokens(key: string): Record<string, string> {
