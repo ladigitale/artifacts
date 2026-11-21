@@ -25,7 +25,7 @@ import {startPlaces, type PlacesDef} from "../places";
 import {persistDecl, persistKey, plain, readSaved, writeSaved} from "../persist";
 import {OnlineSave, onlineDecl} from "../online-save";
 import {mapPath, runFromLocation, startIoRun, waitForStore, type IoDef, type IoStatus} from "../io-run";
-import {claimPair, joinStream, pairFromLocation, requestPair, RunStream, watchFromLocation, type PairInfo, type StreamJoin} from "../run-stream";
+import {claimPair, joinStream, pairFromLocation, pairRoles, requestPair, RunStream, watchFromLocation, type PairInfo, type StreamJoin} from "../run-stream";
 import {applyPatch, type PatchOp} from "../json-patch";
 import {applyDocFontFiles, applyDocFonts} from "../doc-fonts";
 import {claimNamespace, transformDocument, type NamespaceClaim} from "../doc-transform";
@@ -210,6 +210,8 @@ export class ArtifactViewer extends LitElement {
   /** Appairage : code de l'hôte (renouvelé) et erreur de réclamation d'un code ouvert ici. */
   private pairTimer = 0;
   private pairInfo: PairInfo | null = null;
+  private pairsInfo: Record<string, PairInfo> = {};
+  private pairRefresh: (() => Promise<void>) | null = null;
   private runInfo: Record<string, unknown> | null = null;
   /** Préfixe des DataProviders (vide sauf collision entre artefacts intégrés). */
   private ns = "";
@@ -335,6 +337,8 @@ export class ArtifactViewer extends LitElement {
     clearInterval(this.pairTimer);
     this.pairTimer = 0;
     this.pairInfo = null;
+    this.pairsInfo = {};
+    this.pairRefresh = null;
     this.runInfo = null;
     this.ioStatus = null;
   }
@@ -385,7 +389,7 @@ export class ArtifactViewer extends LitElement {
     this.runStream?.stop();
     this.publishRun(join, target.role, join.status);
     if (target.role === "performer" && join.status === "pending" && (io.stream as {pair?: unknown} | undefined)?.pair) {
-      this.startPairing(target.id, target.token);
+      this.startPairing(target.id, target.token, pairRoles((io.stream as {pair?: unknown}).pair));
     }
     const stream = new RunStream({
       slug: this.slug,
@@ -402,8 +406,11 @@ export class ArtifactViewer extends LitElement {
       onPresence: (p) => {
         if (!this.runInfo) return;
         this.runInfo = {...this.runInfo, presence: p};
-        set(this.n(RUN_DP), {...this.runInfo, pair: this.pairInfo} as never);
+        this.setRunDp();
+        // Un appareil arrivé ou parti change les places restantes.
+        void this.pairRefresh?.();
       },
+      onPairOps: () => void this.pairRefresh?.(),
       onEnd: () => {
         if (target.role === "performer") ctl.finish?.();
         else this.ioStatus = {state: "closed", message: "Le direct est terminé."};
@@ -421,23 +428,44 @@ export class ArtifactViewer extends LitElement {
   /** DataProvider `artifactRun` : ce que le document peut montrer du run (jamais le jeton du run). */
   private publishRun(join: StreamJoin, role: "performer" | "watcher", status: string) {
     this.runInfo = {runId: join.runId, role, watchUrl: join.watchUrl ?? null, status, presence: this.runInfo?.presence ?? join.presence ?? {count: 0, members: []}};
-    set(this.n(RUN_DP), {...this.runInfo, pair: this.pairInfo} as never);
+    this.setRunDp();
+  }
+
+  private setRunDp() {
+    if (!this.runInfo) return;
+    set(this.n(RUN_DP), {...this.runInfo, pair: this.pairInfo, pairs: this.pairsInfo} as never);
   }
 
   /**
    * Hôte d'un appairage (io.stream.pair, viewer du run) : demande le code et le renouvelle (le
    * serveur rend le même tant qu'il reste valide) ; `artifactRun.pair` suit aussi les places prises.
    */
-  private startPairing(runId: string, runToken: string) {
+  private startPairing(runId: string, runToken: string, roles: (string | null)[]) {
     clearInterval(this.pairTimer);
+    let busy = false;
     const refresh = async () => {
+      if (busy || !roles.length) return;
+      busy = true;
       try {
-        this.pairInfo = await requestPair(this.slug, runId, runToken);
-      } catch (e) {
-        this.pairInfo = {code: null, url: null, expiresAt: null, remaining: 0, max: 0, paired: 0, remote: "", error: e instanceof Error ? e.message : String(e)} as PairInfo;
+        const infos = await Promise.all(roles.map(async (role) => {
+          try {
+            return await requestPair(this.slug, runId, runToken, role);
+          } catch (e) {
+            return {role, code: null, url: null, expiresAt: null, remaining: 0, max: 0, paired: 0, remote: "", error: e instanceof Error ? e.message : String(e)} as PairInfo;
+          }
+        }));
+        this.pairInfo = infos[0] ?? null;
+        const pairs: Record<string, PairInfo> = {};
+        roles.forEach((role, k) => {
+          if (role) pairs[role] = infos[k];
+        });
+        this.pairsInfo = pairs;
+        this.setRunDp();
+      } finally {
+        busy = false;
       }
-      if (this.runInfo) set(this.n(RUN_DP), {...this.runInfo, pair: this.pairInfo} as never);
     };
+    this.pairRefresh = refresh;
     void refresh();
     this.pairTimer = window.setInterval(() => void refresh(), PAIR_REFRESH_MS);
   }

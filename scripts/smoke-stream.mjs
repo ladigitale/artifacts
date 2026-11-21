@@ -27,6 +27,7 @@ const RUN = "0190f3a2-2222-7222-8333-944455556666";
 const RUN2 = "0190f3a2-3333-7222-8333-944455556666";
 let pairClaims = 0;
 const pairRequests = [];
+const pairRoles = [];
 let doc = JSON.parse(fs.readFileSync(path.join(ROOT, "tests/fixtures/stream.json"), "utf8"));
 // Télécommande (io.stream.emit) reliée au run du flux, comme un lien Tadaaa (link_artifact_runs).
 const REMOTE_RUN = "0190f3a2-3333-7333-8444-955566667777";
@@ -112,7 +113,7 @@ const server = http.createServer((q, r) => {
         if (e.type !== "emit") continue;
         if (emitted.some((x) => x.id === e.id)) continue;
         emitted.push(e);
-        const msgs = linkMap(e);
+        const msgs = e.op ? [] : linkMap(e);
         if (msgs.length) emit(msgs);
       }
       json(200, {ok: true});
@@ -131,7 +132,12 @@ const server = http.createServer((q, r) => {
   }
   const m = /^\/api\/public\/artifacts\/flux\/runs\/([0-9a-f-]{36})(\/stream|\/output|\/pair)?$/.exec(u.pathname);
   if (m) {
-    if (m[2] === "/pair") return read((b) => { pairRequests.push(b.rt); json(200, {code: "ABCDEFGH", url: `http://localhost:${PORT}/${SLUG}?pair=ABCDEFGH`, expiresAt: new Date(Date.now() + 9e5).toISOString(), remaining: 4 - pairClaims, max: 4, paired: pairClaims, remote: SLUG}); });
+    if (m[2] === "/pair") return read((b) => {
+      pairRequests.push(b.rt);
+      pairRoles.push(b.role ?? null);
+      const code = b.role === "b" ? "BBBBBBBB" : "ABCDEFGH";
+      json(200, {role: b.role ?? null, code, url: `http://localhost:${PORT}/${SLUG}?pair=${code}`, expiresAt: new Date(Date.now() + 9e5).toISOString(), remaining: 4 - pairClaims, max: 4, paired: pairClaims, remote: SLUG, locked: false});
+    });
     if (m[2] === "/stream" && q.method === "GET") return json(200, join(u));
     if (m[2] === "/stream" && q.method === "POST") return read((b) => {
       for (const e of b.events) {
@@ -203,6 +209,11 @@ for (const [name, p] of [["viewer du run", performer], ["spectateur SSE", watche
     return deep(document, "#qrpair")[0]?.shadowRoot?.querySelector("svg")?.getAttribute("aria-label") ?? null;
   });
   check("hôte : code d'appairage demandé avec le jeton du run, QR affiché", pairRequests.includes("tok") && !!r?.includes("pair=ABCDEFGH"), String(r));
+  const rb = await performer.evaluate(() => {
+    const deep = (r, s, a = []) => { r.querySelectorAll("*").forEach((e) => { if (e.matches(s)) a.push(e); if (e.shadowRoot) deep(e.shadowRoot, s, a); }); return a; };
+    return deep(document, "#qrpairb")[0]?.shadowRoot?.querySelector("svg")?.getAttribute("aria-label") ?? null;
+  });
+  check("rôles : un code par rôle (artifactRun.pairs.b)", pairRoles.includes("a") && pairRoles.includes("b") && !!rb?.includes("pair=BBBBBBBB"), JSON.stringify({rb, pairRoles: pairRoles.slice(0, 4)}));
   const w = await watcher.evaluate(() => {
     const deep = (r, s, a = []) => { r.querySelectorAll("*").forEach((e) => { if (e.matches(s)) a.push(e); if (e.shadowRoot) deep(e.shadowRoot, s, a); }); return a; };
     return deep(document, "#qrpair")[0]?.shadowRoot?.querySelector("svg") ? "qr" : "vide";
@@ -280,9 +291,18 @@ console.log("\n== télécommande (file d'envoi d'un autre artefact, lien entre r
   const r = await readRemote();
   check("télécommande : 3 éléments publiés et acquittés (emit:ok)", r.n === "3" && r.sent === "3" && emitted.length === 3, JSON.stringify({...r, emitted: emitted.map((e) => e.id)}));
   check("éléments publiés une fois chacun, dans l'ordre", JSON.stringify(emitted.map((e) => e.data.pad)) === JSON.stringify(["pulse", "pulse", "titre"]));
+  // Envoi ciblé et commandes d'appairage dans la même file.
+  await remote.locator("#cible").click();
+  await remote.locator("#retirer").click();
+  await remote.locator("#fermer").click();
+  for (let i = 0; i < 40 && (await readRemote()).sent !== "6"; i++) await wait(100);
+  const [cible, retirer, fermer] = emitted.slice(3);
+  check("élément ciblé publié avec to", cible?.to === RUN && cible?.data?.pad === "pulse", JSON.stringify(cible));
+  check("commande kick publiée sans data", retirer?.op === "kick" && retirer?.runId === "0190f3a2-4444-7222-8333-944455556666" && !("data" in retirer), JSON.stringify(retirer));
+  check("commande lock publiée", fermer?.op === "lock" && !("data" in fermer) && !("to" in fermer), JSON.stringify(fermer));
   for (const [name, p] of [["viewer du run", performer], ["spectateur", watcher], ["intégration", host]]) {
-    const s = await until(p, (s) => Number(s.count) === before + 2 && s.titre === "Télécommandé");
-    check(`${name} : piloté par la télécommande`, Number(s.count) === before + 2 && s.titre === "Télécommandé", JSON.stringify(s));
+    const s = await until(p, (s) => Number(s.count) === before + 3 && s.titre === "Télécommandé");
+    check(`${name} : piloté par la télécommande`, Number(s.count) === before + 3 && s.titre === "Télécommandé", JSON.stringify(s));
   }
   await remote.close();
 }
@@ -315,7 +335,7 @@ console.log("\n== appairage");
 console.log("\n== fin du flux");
 emit([{type: "end"}]);
 await until(performer, () => outputs.length > 0);
-check("sortie publiée par le viewer du run à la fin (15)", outputs.length === 1 && outputs[0].output === 15 && outputs[0].rt === "tok", JSON.stringify(outputs));
+check("sortie publiée par le viewer du run à la fin (16)", outputs.length === 1 && outputs[0].output === 16 && outputs[0].rt === "tok", JSON.stringify(outputs));
 for (const [name, p] of [["spectateur SSE", watcher], ["spectateur arrivé en cours", late], ["intégration", host]]) {
   const s = await until(p, (s) => s.status.includes("terminé"));
   check(`${name} : bandeau de fin`, s.status.includes("terminé"), s.status);
