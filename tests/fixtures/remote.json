@@ -11,7 +11,7 @@
      "sent": 0,
      "outbox": []
     },
-    "reducer": "$action.type = 'press' ? $merge([$state, {'n': $state.n + 1, 'outbox': $append($state.outbox, [{'id': 'p' & $string($state.n + 1), 'data': $action.payload}])}]) : $action.type = 'emit:ok' ? $merge([$state, {'sent': $state.sent + 1, 'outbox': [$filter($state.outbox, function($i) { $i.id != $action.payload.id })]}]) : $state"
+    "reducer": "$action.type = 'press' ? $merge([$state, {'n': $state.n + 1, 'outbox': $append($state.outbox, [{'id': 'p' & $string($state.n + 1), 'data': $action.payload}])}]) : $action.type = 'cmd' ? $merge([$state, {'n': $state.n + 1, 'outbox': $append($state.outbox, [$merge([{'id': 'c' & $string($state.n + 1)}, $action.payload])])}]) : $action.type = 'emit:ok' ? $merge([$state, {'sent': $state.sent + 1, 'outbox': [$filter($state.outbox, function($i) { $i.id != $action.payload.id })]}]) : $state"
    }
   }
  },
@@ -53,6 +53,57 @@
          "id": "titre"
         },
         "textContent": "Titre"
+       }
+      ]
+     },
+     {
+      "tagName": "sonic-action",
+      "attributes": {
+       "target": "pad",
+       "type": "cmd",
+       "payload": "{\"to\": \"0190f3a2-2222-7222-8333-944455556666\", \"data\": {\"pad\": \"pulse\"}}"
+      },
+      "nodes": [
+       {
+        "tagName": "sonic-button",
+        "attributes": {
+         "id": "cible"
+        },
+        "textContent": "Cible"
+       }
+      ]
+     },
+     {
+      "tagName": "sonic-action",
+      "attributes": {
+       "target": "pad",
+       "type": "cmd",
+       "payload": "{\"op\": \"kick\", \"runId\": \"0190f3a2-4444-7222-8333-944455556666\", \"data\": {\"ignore\": 1}}"
+      },
+      "nodes": [
+       {
+        "tagName": "sonic-button",
+        "attributes": {
+         "id": "retirer"
+        },
+        "textContent": "Retirer"
+       }
+      ]
+     },
+     {
+      "tagName": "sonic-action",
+      "attributes": {
+       "target": "pad",
+       "type": "cmd",
+       "payload": "{\"op\": \"lock\"}"
+      },
+      "nodes": [
+       {
+        "tagName": "sonic-button",
+        "attributes": {
+         "id": "fermer"
+        },
+        "textContent": "Fermer"
        }
       ]
      },

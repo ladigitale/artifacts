@@ -76,10 +76,29 @@ export type RunStreamOptions = {
   onStatus?: (s: StreamStatus) => void;
   /** Présence des runs reliés (message `presence`, ou état au moment de rejoindre). */
   onPresence?: (p: Presence) => void;
+  /** Commandes d'appairage publiées par la file d'envoi (kick, lock, unlock) : places à relire. */
+  onPairOps?: () => void;
 };
 
 /** Runs reliés dont le viewer est ouvert (télécommandes, écrans appairés). */
-export type Presence = {count: number; members: {runId: string; slug: string; index: number; since: number; seen: number}[]};
+export type Presence = {count: number; members: {runId: string; slug: string; index: number; since: number; seen: number; role?: string | null}[]};
+
+/**
+ * Élément de la file d'envoi tel que publié : `{id, data, to?}` (to = runId ou liste : seuls ces
+ * runs reliés le reçoivent) ou une commande d'appairage `{id, op: "kick", runId}`, `{id, op: "lock" | "unlock"}`.
+ */
+export function emitEvent(item: unknown): Record<string, unknown> | null {
+  if (!item || typeof item !== "object") return null;
+  const o = item as Record<string, unknown>;
+  const id = o.id;
+  if ((typeof id !== "string" || !id) && typeof id !== "number") return null;
+  if (o.op === "kick" || o.op === "lock" || o.op === "unlock") {
+    return o.op === "kick" ? {type: "emit", id, op: "kick", runId: typeof o.runId === "string" ? o.runId : ""} : {type: "emit", id, op: o.op};
+  }
+  const ev: Record<string, unknown> = {type: "emit", id, data: clone(o.data ?? null)};
+  if (typeof o.to === "string" || (Array.isArray(o.to) && o.to.length)) ev.to = clone(o.to);
+  return ev;
+}
 
 const POLL_MS = 1000;
 /** Regroupement des éléments de la file d'envoi (ms) : une requête au plus par intervalle. */
@@ -413,12 +432,11 @@ export class RunStream {
     if (!e || this.emitting || this.stopped) return;
     const list = get(e.path) as unknown;
     if (!Array.isArray(list)) return;
-    const pending: {id: string | number; data: unknown}[] = [];
+    const pending: {id: string | number; ev: Record<string, unknown>}[] = [];
     for (const item of list) {
-      const id = (item as {id?: unknown} | null)?.id;
-      if ((typeof id !== "string" || !id) && typeof id !== "number") continue;
-      if (this.sentIds.has(String(id))) continue;
-      pending.push({id, data: clone((item as {data?: unknown}).data ?? null)});
+      const ev = emitEvent(item);
+      if (!ev || this.sentIds.has(String(ev.id))) continue;
+      pending.push({id: ev.id as string | number, ev});
       if (pending.length >= EMIT_BATCH) break;
     }
     if (!pending.length) return;
@@ -428,7 +446,7 @@ export class RunStream {
       const res = await fetch(`${streamUrl(this.opts.slug, this.opts.runId)}/stream`, {
         method: "POST",
         headers: {Accept: "application/json", "Content-Type": "application/json"},
-        body: JSON.stringify({rt: this.opts.token, events: pending.map((p) => ({type: "emit", id: p.id, data: p.data}))}),
+        body: JSON.stringify({rt: this.opts.token, events: pending.map((p) => p.ev)}),
       });
       ok = res.ok;
       if (!ok && res.status >= 400 && res.status < 500 && res.status !== 429) {
@@ -451,6 +469,7 @@ export class RunStream {
       this.sentIds.add(String(p.id));
       if (e.ack) dispatch(e.ack, {type: "emit:ok", payload: {id: p.id}});
     }
+    if (pending.some((p) => "op" in p.ev)) this.opts.onPairOps?.();
     if (this.sentIds.size > MAX_SENT_IDS) {
       const old = [...this.sentIds].slice(0, this.sentIds.size - MAX_SENT_IDS);
       for (const id of old) this.sentIds.delete(id);
@@ -542,8 +561,10 @@ function clone<T>(v: T): T {
 
 /* ------------------------------------------------------------ appairage (io.stream.pair) */
 
-/** Code d'appairage d'un run hôte, publié dans `artifactRun.pair`. */
+/** Code d'appairage d'un run hôte, publié dans `artifactRun.pair` (et `artifactRun.pairs.<rôle>`). */
 export type PairInfo = {
+  role?: string | null;
+  locked?: boolean;
   code: string | null;
   url: string | null;
   expiresAt: string | null;
@@ -565,8 +586,17 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
 }
 
 /** Hôte : code en cours (réutilisé par le serveur tant qu'il reste valide), places restantes. */
-export function requestPair(slug: string, runId: string, runToken: string): Promise<PairInfo> {
-  return postJson<PairInfo>(`${streamUrl(slug, runId)}/pair`, {rt: runToken});
+export function requestPair(slug: string, runId: string, runToken: string, role?: string | null): Promise<PairInfo> {
+  return postJson<PairInfo>(`${streamUrl(slug, runId)}/pair`, role ? {rt: runToken, role} : {rt: runToken});
+}
+
+/** Rôles déclarés par `io.stream.pair` : [null] pour la forme objet, les noms pour une liste. */
+export function pairRoles(pair: unknown): (string | null)[] {
+  if (Array.isArray(pair)) {
+    const roles = pair.map((e) => (e && typeof e === "object" ? (e as {role?: unknown}).role : null)).filter((r): r is string => typeof r === "string" && !!r);
+    return roles.length ? roles : [null];
+  }
+  return pair && typeof pair === "object" ? [null] : [];
 }
 
 /** Appareil qui a ouvert le lien : réclame la place, reçoit son propre run. */
