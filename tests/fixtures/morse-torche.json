@@ -467,42 +467,99 @@
          {
           "tagName": "div",
           "attributes": {
-           "style": "display:flex;flex-direction:column;gap:4px;padding:12px 14px;border:1px solid color-mix(in oklab,var(--sc-base-content) 12%,transparent);border-radius:var(--sc-rounded-lg)"
+           "style": "display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid color-mix(in oklab,var(--sc-base-content) 12%,transparent);border-radius:var(--sc-rounded-lg)"
           },
           "nodes": [
            {
-            "tagName": "small",
-            "attributes": {
-             "style": "text-transform:uppercase;letter-spacing:.08em;font-size:12px"
-            },
-            "textContent": "Émission"
-           },
-           {
             "tagName": "div",
             "attributes": {
-             "style": "font-size:17px;min-height:1.35em"
+             "style": "display:flex;justify-content:space-between;align-items:baseline;gap:12px"
             },
             "nodes": [
              {
-              "tagName": "sonic-value",
+              "tagName": "small",
               "attributes": {
-               "dataProvider": "morseState",
-               "key": "tx.text"
-              }
+               "style": "text-transform:uppercase;letter-spacing:.08em;font-size:12px"
+              },
+              "textContent": "Émission"
+             },
+             {
+              "tagName": "span",
+              "attributes": {
+               "style": "font-variant-numeric:tabular-nums;font-size:14px"
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "morseState",
+                 "key": "tx.chars"
+                }
+               },
+               {
+                "tagName": "span",
+                "textContent": " / "
+               },
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "morseState",
+                 "key": "tx.total"
+                }
+               }
+              ]
              }
             ]
            },
            {
             "tagName": "div",
             "attributes": {
-             "style": "font-family:ui-monospace,monospace;font-size:20px;letter-spacing:.12em;min-height:1.2em;overflow-wrap:anywhere"
+             "style": "font-size:20px;min-height:1.35em;overflow-wrap:anywhere;letter-spacing:.04em"
             },
             "nodes": [
              {
-              "tagName": "sonic-value",
+              "tagName": "strong",
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "morseState",
+                 "key": "tx.done"
+                }
+               }
+              ]
+             },
+             {
+              "tagName": "span",
               "attributes": {
-               "dataProvider": "morseState",
-               "key": "tx.signs"
+               "style": "opacity:.35"
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "morseState",
+                 "key": "tx.rest"
+                }
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "tagName": "div",
+            "attributes": {
+             "dataProvider": "morseState"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-progress",
+              "attributes": {
+               "data-bind": "",
+               "::value": "$tx.percent",
+               "max": "100",
+               "type": "primary",
+               "size": "sm"
               }
              }
             ]

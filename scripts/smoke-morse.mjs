@@ -7,7 +7,7 @@
  * Fixture `morse-torche` : chat en morse entre deux téléphones (torche → caméra).
  * Caméra factice = vidéo générée ici, qui clignote « SOS » en morse (point de 300 ms) puis se
  * tait : la sonde (detect="jump") voit les fronts, sonic-morse les décode, le message arrive
- * dans le fil. Puis on envoie « é t » : le composant séquence la torche (absente de la caméra
+ * dans le fil. Le même « SOS » sans signal de début est ignoré. Puis on envoie « é t » : le composant séquence la torche (absente de la caméra
  * factice, ce que le store note) et le message part dans le fil.
  */
 import http from "node:http";
@@ -25,7 +25,11 @@ const doc = JSON.parse(JSON.stringify(raw, (k, v) => (typeof v === "string" && v
 const CSP = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:; img-src 'self' https: data: blob:; media-src 'self' https: blob: data:; connect-src 'self' https: blob:; worker-src 'self' blob: https://cdn.jsdelivr.net; child-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
 const PERMISSIONS = "camera=(self), microphone=(self), midi=(self), display-capture=(self), geolocation=(self), payment=(), usb=(), browsing-topics=()";
 
-/** Vidéo Y4M 80×60 à 30 i/s : « SOS » en morse (point = 9 images = 300 ms), puis 22 unités de noir, en boucle. */
+/**
+ * Vidéo Y4M 80×60 à 30 i/s, en boucle (point = 9 images = 300 ms) : signal de début (éclat de
+ * 5 unités, silence de 3), « SOS », 22 unités de noir ; puis, sans signal de début, « SOS » encore
+ * (une lumière parasite, à ignorer) et 22 unités de noir.
+ */
 function morseVideo() {
   const W = 80, H = 60, UNIT = 9, file = path.join(os.tmpdir(), "smoke-morse-sos.y4m");
   const letters = ["...", "---", "..."];
@@ -37,7 +41,9 @@ function morseVideo() {
     });
     if (i < letters.length - 1) units.push(0, 0, 0);
   });
-  units.push(...Array(22).fill(0));
+  const sos = [...units];
+  units.unshift(1, 1, 1, 1, 1, 0, 0, 0);
+  units.push(...Array(22).fill(0), ...sos, ...Array(22).fill(0));
   const parts = [Buffer.from(`YUV4MPEG2 W${W} H${H} F30:1 Ip A1:1 C420jpeg\n`)];
   const chroma = Buffer.alloc((W / 2) * (H / 2) * 2, 128);
   for (const u of units) for (let i = 0; i < UNIT; i++) parts.push(Buffer.from("FRAME\n"), Buffer.alloc(W * H, u ? 235 : 16), chroma);
@@ -90,13 +96,17 @@ await page.getByText("Activer la caméra").first().click({timeout: 3000});
 await page.waitForTimeout(2000);
 check("caméra ouverte par le bouton", (await state(page, "cam"))?.status === "ready");
 
-// La vidéo boucle toutes les 14,7 s : en 40 s, au moins deux « SOS » entiers passent.
+// La vidéo boucle toutes les 31,8 s : entre deux « SOS » annoncés passe toujours un « SOS » sans annonce.
 let m = null;
-for (let i = 0; i < 40; i++) {
-  await page.waitForTimeout(1000);
+let sawStart = false;
+for (let i = 0; i < 220; i++) {
+  await page.waitForTimeout(500);
   m = await state(page, "morse");
+  if (m?.status === "receiving" && m.rx.text === "") sawStart = true;
   if (m?.received >= 2) break;
 }
+check("réception annoncée dès le signal de début", sawStart);
+check("deux messages annoncés reçus", m?.received === 2, `${m?.received} reçu(s), ${m?.dropped} écarté(s)`);
 const s = await state(page, "sonde");
 check("sonde en détection par sauts", s?.settings?.detect === "jump" && s.status === "ready", `fps ${s?.fps}, horloge ${s?.clock}, ${s?.edges} fronts`);
 check("message reçu et décodé", m?.lastReceived === "SOS", `reçu « ${m?.lastReceived} », ${m?.received} message(s), unité ${m?.rx?.unit}`);
@@ -108,6 +118,16 @@ await page.locator("sonic-button", {hasText: "Envoyer"}).click({timeout: 3000});
 await page.waitForTimeout(600);
 m = await state(page, "morse");
 check("émission lancée par le bouton", m?.status === "sending" && m.tx.text === "E T", `${m?.status} « ${m?.tx?.text} » ${m?.tx?.signs}`);
+await page.waitForTimeout(3000); // signal de début (8 unités = 2,4 s) puis E : la première lettre est passée
+m = await state(page, "morse");
+await page.screenshot({path: path.join(os.tmpdir(), "smoke-morse-progress.png")});
+const bar = await page.evaluate(() => {
+  const deep = (r, s, a = []) => { r.querySelectorAll("*").forEach((e) => { if (e.matches(s)) a.push(e); if (e.shadowRoot) deep(e.shadowRoot, s, a); }); return a; };
+  const p = deep(document, "sonic-progress")[0];
+  return p ? {value: Number(p.value), max: Number(p.max)} : null;
+});
+check("progression de l'envoi : texte émis, texte restant, barre", m?.tx?.done === "E " && m.tx.rest === "T" && bar?.value === m.tx.percent && bar.value > 0, `« ${m?.tx?.done} » | « ${m?.tx?.rest} », ${m?.tx?.percent} %, barre ${JSON.stringify(bar)}`);
+check("pas de réception pendant l'émission", m?.rx?.text === "" && m.status === "sending");
 check("le fil montre le message envoyé, le champ est vidé", /é t/.test(await text(page)) && (await page.locator("sonic-input input").inputValue()) === "");
 const chat = await page.evaluate(() => {
   const deep = (r, s, a = []) => { r.querySelectorAll("*").forEach((e) => { if (e.matches(s)) a.push(e); if (e.shadowRoot) deep(e.shadowRoot, s, a); }); return a; };
@@ -115,8 +135,9 @@ const chat = await page.evaluate(() => {
 });
 check("torche absente de la caméra factice signalée", /Pas de torche/.test(chat?.notice ?? ""), chat?.notice);
 check("l'état du chat reste propre (pas de métadonnées de liste)", (chat?.messages ?? []).every((x) => Object.keys(x).join() === "id,who,text"), JSON.stringify(chat?.messages));
+check("le fil ne contient que les deux « SOS » annoncés et le message envoyé (le « SOS » sans annonce est ignoré)", (chat?.messages ?? []).map((x) => x.text).join("|") === "SOS|SOS|é t");
 await page.screenshot({path: path.join(os.tmpdir(), "smoke-morse-tx.png")});
-await page.waitForTimeout(4500); // E (1) + mot (7) + T (3) + 3 = 14 unités = 4,2 s
+await page.waitForTimeout(3500); // reste : mot (7) + T (3) + 3
 m = await state(page, "morse");
 check("émission terminée", m?.status !== "sending" && m.sent === 1 && m.lastSent === "E T" && m.on === false, `${m?.status}, ${m?.sent} envoyé(s)`);
 check("aucune erreur JS / CSP / permissions", errors.length === 0, errors.join(" | ").slice(0, 300));
