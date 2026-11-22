@@ -15,6 +15,9 @@ import {getApiRoot, loadArtifactsAccount} from "./cloud/account";
  *   le signale, `{id, op: "addRef", place, ref}` lui ajoute une surface de remplacement ; `message` et `addRef`
  *   joignent la position de `near` (`at` : lat, lon, accuracy, et `seen` de l'op) : le serveur n'accepte vocal,
  *   dessin et surface que sur place, un texte envoyé de loin devient un commentaire à distance (`onSite: false`) ; puis envoie `place:ok` {id, op, placeId} ou `place:error` {id, op, error} au store `ack`.
+ * - parcours : une entrée `{collection, routes: "carteState", route: "dp.id"}` publie `<nom>Routes` (parcours de
+ *   la zone visible, `lines` GeoJSON) et `<nom>Route` (parcours choisi, `sounds` des sons propres) ; ops de la
+ *   boîte d'envoi principale `addRoute` {data: {title, ordered, mode, steps}}, `deleteRoute` et `reportRoute` {route}.
  *
  *   "places": {"balises": {"near": "geoState", "radius": 300, "fetch": 6, "from": "balises.outbox", "ack": "balises"}}
  */
@@ -24,6 +27,10 @@ export type PlacesDef = {
   /** Zone d'une carte (DP : état de sonic-map, `bounds [[o, s], [e, n]]`) : lieux de la zone ou groupes, au lieu des proches. */
   /** DP donnant l'id d'un lieu : sa discussion est publiée dans `<nom>Fil` (rechargée toutes les 15 s). */
   thread?: string;
+  /** Parcours de la zone d'une carte (DP : état de sonic-map) : publiés dans `<nom>Routes` (items, lines GeoJSON). */
+  routes?: string;
+  /** DP donnant l'id d'un parcours : publié avec ses sons propres dans `<nom>Route`. */
+  route?: string;
   area?: string;
   near?: string;
   radius?: number;
@@ -34,9 +41,10 @@ export type PlacesDef = {
 };
 
 type Item = Record<string, unknown> & {id: string; lat: number; lon: number; distance?: number};
-type OutboxItem = {id?: unknown; op?: unknown; lat?: unknown; lon?: unknown; data?: unknown; place?: unknown; ref?: unknown; text?: unknown; media?: unknown; pseudo?: unknown; message?: unknown; seen?: unknown; cadre?: unknown};
+type OutboxItem = {route?: unknown; id?: unknown; op?: unknown; lat?: unknown; lon?: unknown; data?: unknown; place?: unknown; ref?: unknown; text?: unknown; media?: unknown; pseudo?: unknown; message?: unknown; seen?: unknown; cadre?: unknown};
 type ThreadMessage = {id: string; kind: string; text?: string; pseudo?: string | null; at?: string; origin?: boolean; hasMedia?: boolean; media?: string; mine?: boolean};
-const OPS = ["delete", "report", "addRef", "message", "reportMessage"];
+const OPS = ["delete", "report", "addRef", "message", "reportMessage", "addRoute", "deleteRoute", "reportRoute"];
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const MOVE_M = 25;
 
@@ -56,7 +64,12 @@ export function startPlaces(
 
 function startOne(slug: string, linkToken: string | null, dpName: string, def: PlacesDef, out: string): () => void {
   const name = typeof def.collection === "string" && def.collection ? def.collection : dpName;
-  if (def.area) return startArea(slug, linkToken, name, def, out);
+  if (def.area || def.routes || def.route) {
+    const offs: Array<() => void> = [];
+    if (def.area) offs.push(startArea(slug, linkToken, name, def, out));
+    if (def.routes || def.route) offs.push(startRoutes(slug, linkToken, name, def, out));
+    return () => offs.forEach((off) => off());
+  }
   const tokensKey = `artifacts-places:${slug}:${name}`;
   const bodies = new Map<string, Record<string, unknown>>();
   const sent = new Set<string>();
@@ -139,7 +152,7 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
       sent.add(id);
       const op = typeof raw.op === "string" && OPS.includes(raw.op) ? raw.op : "add";
       void runOp(op, raw).then(
-        (placeId) => { ack({type: "place:ok", payload: {id, op, placeId, places: name}}); void refresh(true); },
+        (placeId) => { ack({type: "place:ok", payload: {id, op, placeId, ...(op.endsWith("Route") ? {routeId: placeId} : {}), places: name}}); void refresh(true); },
         (e: unknown) => ack({type: "place:error", payload: {id, op, places: name, error: message(e)}}),
       );
     }
@@ -157,6 +170,7 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
       saveTokens(tokensKey, t);
       return res.id;
     }
+    if (op === "addRoute" || op === "deleteRoute" || op === "reportRoute") return runRouteOp(op, raw, k);
     const place = typeof raw.place === "string" ? raw.place : "";
     if (!place) throw new Error("place : id du lieu manquant");
     if (op === "delete") {
@@ -196,6 +210,39 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
     }
     await call(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/report${k}`, slug, {method: "POST"});
     return place;
+  };
+
+  const routeKey = `${tokensKey}:routes`;
+  const runRouteOp = async (op: string, raw: OutboxItem, k: string): Promise<string> => {
+    const base = `/places/${encodeURIComponent(name)}/routes`;
+    if (op === "addRoute") {
+      const data = raw.data && typeof raw.data === "object" && !Array.isArray(raw.data) ? (raw.data as Record<string, unknown>) : null;
+      const steps = data && Array.isArray(data.steps) ? (data.steps as unknown[]) : [];
+      if (!data || steps.length < 2) throw new Error("parcours : au moins deux étapes");
+      const out: Record<string, unknown>[] = [];
+      for (const st of steps) {
+        const o = st && typeof st === "object" ? {...(st as Record<string, unknown>)} : {};
+        if (o.sound === "propre") o.media = await asDataUrl(o.media);
+        else delete o.media;
+        out.push(o);
+      }
+      const res = await call<{id: string; deleteToken: string}>(`${base}${k}`, slug, {method: "POST", body: JSON.stringify({...data, steps: out})});
+      const t = tokens(routeKey);
+      t[res.id] = res.deleteToken;
+      saveTokens(routeKey, t);
+      return res.id;
+    }
+    const route = typeof raw.route === "string" && UUID.test(raw.route) ? raw.route : "";
+    if (!route) throw new Error("route : id du parcours manquant");
+    if (op === "deleteRoute") {
+      const t = tokens(routeKey);
+      await call(`${base}/${route}${k}`, slug, {method: "DELETE", headers: t[route] ? {"X-Place-Token": t[route]} : {}});
+      delete t[route];
+      saveTokens(routeKey, t);
+      return route;
+    }
+    await call(`${base}/${route}/report${k}`, slug, {method: "POST"});
+    return route;
   };
 
   const ack = (action: {type: string; payload: unknown}) => {
@@ -283,6 +330,121 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
     stopped = true;
     clearInterval(timer);
     if (threadTimer) clearInterval(threadTimer);
+    offs.forEach((off) => off());
+  };
+}
+
+type RouteStep = {index: number; place: string; lat: number; lon: number; radius: number; sound: string; hasSound?: boolean};
+type RouteRow = Record<string, unknown> & {id: string; title?: string; steps?: RouteStep[]};
+
+/**
+ * Parcours : ceux de la zone d'une carte (`routes`, publiés dans `<nom>Routes` avec un tracé GeoJSON prêt pour un
+ * patch de style de sonic-map) et le parcours choisi (`route`, publié dans `<nom>Route` avec ses sons propres).
+ */
+function startRoutes(slug: string, linkToken: string | null, name: string, def: PlacesDef, out: string): () => void {
+  let stopped = false;
+  const offs: Array<() => void> = [];
+  const q = (extra: Record<string, string> = {}) => {
+    const p = new URLSearchParams(extra);
+    if (linkToken) p.set("k", linkToken);
+    const s = p.toString();
+    return s ? `?${s}` : "";
+  };
+  const base = `/places/${encodeURIComponent(name)}/routes`;
+  const listen = (path: string, f: () => void) => {
+    try {
+      const provider = dp(path.split(".")[0]) as {onAssign?: (f: (v: unknown) => void) => void; offAssign?: (f: (v: unknown) => void) => void};
+      provider.onAssign?.(f);
+      offs.push(() => provider.offAssign?.(f));
+    } catch {
+      /* ignore */
+    }
+  };
+
+  if (def.routes) {
+    const dpOut = `${out}Routes`;
+    set(dpOut, {status: "idle", items: [], lines: {type: "FeatureCollection", features: []}, error: null} as never);
+    let lastKey = "";
+    let seq = 0;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const load = async (force = false) => {
+      const v = get(def.routes as string) as {bounds?: unknown} | null | undefined;
+      const b = v && Array.isArray(v.bounds) ? (v.bounds as unknown[]) : null;
+      if (!b || b.length !== 2 || !Array.isArray(b[0]) || !Array.isArray(b[1]) || stopped) return;
+      const box = [...(b[0] as unknown[]), ...(b[1] as unknown[])].map(Number);
+      if (!box.every(Number.isFinite)) return;
+      const key = box.map((x) => x.toFixed(4)).join(",");
+      if (key === lastKey && !force) return;
+      lastKey = key;
+      const mine = ++seq;
+      try {
+        const res = await call<{items?: RouteRow[]}>(`${base}${q({bbox: key})}`, slug);
+        if (stopped || mine !== seq) return;
+        const items = Array.isArray(res?.items) ? res.items : [];
+        const features = items.map((r) => ({
+          type: "Feature",
+          properties: {id: r.id, title: r.title ?? ""},
+          geometry: {type: "LineString", coordinates: (r.steps ?? []).map((st) => [Number(st.lon), Number(st.lat)])},
+        }));
+        set(dpOut, {status: "ready", items, lines: {type: "FeatureCollection", features}, error: null, at: new Date().toISOString()} as never);
+      } catch (e) {
+        if (mine === seq) set(dpOut, {...((get(dpOut) as object) ?? {}), status: "error", error: message(e)} as never);
+      }
+    };
+    listen(def.routes, () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => void load(), 250);
+    });
+    void load();
+    const every = setInterval(() => void load(true), 60000);
+    offs.push(() => { clearInterval(every); if (timer) clearTimeout(timer); });
+  }
+
+  if (def.route) {
+    const dpOut = `${out}Route`;
+    set(dpOut, {status: "idle", route: null, sounds: {}, error: null} as never);
+    let current = "";
+    let seq = 0;
+    const target = (): string => {
+      const v = get(def.route as string) as unknown;
+      const id = typeof v === "string" ? v : v && typeof v === "object" && typeof (v as {id?: unknown}).id === "string" ? String((v as {id: string}).id) : "";
+      return UUID.test(id) ? id : "";
+    };
+    const load = async () => {
+      const id = target();
+      if (id === current || stopped) return;
+      current = id;
+      const mine = ++seq;
+      if (!id) { set(dpOut, {status: "idle", route: null, sounds: {}, error: null} as never); return; }
+      set(dpOut, {status: "loading", route: null, sounds: {}, error: null} as never);
+      try {
+        const route = await call<RouteRow>(`${base}/${id}${q()}`, slug);
+        if (stopped || mine !== seq) return;
+        set(dpOut, {status: "ready", route, sounds: {}, error: null} as never);
+        const sounds: Record<string, string> = {};
+        for (const st of route.steps ?? []) {
+          if (!st.hasSound) continue;
+          try {
+            const r = await call<{media?: string}>(`${base}/${id}/sounds/${Number(st.index)}${q()}`, slug);
+            if (stopped || mine !== seq) return;
+            if (typeof r?.media === "string" && r.media.startsWith("data:audio/")) {
+              sounds[String(st.index)] = r.media;
+              set(dpOut, {status: "ready", route, sounds: {...sounds}, error: null} as never);
+            }
+          } catch {
+            /* un son manquant n'empêche pas le parcours */
+          }
+        }
+      } catch (e) {
+        if (mine === seq) set(dpOut, {status: "error", route: null, sounds: {}, error: message(e)} as never);
+      }
+    };
+    listen(def.route, () => void load());
+    void load();
+  }
+
+  return () => {
+    stopped = true;
     offs.forEach((off) => off());
   };
 }
