@@ -12,7 +12,7 @@
   "camera"
  ],
  "files": {
-  "chat.jsonata": "(\n  $s := $state;\n  $t := $action.type;\n  $p := $action.payload;\n  $add := function($who, $text) {\n    $merge([$s, {\n      \"seq\": $s.seq + 1,\n      \"messages\": $append($s.messages, [{\"id\": \"m\" & ($s.seq + 1), \"who\": $who, \"text\": $text}])\n    }])\n  };\n\n  $t = \"tick\" ? (\n    $s.go = \"1\" ? (\n      $txt := $trim($string($s.draft));\n      $txt = \"\" ? $merge([$s, {\"go\": \"\"}])\n        : $merge([$add(\"moi\", $txt), {\"go\": \"\", \"draft\": \"\", \"outgoing\": $txt, \"txN\": $s.txN + 1}])\n    )\n  ) :\n  $t = \"morse:message\" ? $add(\"autre\", $string($p.text)) :\n  $t = \"torchError\" ? ($s.notice = \"\" ? $merge([$s, {\"notice\": \"Pas de torche sur cet appareil : réception seule\"}]) : $s) :\n  $s\n)\n"
+  "chat.jsonata": "(\n  $s := $state;\n  $t := $action.type;\n  $p := $action.payload;\n  $add := function($who, $text) {\n    $merge([$s, {\n      \"seq\": $s.seq + 1,\n      \"messages\": $append($s.messages, [{\"id\": \"m\" & ($s.seq + 1), \"who\": $who, \"text\": $text}])\n    }])\n  };\n\n  $t = \"tick\" ? (\n    $s.phrase != \"\" ? $merge([$add(\"moi\", $s.phrase), {\"phrase\": \"\", \"outgoing\": $s.phrase, \"txN\": $s.txN + 1}]) :\n    $s.go = \"1\" ? (\n      $txt := $trim($string($s.draft));\n      $txt = \"\" ? $merge([$s, {\"go\": \"\"}])\n        : $merge([$add(\"moi\", $txt), {\"go\": \"\", \"draft\": \"\", \"outgoing\": $txt, \"txN\": $s.txN + 1}])\n    )\n  ) :\n  $t = \"morse:message\" ? $add(\"autre\", $string($p.text)) :\n  $t = \"torchError\" ? ($s.notice = \"\" ? $merge([$s, {\"notice\": \"Pas de torche sur cet appareil : réception seule\"}]) : $s) :\n  $s\n)\n"
  },
  "data": {
   "stores": {
@@ -20,6 +20,7 @@
     "initial": {
      "draft": "",
      "go": "",
+     "phrase": "",
      "outgoing": "",
      "txN": 0,
      "seq": 0,
@@ -38,7 +39,8 @@
    "reglages": {
     "initial": {
      "unit": "300",
-     "measure": "mean"
+     "measure": "mean",
+     "codec": "fast"
     },
     "reducer": "$state"
    }
@@ -80,6 +82,8 @@
        "id": "morse",
        "unit": "300",
        "trim": "30",
+       "codec": "fast",
+       "phrases": "[[\"OUI\", 320], [\"NON\", 280], [\"OK\", 260], [\"MERCI\", 220], [\"PEUT-ETRE\", 80], [\"JAMAIS\", 60], [\"COMPRIS\", 110], [\"PAS COMPRIS\", 90], [\"REPETE\", 100], [\"BIEN RECU\", 90], [\"MDR\", 240], [\"BRAVO\", 80], [\"TROP BIEN\", 100], [\"NUL\", 70], [\"QUOI ?\", 110], [\"SERIEUX ?\", 80], [\"AU SECOURS\", 70], [\"BIEN JOUE\", 80], [\"MISSION ACCOMPLIE\", 70], [\"C'EST BON\", 120], [\"PERSONNE\", 70], [\"ON NOUS REGARDE\", 60], [\"CACHE TOI\", 70], [\"VITE\", 90], [\"SILENCE\", 80], [\"PAS BOUGER\", 60], [\"LE CODE EST BON\", 50], [\"LA VOIE EST LIBRE\", 60], [\"J'ARRIVE\", 200], [\"ATTENDS MOI\", 120], [\"OU ES TU ?\", 130], [\"JE SUIS LA\", 110], [\"REGARDE ICI\", 80], [\"SUIS MOI\", 80], [\"A TOI\", 70], [\"A TOI DE JOUER\", 60], [\"SALUT\", 220], [\"BONJOUR\", 100], [\"A DEMAIN\", 90], [\"FIN DU MESSAGE\", 60]]",
        "drive": "lampe.torch",
        "text-from": "chat.outgoing",
        "send-from": "chat.txN",
@@ -133,158 +137,190 @@
           "textContent": "Morse torche"
          },
          {
-          "tagName": "div",
-          "attributes": {
-           "style": "display:flex;gap:8px;align-items:end"
-          },
+          "tagName": "sonic-pop",
           "nodes": [
            {
-            "tagName": "div",
+            "tagName": "sonic-button",
             "attributes": {
-             "style": "display:flex;flex-direction:column;gap:4px"
+             "variant": "outline",
+             "size": "sm"
             },
             "nodes": [
              {
-              "tagName": "small",
+              "tagName": "sonic-icon",
               "attributes": {
-               "style": "text-transform:uppercase;letter-spacing:.08em;font-size:12px"
-              },
-              "textContent": "Point"
+               "library": "iconoir",
+               "name": "settings",
+               "slot": "prefix"
+              }
              },
              {
-              "tagName": "sonic-pop",
-              "nodes": [
-               {
-                "tagName": "sonic-button",
-                "attributes": {
-                 "variant": "outline",
-                 "size": "sm",
-                 "minWidth": "6.5rem",
-                 "justify": "space-between"
-                },
-                "nodes": [
-                 {
-                  "tagName": "span",
-                  "nodes": [
-                   {
-                    "tagName": "sonic-value",
-                    "attributes": {
-                     "dataProvider": "reglages",
-                     "key": "unit"
-                    }
-                   },
-                   {
-                    "tagName": "span",
-                    "textContent": " ms"
-                   }
-                  ]
-                 },
-                 {
-                  "tagName": "sonic-icon",
-                  "attributes": {
-                   "library": "iconoir",
-                   "name": "nav-arrow-down",
-                   "slot": "suffix"
-                  }
-                 }
-                ]
-               },
-               {
-                "tagName": "sonic-menu",
-                "attributes": {
-                 "slot": "content",
-                 "direction": "column",
-                 "align": "left",
-                 "size": "sm",
-                 "min-width": "8rem"
-                },
-                "nodes": [
-                 {
-                  "tagName": "sonic-menu-item",
-                  "attributes": {
-                   "radio": true,
-                   "formDataProvider": "reglages",
-                   "name": "unit",
-                   "value": "250"
-                  },
-                  "textContent": "250 ms"
-                 },
-                 {
-                  "tagName": "sonic-menu-item",
-                  "attributes": {
-                   "radio": true,
-                   "formDataProvider": "reglages",
-                   "name": "unit",
-                   "value": "300"
-                  },
-                  "textContent": "300 ms"
-                 },
-                 {
-                  "tagName": "sonic-menu-item",
-                  "attributes": {
-                   "radio": true,
-                   "formDataProvider": "reglages",
-                   "name": "unit",
-                   "value": "400"
-                  },
-                  "textContent": "400 ms"
-                 },
-                 {
-                  "tagName": "sonic-menu-item",
-                  "attributes": {
-                   "radio": true,
-                   "formDataProvider": "reglages",
-                   "name": "unit",
-                   "value": "500"
-                  },
-                  "textContent": "500 ms"
-                 }
-                ]
-               }
-              ]
+              "tagName": "span",
+              "textContent": "Réglages"
              }
             ]
            },
            {
             "tagName": "div",
             "attributes": {
-             "style": "display:flex;flex-direction:column;gap:4px"
+             "slot": "content",
+             "style": "display:flex;flex-direction:column;gap:14px;padding:14px;min-width:16rem"
             },
             "nodes": [
              {
-              "tagName": "small",
+              "tagName": "div",
               "attributes": {
-               "style": "text-transform:uppercase;letter-spacing:.08em;font-size:12px"
-              },
-              "textContent": "Lecture"
-             },
-             {
-              "tagName": "sonic-group",
-              "attributes": {
-               "formDataProvider": "reglages"
+               "style": "display:flex;flex-direction:column;gap:4px"
               },
               "nodes": [
                {
-                "tagName": "sonic-button",
+                "tagName": "small",
                 "attributes": {
-                 "radio": true,
-                 "name": "measure",
-                 "value": "mean",
-                 "size": "sm",
-                 "variant": "outline"
+                 "style": "text-transform:uppercase;letter-spacing:.08em;font-size:12px"
                 },
-                "textContent": "Scène"
+                "textContent": "Code"
                },
                {
-                "tagName": "sonic-button",
+                "tagName": "sonic-group",
                 "attributes": {
-                 "radio": true,
-                 "name": "measure",
-                 "value": "peak",
-                 "size": "sm",
-                 "variant": "outline"
+                 "formDataProvider": "reglages"
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-button",
+                  "attributes": {
+                   "radio": true,
+                   "name": "codec",
+                   "value": "fast",
+                   "size": "sm",
+                   "variant": "outline"
+                  },
+                  "textContent": "Rapide"
+                 },
+                 {
+                  "tagName": "sonic-button",
+                  "attributes": {
+                   "radio": true,
+                   "name": "codec",
+                   "value": "morse",
+                   "size": "sm",
+                   "variant": "outline"
+                  },
+                  "textContent": "Morse"
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;flex-direction:column;gap:4px"
+              },
+              "nodes": [
+               {
+                "tagName": "small",
+                "attributes": {
+                 "style": "text-transform:uppercase;letter-spacing:.08em;font-size:12px"
                 },
                 "textContent": "Point"
+               },
+               {
+                "tagName": "sonic-group",
+                "attributes": {
+                 "formDataProvider": "reglages"
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-button",
+                  "attributes": {
+                   "radio": true,
+                   "name": "unit",
+                   "value": "250",
+                   "size": "sm",
+                   "variant": "outline"
+                  },
+                  "textContent": "250 ms"
+                 },
+                 {
+                  "tagName": "sonic-button",
+                  "attributes": {
+                   "radio": true,
+                   "name": "unit",
+                   "value": "300",
+                   "size": "sm",
+                   "variant": "outline"
+                  },
+                  "textContent": "300 ms"
+                 },
+                 {
+                  "tagName": "sonic-button",
+                  "attributes": {
+                   "radio": true,
+                   "name": "unit",
+                   "value": "400",
+                   "size": "sm",
+                   "variant": "outline"
+                  },
+                  "textContent": "400 ms"
+                 },
+                 {
+                  "tagName": "sonic-button",
+                  "attributes": {
+                   "radio": true,
+                   "name": "unit",
+                   "value": "500",
+                   "size": "sm",
+                   "variant": "outline"
+                  },
+                  "textContent": "500 ms"
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;flex-direction:column;gap:4px"
+              },
+              "nodes": [
+               {
+                "tagName": "small",
+                "attributes": {
+                 "style": "text-transform:uppercase;letter-spacing:.08em;font-size:12px"
+                },
+                "textContent": "Lecture"
+               },
+               {
+                "tagName": "sonic-group",
+                "attributes": {
+                 "formDataProvider": "reglages"
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-button",
+                  "attributes": {
+                   "radio": true,
+                   "name": "measure",
+                   "value": "mean",
+                   "size": "sm",
+                   "variant": "outline"
+                  },
+                  "textContent": "Scène"
+                 },
+                 {
+                  "tagName": "sonic-button",
+                  "attributes": {
+                   "radio": true,
+                   "name": "measure",
+                   "value": "peak",
+                   "size": "sm",
+                   "variant": "outline"
+                  },
+                  "textContent": "Point"
+                 }
+                ]
                }
               ]
              }
@@ -563,6 +599,481 @@
               }
              }
             ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tagName": "sonic-pop",
+        "nodes": [
+         {
+          "tagName": "sonic-button",
+          "attributes": {
+           "variant": "outline",
+           "size": "lg",
+           "style": "width:100%"
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-icon",
+            "attributes": {
+             "library": "iconoir",
+             "name": "chat-bubble",
+             "slot": "prefix"
+            }
+           },
+           {
+            "tagName": "span",
+            "textContent": "Phrases rapides"
+           }
+          ]
+         },
+         {
+          "tagName": "sonic-menu",
+          "attributes": {
+           "slot": "content",
+           "direction": "column",
+           "align": "left",
+           "size": "md",
+           "min-width": "15rem",
+           "style": "max-height:60vh;overflow:auto"
+          },
+          "nodes": [
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "padding:8px 12px 2px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.6"
+            },
+            "textContent": "Réponses"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "OUI"
+            },
+            "textContent": "OUI"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "NON"
+            },
+            "textContent": "NON"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "OK"
+            },
+            "textContent": "OK"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "MERCI"
+            },
+            "textContent": "MERCI"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "PEUT-ETRE"
+            },
+            "textContent": "PEUT-ETRE"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "JAMAIS"
+            },
+            "textContent": "JAMAIS"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "COMPRIS"
+            },
+            "textContent": "COMPRIS"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "PAS COMPRIS"
+            },
+            "textContent": "PAS COMPRIS"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "REPETE"
+            },
+            "textContent": "REPETE"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "BIEN RECU"
+            },
+            "textContent": "BIEN RECU"
+           },
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "padding:8px 12px 2px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.6"
+            },
+            "textContent": "Réactions"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "MDR"
+            },
+            "textContent": "MDR"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "BRAVO"
+            },
+            "textContent": "BRAVO"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "TROP BIEN"
+            },
+            "textContent": "TROP BIEN"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "NUL"
+            },
+            "textContent": "NUL"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "QUOI ?"
+            },
+            "textContent": "QUOI ?"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "SERIEUX ?"
+            },
+            "textContent": "SERIEUX ?"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "AU SECOURS"
+            },
+            "textContent": "AU SECOURS"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "BIEN JOUE"
+            },
+            "textContent": "BIEN JOUE"
+           },
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "padding:8px 12px 2px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.6"
+            },
+            "textContent": "Jeu d'espions"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "MISSION ACCOMPLIE"
+            },
+            "textContent": "MISSION ACCOMPLIE"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "C'EST BON"
+            },
+            "textContent": "C'EST BON"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "PERSONNE"
+            },
+            "textContent": "PERSONNE"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "ON NOUS REGARDE"
+            },
+            "textContent": "ON NOUS REGARDE"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "CACHE TOI"
+            },
+            "textContent": "CACHE TOI"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "VITE"
+            },
+            "textContent": "VITE"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "SILENCE"
+            },
+            "textContent": "SILENCE"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "PAS BOUGER"
+            },
+            "textContent": "PAS BOUGER"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "LE CODE EST BON"
+            },
+            "textContent": "LE CODE EST BON"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "LA VOIE EST LIBRE"
+            },
+            "textContent": "LA VOIE EST LIBRE"
+           },
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "padding:8px 12px 2px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.6"
+            },
+            "textContent": "Se retrouver"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "J'ARRIVE"
+            },
+            "textContent": "J'ARRIVE"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "ATTENDS MOI"
+            },
+            "textContent": "ATTENDS MOI"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "OU ES TU ?"
+            },
+            "textContent": "OU ES TU ?"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "JE SUIS LA"
+            },
+            "textContent": "JE SUIS LA"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "REGARDE ICI"
+            },
+            "textContent": "REGARDE ICI"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "SUIS MOI"
+            },
+            "textContent": "SUIS MOI"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "A TOI"
+            },
+            "textContent": "A TOI"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "A TOI DE JOUER"
+            },
+            "textContent": "A TOI DE JOUER"
+           },
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "padding:8px 12px 2px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.6"
+            },
+            "textContent": "Pour finir"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "SALUT"
+            },
+            "textContent": "SALUT"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "BONJOUR"
+            },
+            "textContent": "BONJOUR"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "A DEMAIN"
+            },
+            "textContent": "A DEMAIN"
+           },
+           {
+            "tagName": "sonic-menu-item",
+            "attributes": {
+             "radio": true,
+             "formDataProvider": "chat",
+             "name": "phrase",
+             "value": "FIN DU MESSAGE"
+            },
+            "textContent": "FIN DU MESSAGE"
            }
           ]
          }
