@@ -25,7 +25,7 @@ import {startPlaces, type PlacesDef} from "../places";
 import {persistDecl, persistKey, plain, readSaved, writeSaved} from "../persist";
 import {OnlineSave, onlineDecl} from "../online-save";
 import {mapPath, runFromLocation, startIoRun, waitForStore, type IoDef, type IoStatus} from "../io-run";
-import {claimPair, joinStream, pairFromLocation, pairRoles, requestPair, RunStream, watchFromLocation, type PairInfo, type StreamJoin} from "../run-stream";
+import {claimPair, DESK_ROLE, joinStream, pairFromLocation, pairRoles, requestDesk, requestPair, RunStream, watchFromLocation, type PairInfo, type StreamJoin} from "../run-stream";
 import {applyPatch, type PatchOp} from "../json-patch";
 import {applyDocFontFiles, applyDocFonts} from "../doc-fonts";
 import {claimNamespace, transformDocument, type NamespaceClaim} from "../doc-transform";
@@ -211,6 +211,8 @@ export class ArtifactViewer extends LitElement {
   private pairTimer = 0;
   private pairInfo: PairInfo | null = null;
   private pairsInfo: Record<string, PairInfo> = {};
+  private deskInfo: PairInfo | null = null;
+  private deskHost: {slug: string; runId: string} | null = null;
   private pairRefresh: (() => Promise<void>) | null = null;
   private runInfo: Record<string, unknown> | null = null;
   /** Préfixe des DataProviders (vide sauf collision entre artefacts intégrés). */
@@ -338,6 +340,8 @@ export class ArtifactViewer extends LitElement {
     this.pairTimer = 0;
     this.pairInfo = null;
     this.pairsInfo = {};
+    this.deskInfo = null;
+    this.deskHost = null;
     this.pairRefresh = null;
     this.runInfo = null;
     this.ioStatus = null;
@@ -388,8 +392,12 @@ export class ArtifactViewer extends LitElement {
       : null;
     this.runStream?.stop();
     this.publishRun(join, target.role, join.status);
-    if (target.role === "performer" && join.status === "pending" && (io.stream as {pair?: unknown} | undefined)?.pair) {
-      this.startPairing(target.id, target.token, pairRoles((io.stream as {pair?: unknown}).pair));
+    const sx = io.stream as {pair?: unknown; desk?: unknown; inscription?: unknown} | undefined;
+    if (target.role === "performer" && join.status === "pending" && sx?.pair) {
+      // Guichet d'inscription déclaré : un code de plus (rôle réservé), publié dans artifactRun.desk.
+      this.startPairing(target.id, target.token, [...pairRoles(sx.pair), ...(sx.desk ? [DESK_ROLE] : [])]);
+    } else if (target.role === "performer" && join.status === "pending" && sx?.inscription === true) {
+      this.startDesk(target.id, target.token);
     }
     const stream = new RunStream({
       slug: this.slug,
@@ -433,7 +441,7 @@ export class ArtifactViewer extends LitElement {
 
   private setRunDp() {
     if (!this.runInfo) return;
-    set(this.n(RUN_DP), {...this.runInfo, pair: this.pairInfo, pairs: this.pairsInfo} as never);
+    set(this.n(RUN_DP), {...this.runInfo, pair: this.pairInfo, pairs: this.pairsInfo, desk: this.deskInfo, host: this.deskHost} as never);
   }
 
   /**
@@ -454,10 +462,14 @@ export class ArtifactViewer extends LitElement {
             return {role, code: null, url: null, expiresAt: null, remaining: 0, max: 0, paired: 0, remote: "", error: e instanceof Error ? e.message : String(e)} as PairInfo;
           }
         }));
-        this.pairInfo = infos[0] ?? null;
         const pairs: Record<string, PairInfo> = {};
+        this.pairInfo = null;
         roles.forEach((role, k) => {
-          if (role) pairs[role] = infos[k];
+          if (role === DESK_ROLE) this.deskInfo = infos[k];
+          else {
+            this.pairInfo ??= infos[k];
+            if (role) pairs[role] = infos[k];
+          }
         });
         this.pairsInfo = pairs;
         this.setRunDp();
@@ -468,6 +480,33 @@ export class ArtifactViewer extends LitElement {
     this.pairRefresh = refresh;
     void refresh();
     this.pairTimer = window.setInterval(() => void refresh(), PAIR_REFRESH_MS);
+  }
+
+  /**
+   * Guichet d'inscription (io.stream.inscription) : relit les codes de sa régie avec son propre jeton
+   * et les publie comme sur la régie (artifactRun.pair, artifactRun.pairs.<rôle>, artifactRun.host).
+   */
+  private startDesk(runId: string, runToken: string) {
+    clearInterval(this.pairTimer);
+    let busy = false;
+    const refresh = async () => {
+      if (busy) return;
+      busy = true;
+      try {
+        const d = await requestDesk(this.slug, runId, runToken);
+        this.pairInfo = d.pair ? {...d.pair, locked: d.locked} : null;
+        this.pairsInfo = Object.fromEntries(Object.entries(d.pairs ?? {}).map(([r, i]) => [r, {...i, locked: d.locked}]));
+        this.deskHost = d.host;
+        this.setRunDp();
+      } catch {
+        // Régie terminée ou guichet retiré : on garde le dernier état connu.
+      } finally {
+        busy = false;
+      }
+    };
+    this.pairRefresh = refresh;
+    void refresh();
+    this.pairTimer = window.setInterval(() => void refresh(), DESK_REFRESH_MS);
   }
 
   /**
@@ -1320,6 +1359,7 @@ function isDenied(e: unknown): boolean {
 
 const STREAM_STORE_BUDGET_MS = 50;
 /** Hôte d'un appairage : relecture du code et des places prises. */
+const DESK_REFRESH_MS = 10_000;
 const PAIR_REFRESH_MS = 20_000;
 
 /** Parties du document qui alimentent les DataProviders (sources, transforms) : relues si elles changent. */

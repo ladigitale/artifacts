@@ -32,6 +32,9 @@ let doc = JSON.parse(fs.readFileSync(path.join(ROOT, "tests/fixtures/stream.json
 // Télécommande (io.stream.emit) reliée au run du flux, comme un lien Tadaaa (link_artifact_runs).
 const REMOTE_RUN = "0190f3a2-3333-7333-8444-955566667777";
 const remoteDoc = JSON.parse(fs.readFileSync(path.join(ROOT, "tests/fixtures/remote.json"), "utf8"));
+const DESK_RUN = "0190f3a2-5555-7333-8444-955566667777";
+const guichetDoc = JSON.parse(fs.readFileSync(path.join(ROOT, "tests/fixtures/guichet.json"), "utf8"));
+const deskRequests = [];
 const emitted = [];
 /** map du lien : pad → message du flux cible. */
 const linkMap = (item) => item.data?.pad === "pulse"
@@ -120,6 +123,24 @@ const server = http.createServer((q, r) => {
     });
     return json(200, {runId: REMOTE_RUN, slug: "remote", mode: "interactive", status: "pending", input: {}});
   }
+  const gm = /^\/api\/public\/artifacts\/guichet\/runs\/([0-9a-f-]{36})(\/stream|\/desk|\/output)?$/.exec(u.pathname);
+  if (gm) {
+    if (gm[2] === "/stream" && q.method === "GET") {
+      return json(200, {runId: DESK_RUN, role: "performer", status: "pending", seq: 0, ended: false, serverTime: Date.now(), events: [], complete: true, stream: {}, snapshot: null, score: null, input: {}, mercure: null});
+    }
+    if (gm[2] === "/stream" && q.method === "POST") return json(200, {ok: true});
+    if (gm[2] === "/desk") return read((b) => {
+      deskRequests.push(b.rt);
+      if (b.rt !== "gtok") return json(404, {});
+      const info = (code, role) => ({role, code, url: `http://localhost:${PORT}/${SLUG}?pair=${code}`, expiresAt: new Date(Date.now() + 9e5).toISOString(), remaining: 4, max: 4, paired: 0, remote: SLUG, locked: false});
+      json(200, {host: {slug: SLUG, runId: RUN}, locked: false, pair: info("ABCDEFGH", "a"), pairs: {a: info("ABCDEFGH", "a"), b: info("BBBBBBBB", "b")}});
+    });
+    return json(200, {runId: DESK_RUN, slug: "guichet", mode: "interactive", status: "pending", input: {}});
+  }
+  if (u.pathname.startsWith("/api/public/artifacts/guichet")) {
+    if (u.pathname.includes("/collections/")) return json(200, {member: []});
+    return json(200, {id: "guichet", slug: "guichet", title: guichetDoc.title, description: "", visibility: "public", document: guichetDoc, scriptAssets: [], version: 1, updatedAt: new Date().toISOString(), collections: [], canWrite: false});
+  }
   if (u.pathname.startsWith("/api/public/artifacts/remote")) {
     if (u.pathname.includes("/collections/")) return json(200, {member: []});
     return json(200, {id: "remote", slug: "remote", title: remoteDoc.title, description: "", visibility: "public", document: remoteDoc, scriptAssets: [], version: 1, updatedAt: new Date().toISOString(), collections: [], canWrite: false});
@@ -135,7 +156,7 @@ const server = http.createServer((q, r) => {
     if (m[2] === "/pair") return read((b) => {
       pairRequests.push(b.rt);
       pairRoles.push(b.role ?? null);
-      const code = b.role === "b" ? "BBBBBBBB" : "ABCDEFGH";
+      const code = b.role === "b" ? "BBBBBBBB" : b.role === "_guichet" ? "DDDDDDDD" : "ABCDEFGH";
       json(200, {role: b.role ?? null, code, url: `http://localhost:${PORT}/${SLUG}?pair=${code}`, expiresAt: new Date(Date.now() + 9e5).toISOString(), remaining: 4 - pairClaims, max: 4, paired: pairClaims, remote: SLUG, locked: false});
     });
     if (m[2] === "/stream" && q.method === "GET") return json(200, join(u));
@@ -213,6 +234,11 @@ for (const [name, p] of [["viewer du run", performer], ["spectateur SSE", watche
     const deep = (r, s, a = []) => { r.querySelectorAll("*").forEach((e) => { if (e.matches(s)) a.push(e); if (e.shadowRoot) deep(e.shadowRoot, s, a); }); return a; };
     return deep(document, "#qrpairb")[0]?.shadowRoot?.querySelector("svg")?.getAttribute("aria-label") ?? null;
   });
+  const rd = await performer.evaluate(() => {
+    const deep = (r, s, a = []) => { r.querySelectorAll("*").forEach((e) => { if (e.matches(s)) a.push(e); if (e.shadowRoot) deep(e.shadowRoot, s, a); }); return a; };
+    return deep(document, "#qrdesk")[0]?.shadowRoot?.querySelector("svg")?.getAttribute("aria-label") ?? null;
+  });
+  check("guichet : code du guichet demandé (rôle réservé), artifactRun.desk", pairRoles.includes("_guichet") && !!rd?.includes("pair=DDDDDDDD") && !rb?.includes("DDDDDDDD"), JSON.stringify({rd, pairRoles: pairRoles.slice(0, 6)}));
   check("rôles : un code par rôle (artifactRun.pairs.b)", pairRoles.includes("a") && pairRoles.includes("b") && !!rb?.includes("pair=BBBBBBBB"), JSON.stringify({rb, pairRoles: pairRoles.slice(0, 4)}));
   const w = await watcher.evaluate(() => {
     const deep = (r, s, a = []) => { r.querySelectorAll("*").forEach((e) => { if (e.matches(s)) a.push(e); if (e.shadowRoot) deep(e.shadowRoot, s, a); }); return a; };
@@ -271,6 +297,27 @@ await host.goto(`http://localhost:${PORT}/hote.html`);
 }
 emit([{type: "action", name: "pulse"}]);
 check("intégration : suit le direct (count 13)", (await until(host, (s) => s.count === "13")).count === "13");
+
+console.log("\n== guichet d'inscription (codes de la régie lus avec son propre jeton)");
+{
+  const g = await browser.newPage({viewport: {width: 600, height: 400}});
+  g.on("pageerror", (e) => errors.push(String(e)));
+  await g.goto(`http://localhost:${PORT}/guichet?run=${DESK_RUN}&rt=gtok`);
+  let res = null;
+  for (let i = 0; i < 50; i++) {
+    res = await g.evaluate(() => {
+      const deep = (r, s, a = []) => { r.querySelectorAll("*").forEach((e) => { if (e.matches(s)) a.push(e); if (e.shadowRoot) deep(e.shadowRoot, s, a); }); return a; };
+      const qr = deep(document, "#g-a")[0]?.shadowRoot?.querySelector("svg")?.getAttribute("aria-label") ?? null;
+      const host = deep(document, "#g-host")[0];
+      return {qr, host: (host?.shadowRoot?.textContent || host?.textContent || "").trim()};
+    });
+    if (res.qr?.includes("pair=BBBBBBBB") && res.host) break;
+    await wait(100);
+  }
+  check("guichet : codes de la régie demandés avec le jeton du guichet", deskRequests.includes("gtok"), JSON.stringify(deskRequests));
+  check("guichet : QR d'un rôle de la régie (artifactRun.pairs.b) et régie (artifactRun.host)", !!res?.qr?.includes("pair=BBBBBBBB") && res?.host === RUN, JSON.stringify(res));
+  await g.close();
+}
 
 console.log("\n== télécommande (file d'envoi d'un autre artefact, lien entre runs)");
 {
