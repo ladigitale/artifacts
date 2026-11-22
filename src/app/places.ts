@@ -393,7 +393,7 @@ async function asDataUrl(v: unknown): Promise<string | undefined> {
   if (url.startsWith("data:")) return url;
   if (!url.startsWith("blob:")) throw new Error("média : data: ou blob: attendu");
   const blob = await (await fetch(url)).blob();
-  if (blob.size > 350_000) throw new Error("média trop lourd (350 Ko au plus)");
+  if (blob.size > 650_000) throw new Error("média trop lourd (650 Ko au plus)");
   return await new Promise<string>((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(String(r.result));
