@@ -81,7 +81,12 @@ export type RunStreamOptions = {
 };
 
 /** Runs reliés dont le viewer est ouvert (télécommandes, écrans appairés). */
-export type Presence = {count: number; members: {runId: string; slug: string; index: number; since: number; seen: number; role?: string | null}[]};
+export type Presence = {
+  count: number;
+  members: {runId: string; slug: string; index: number; since: number; seen: number; role?: string | null}[];
+  /** Guichets d'inscription ouverts (io.stream.desk), hors membres. */
+  desks?: {runId: string; slug: string; seen: number}[];
+};
 
 /**
  * Élément de la file d'envoi tel que publié : `{id, data, to?}` (to = runId ou liste : seuls ces
@@ -588,6 +593,16 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
 /** Hôte : code en cours (réutilisé par le serveur tant qu'il reste valide), places restantes. */
 export function requestPair(slug: string, runId: string, runToken: string, role?: string | null): Promise<PairInfo> {
   return postJson<PairInfo>(`${streamUrl(slug, runId)}/pair`, role ? {rt: runToken, role} : {rt: runToken});
+}
+
+/** Rôle réservé des guichets d'inscription (`io.stream.desk`). */
+export const DESK_ROLE = "_guichet";
+
+/** Guichet d'inscription : codes de sa régie, lus avec le jeton du run guichet. */
+export type DeskInfo = {host: {slug: string; runId: string}; locked: boolean; pair: PairInfo | null; pairs: Record<string, PairInfo>};
+
+export function requestDesk(slug: string, runId: string, runToken: string): Promise<DeskInfo> {
+  return postJson<DeskInfo>(`${streamUrl(slug, runId)}/desk`, {rt: runToken});
 }
 
 /** Rôles déclarés par `io.stream.pair` : [null] pour la forme objet, les noms pour une liste. */
