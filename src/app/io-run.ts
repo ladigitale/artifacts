@@ -177,7 +177,7 @@ export function startIoRun(opts: IoRunOptions): () => void {
     armed = true;
     // Sans run ni entrée (embed, aperçu de l'atelier) : la sortie est seulement émise quand `when` devient vraie.
     if (storeId && (opts.run || input !== undefined) && !opts.skipInput?.()) {
-      dispatch(storeId, {type: opts.io.input?.action || "io:input", payload: clone(input ?? {})});
+      void dispatchInput(storeId, {type: opts.io.input?.action || "io:input", payload: clone(input ?? {})}, () => stopped);
     }
     opts.onReady?.(input);
     queueMicrotask(() => void check());
@@ -246,6 +246,34 @@ export async function waitForStore(id: string, cancelled: () => boolean): Promis
     await new Promise((r) => setTimeout(r, 50));
   }
   return true;
+}
+
+const INPUT_ATTEMPTS = 4;
+const INPUT_RETRY_MS = 120;
+
+/**
+ * Envoie l'entrée au store, et la renvoie si le store l'a écartée pour dépassement de budget.
+ * Le budget d'un `sonic-store` est un temps d'horloge : au chargement, le rendu du document
+ * s'intercale dans la première évaluation du réducteur et peut la faire passer au-dessus de la
+ * limite ; l'action est alors ignorée, et un run tournerait sans son entrée. Le store publie
+ * `lastError` dans son DataProvider : on s'y fie (store dont le DataProvider porte un autre nom :
+ * un seul envoi, comme avant). Le premier envoi reste synchrone.
+ */
+async function dispatchInput(storeId: string, action: {type: string; payload: unknown}, cancelled: () => boolean): Promise<void> {
+  const ignored = `« ${action.type} » ignorée`;
+  for (let attempt = 1; ; attempt++) {
+    dispatch(storeId, {...action, payload: clone(action.payload)});
+    if (attempt >= INPUT_ATTEMPTS) return;
+    await new Promise((r) => setTimeout(r, INPUT_RETRY_MS));
+    if (cancelled()) return;
+    let lastError: unknown;
+    try {
+      lastError = (get(storeId) as {lastError?: unknown} | null | undefined)?.lastError;
+    } catch {
+      return;
+    }
+    if (typeof lastError !== "string" || !lastError.includes(ignored)) return;
+  }
 }
 
 function clone<T>(v: T): T {

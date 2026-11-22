@@ -1,6 +1,6 @@
 import {defineConfig} from "vite";
 import concordeConf from "@supersoniks/concorde/vite-config";
-import tsConfig from "./tsconfig.json";
+import tsConfig from "./tsconfig.json" with {type: "json"};
 import fs from "fs";
 import path from "path";
 import postcssLit from "rollup-plugin-postcss-lit";
@@ -29,8 +29,12 @@ const isEmbed = libName === "embed";
 
 /** Chunks des addons à la demande nommés d'après l'addon (`addon-audio-…js`). */
 function chunkFileNames(prefix: string) {
-  return (chunk: {facadeModuleId?: string | null}) => {
-    const addon = /creative-stack\/src\/addons\/([\w-]+)\/index\.ts$/.exec(chunk.facadeModuleId ?? "")?.[1];
+  const addonIndex = /creative-stack\/src\/addons\/([\w-]+)\/index\.ts$/;
+  return (chunk: {facadeModuleId?: string | null; moduleIds?: string[]}) => {
+    // Rolldown ne donne pas toujours l'index de l'addon comme façade (index qui ne fait que
+    // réexporter) : on le cherche alors parmi les modules du chunk, s'il n'y en a qu'un.
+    const inChunk = (chunk.moduleIds ?? []).map((id) => addonIndex.exec(id)?.[1]).filter(Boolean);
+    const addon = addonIndex.exec(chunk.facadeModuleId ?? "")?.[1] ?? (inChunk.length === 1 ? inChunk[0] : undefined);
     return `${prefix}${addon ? `addon-${addon}` : "[name]"}-[hash].js`;
   };
 }
@@ -60,11 +64,11 @@ function embedTagsToPrefix(): string[] {
     if (fs.existsSync(root)) walk(root);
     return out;
   };
-  const concorde = path.resolve(__dirname, "node_modules/@supersoniks/concorde/src");
+  const concorde = path.resolve(import.meta.dirname, "node_modules/@supersoniks/concorde/src");
   const known = scan(concorde, /const tagName = "(sonic-[\w-]+)"/g, new Set());
   const literal = scan(concorde, /customElement\(\s*"(sonic-[\w-]+)"/g, new Set());
   const creative = scan(
-    path.resolve(__dirname, "node_modules/@supersoniks/creative-stack/src"),
+    path.resolve(import.meta.dirname, "node_modules/@supersoniks/creative-stack/src"),
     /(?:const tagName = |customElement\(\s*|customElements\.define\(\s*)"(sonic-[\w-]+)"/g,
     new Set(),
   );
@@ -90,13 +94,31 @@ function prefixEmbedTags(prefix: string) {
     },
   };
 }
+/**
+ * Embed : le plugin de préfixe réécrit aussi les chemins d'import
+ * (`@supersoniks/concorde/sonic-scope` → `…/afx-scope`) ; on les ramène au fichier réel.
+ * En `enforce: "pre"` : sous Vite 8 le résolveur de Concorde passe avant `resolve.alias`
+ * et renverrait un chemin `afx-…` qui n'existe pas.
+ */
+function restoreEmbedImportPaths(prefix: string) {
+  const rewritten = new RegExp(`^(@supersoniks/concorde/.*)${prefix}-`);
+  return {
+    name: "artifacts-embed-import-paths",
+    enforce: "pre" as const,
+    resolveId(this: {resolve: (id: string, importer?: string, options?: object) => unknown}, source: string, importer?: string) {
+      if (!rewritten.test(source)) return null;
+      return this.resolve(source.replace(rewritten, "$1sonic-"), importer, {skipSelf: true});
+    },
+  };
+}
+
 const embedBuild = {
   outDir: "dist/embed",
   emptyOutDir: true,
   copyPublicDir: false,
   modulePreload: false,
-  rollupOptions: {
-    input: {"artifact-embed": path.resolve(__dirname, "src/embed/artifact-embed.ts")},
+  rolldownOptions: {
+    input: {"artifact-embed": path.resolve(import.meta.dirname, "src/embed/artifact-embed.ts")},
     preserveEntrySignatures: "allow-extension" as const,
     output: {
       entryFileNames: "[name].js",
@@ -113,7 +135,7 @@ const config = {
         outDir: currentConfig.outDir,
         emptyOutDir: true,
         lib: currentConfig.lib,
-        rollupOptions: {output: {chunkFileNames: chunkFileNames("assets/")}},
+        rolldownOptions: {output: {chunkFileNames: chunkFileNames("assets/")}},
       },
   ...(isEmbed
     ? {
@@ -128,22 +150,17 @@ const config = {
     },
   },
   plugins: [
-    ...(isEmbed ? [prefixEmbedTags("afx")] : []),
+    ...(isEmbed ? [restoreEmbedImportPaths("afx"), prefixEmbedTags("afx")] : []),
     postcssLit({
       include: ["/src/**/*.css", "/src/**/*.css?*"],
     }),
   ],
   resolve: {
     alias: [
-      {find: "@tailwind", replacement: path.resolve(__dirname, "./src/css/tailwind.ts")},
+      {find: "@tailwind", replacement: path.resolve(import.meta.dirname, "./src/css/tailwind.ts")},
       /* $cosine, $rankBySimilarity, $mediaUrl dans sonic-jsonata (ajouts visual-stack portés
        * dans la creative-stack) : Concorde classique n'a pas de point d'extension JSONata. */
       {find: /^jsonata$/, replacement: "@supersoniks/creative-stack/jsonata"},
-      /* Embed : le plugin de préfixe réécrit aussi les chemins d'import
-       * (`@supersoniks/concorde/sonic-scope` → `…/afx-scope`) ; on les ramène au fichier réel. */
-      ...(isEmbed
-        ? [{find: /^@supersoniks\/concorde\/(.*)afx-/, replacement: "@supersoniks/concorde/$1sonic-"}]
-        : []),
     ],
   },
 };
