@@ -34,7 +34,7 @@ export type PlacesDef = {
 };
 
 type Item = Record<string, unknown> & {id: string; lat: number; lon: number; distance?: number};
-type OutboxItem = {id?: unknown; op?: unknown; lat?: unknown; lon?: unknown; data?: unknown; place?: unknown; ref?: unknown; text?: unknown; media?: unknown; pseudo?: unknown; message?: unknown; seen?: unknown};
+type OutboxItem = {id?: unknown; op?: unknown; lat?: unknown; lon?: unknown; data?: unknown; place?: unknown; ref?: unknown; text?: unknown; media?: unknown; pseudo?: unknown; message?: unknown; seen?: unknown; cadre?: unknown};
 type ThreadMessage = {id: string; kind: string; text?: string; pseudo?: string | null; at?: string; origin?: boolean; hasMedia?: boolean; media?: string; mine?: boolean};
 const OPS = ["delete", "report", "addRef", "message", "reportMessage"];
 
@@ -173,7 +173,7 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
       if (!text.trim() && !media) throw new Error("message vide");
       const res = await call<{id: string; deleteToken: string}>(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/messages${k}`, slug, {
         method: "POST",
-        body: JSON.stringify({text, media, pseudo: typeof raw.pseudo === "string" ? raw.pseudo : undefined, at: here(raw.seen === true)}),
+        body: JSON.stringify({text, media, pseudo: typeof raw.pseudo === "string" ? raw.pseudo : undefined, at: here(raw.seen === true), cadre: typeof raw.cadre === "number" ? raw.cadre : undefined}),
       });
       const t = tokens(msgKey);
       t[res.id] = res.deleteToken;
