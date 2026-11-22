@@ -31,7 +31,8 @@ const doc = JSON.parse(JSON.stringify(raw, (k, v) => (typeof v === "string" && v
 const CSP = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:; img-src 'self' https: data: blob:; media-src 'self' https: blob: data:; connect-src 'self' https: blob:; worker-src 'self' blob: https://cdn.jsdelivr.net; child-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
 const PERMISSIONS = "camera=(self), microphone=(self), midi=(self), display-capture=(self), geolocation=(self), payment=(), usb=(), browsing-topics=()";
 
-const INTERVALS = {MDR: "22111331331", "RDV 18H": "12321122222111331323331113223133333"};
+// Avec la liste d'équipe par défaut : « MDR » de Loup, « RDV 18H » d'Aigle (identifiant en tête), « OUI » de Renard.
+const INTERVALS = {MDR: "1322111331221", "RDV 18H": "2112321122222111331323331113223133133"};
 
 /** Écrit une vidéo Y4M 80×60 à 30 i/s, en boucle (une unité = 9 images = 300 ms), pour une suite d'unités 0 / 1. */
 function writeVideo(name, units) {
@@ -68,7 +69,7 @@ const fastUnits = (digits) => [...digits].flatMap((k, i) => Array(Number(k)).fil
 
 /** Rapide : « MDR » annoncé, noir, texte libre annoncé, noir, « MDR » sans signal de début (ignoré), noir. */
 function fastVideo() {
-  const start = [1, 1, 1, 1, 1, 0, 0, 0];
+  const start = [1, 1, 1, 1, 1, 1, 1, 0, 0, 0]; // début du code rapide : 5 + 2 unités
   const dark = Array(22).fill(0);
   const units = [...start, ...fastUnits(INTERVALS.MDR), ...dark, ...start, ...fastUnits(INTERVALS["RDV 18H"]), ...dark, ...fastUnits(INTERVALS.MDR), ...dark];
   return writeVideo("smoke-morse-fast.y4m", units);
@@ -163,7 +164,7 @@ async function open(video, tag) {
   check("[morse] message dans le fil", /SOS/.test(await text(page)));
   await page.screenshot({path: path.join(os.tmpdir(), "smoke-morse-rx.png")});
 
-  await page.locator("sonic-input input").fill("é t");
+  await page.locator('sonic-input input[name="draft"]').fill("é t");
   await page.locator("sonic-button", {hasText: "Envoyer"}).click({timeout: 3000});
   await page.waitForTimeout(600);
   m = await state(page, "morse");
@@ -171,9 +172,9 @@ async function open(video, tag) {
   await page.waitForTimeout(3000); // signal de début (8 unités = 2,4 s) puis E : la première lettre est passée
   m = await state(page, "morse");
   const bar = await progressBar(page);
-  check("[morse] progression de l'envoi : texte émis, texte restant, barre", m?.tx?.done === "E " && m.tx.rest === "T" && bar?.value === m.tx.percent && bar.value > 0, `« ${m?.tx?.done} » | « ${m?.tx?.rest} », ${m?.tx?.percent} %, barre ${JSON.stringify(bar)}`);
+  check("[morse] progression de l'envoi : texte émis, texte restant, barre", m?.tx?.done === "E " && m.tx.rest === "T" && bar?.value === m.tx.timePercent && bar.value > 0, `« ${m?.tx?.done} » | « ${m?.tx?.rest} », ${m?.tx?.timePercent} %, barre ${JSON.stringify(bar)}`);
   check("[morse] pas de réception pendant l'émission", m?.rx?.text === "" && m.status === "sending");
-  check("[morse] le fil montre le message envoyé, le champ est vidé", /é t/.test(await text(page)) && (await page.locator("sonic-input input").inputValue()) === "");
+  check("[morse] le fil montre le message envoyé, le champ est vidé", /é t/.test(await text(page)) && (await page.locator('sonic-input input[name="draft"]').inputValue()) === "");
   const chat = await getChat(page);
   check("[morse] torche absente de la caméra factice signalée", /Pas de torche/.test(chat?.notice ?? ""), chat?.notice);
   check("[morse] l'état du chat reste propre (pas de métadonnées de liste)", (chat?.messages ?? []).every((x) => Object.keys(x).join() === "id,who,text"), JSON.stringify(chat?.messages));
@@ -198,30 +199,30 @@ async function open(video, tag) {
   check("[rapide] deux messages annoncés reçus", m?.received === 2, `${m?.received} reçu(s), ${m?.errors} rejeté(s), ${m?.dropped} écarté(s)`);
   let chat = await getChat(page);
   // La caméra factice entre dans la boucle à un point quelconque : l'ordre des deux messages varie.
-  check("[rapide] phrase de la table et texte libre dans le fil", (chat?.messages ?? []).map((x) => x.text).sort().join("|") === "MDR|RDV 18H", JSON.stringify((chat?.messages ?? []).map((x) => x.text)));
+  check("[rapide] phrase de la table et texte libre dans le fil", (chat?.messages ?? []).map((x) => x.text).sort().join("|") === "AIGLE : RDV 18H|LOUP : MDR", JSON.stringify((chat?.messages ?? []).map((x) => x.text)));
   await page.waitForTimeout(25000); // le « MDR » sans signal de début passe encore : ignoré
   m = await state(page, "morse");
   chat = await getChat(page);
-  check("[rapide] le message sans signal de début est ignoré", (chat?.messages ?? []).every((x) => x.who === "autre" ? ["MDR", "RDV 18H"].includes(x.text) : true) && m.errors === 0, `${m?.received} reçu(s), ${m?.errors} rejeté(s)`);
+  check("[rapide] le message sans signal de début est ignoré", (chat?.messages ?? []).every((x) => x.who === "autre" ? ["LOUP : MDR", "AIGLE : RDV 18H"].includes(x.text) : true) && m.errors === 0, `${m?.received} reçu(s), ${m?.errors} rejeté(s)`);
   await page.screenshot({path: path.join(os.tmpdir(), "smoke-morse-fast-rx.png")});
 
-  await page.getByText("Phrases rapides").first().click({timeout: 3000});
+  await page.locator('[aria-label="Phrases rapides"]').first().click({timeout: 3000});
   await page.waitForTimeout(500);
   await page.screenshot({path: path.join(os.tmpdir(), "smoke-morse-phrases.png")});
   await page.getByText("OUI", {exact: true}).first().click({timeout: 3000});
   await page.waitForTimeout(800);
   m = await state(page, "morse");
   check("[rapide] phrase choisie dans le menu : émission", m?.status === "sending" && m.tx.text === "OUI" && m.codec === "fast", `${m?.status} « ${m?.tx?.text} » ${m?.tx?.signs}`);
-  check("[rapide] durées émises du code rapide (une seule clé pour « OUI »)", m?.tx?.signs === "21112133113", m?.tx?.signs);
+  check("[rapide] durées émises du code rapide (une seule clé pour « OUI »)", m?.tx?.signs === "1221112133113", m?.tx?.signs);
   // La progression avance par symbole : la phrase entière compte quand sa clé est émise.
   let bar = null;
   for (let i = 0; i < 30; i++) {
     await page.waitForTimeout(400);
     m = await state(page, "morse");
     bar = await progressBar(page);
-    if (m?.tx?.percent > 0) break;
+    if (m?.tx?.timePercent > 0) break;
   }
-  check("[rapide] barre de progression : « OUI » émis, texte restant vide", bar?.max === 100 && bar.value > 0 && m?.tx?.done === "OUI" && m.tx.rest === "", `${JSON.stringify(bar)}, « ${m?.tx?.done} » | « ${m?.tx?.rest} »`);
+  check("[rapide] barre de progression dans le temps, secondes restantes", bar?.max === 100 && bar.value > 0 && bar.value === m?.tx?.timePercent && m.tx.remaining > 0 && m.tx.duration > 0, `${JSON.stringify(bar)}, ${m?.tx?.timePercent} %, reste ${m?.tx?.remaining} s`);
   check("[rapide] le fil montre la phrase envoyée", /OUI/.test(await text(page)));
   for (let i = 0; i < 40 && (await state(page, "morse"))?.status === "sending"; i++) await page.waitForTimeout(500);
   m = await state(page, "morse");
