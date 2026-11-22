@@ -1054,7 +1054,7 @@ export class ArtifactViewer extends LitElement {
     const v = (x: string | undefined) => (typeof x === "string" ? nsValue(this.ns, this.nsNames, x) : x);
     const out: Record<string, PlacesDef> = {};
     for (const [name, p] of Object.entries(places)) {
-      if (p) out[name] = {...p, near: v(p.near), from: v(p.from), ack: v(p.ack), area: v(p.area), thread: v(p.thread)};
+      if (p) out[name] = {...p, near: v(p.near), from: v(p.from), ack: v(p.ack), area: v(p.area), thread: v(p.thread), routes: v(p.routes), route: v(p.route)};
     }
     return out;
   }
