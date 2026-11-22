@@ -41,9 +41,9 @@ export type PlacesDef = {
 };
 
 type Item = Record<string, unknown> & {id: string; lat: number; lon: number; distance?: number};
-type OutboxItem = {route?: unknown; id?: unknown; op?: unknown; lat?: unknown; lon?: unknown; data?: unknown; place?: unknown; ref?: unknown; text?: unknown; media?: unknown; pseudo?: unknown; message?: unknown; seen?: unknown; cadre?: unknown};
-type ThreadMessage = {id: string; kind: string; text?: string; pseudo?: string | null; at?: string; origin?: boolean; hasMedia?: boolean; media?: string; mine?: boolean};
-const OPS = ["delete", "report", "addRef", "message", "reportMessage", "addRoute", "deleteRoute", "reportRoute"];
+type OutboxItem = {route?: unknown; id?: unknown; op?: unknown; lat?: unknown; lon?: unknown; data?: unknown; place?: unknown; ref?: unknown; text?: unknown; media?: unknown; pseudo?: unknown; message?: unknown; seen?: unknown; cadre?: unknown; refId?: unknown};
+type ThreadMessage = {id: string; kind: string; text?: string; pseudo?: string | null; at?: string; origin?: boolean; hasMedia?: boolean; media?: string; mine?: boolean; deleted?: string; editedAt?: string; refId?: string};
+const OPS = ["delete", "report", "addRef", "message", "reportMessage", "editMessage", "deleteMessage", "edit", "addRoute", "deleteRoute", "reportRoute"];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const MOVE_M = 25;
@@ -187,13 +187,44 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
       if (!text.trim() && !media) throw new Error("message vide");
       const res = await call<{id: string; deleteToken: string}>(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/messages${k}`, slug, {
         method: "POST",
-        body: JSON.stringify({text, media, pseudo: typeof raw.pseudo === "string" ? raw.pseudo : undefined, at: here(raw.seen === true), cadre: typeof raw.cadre === "number" ? raw.cadre : undefined}),
+        body: JSON.stringify({text, media, pseudo: typeof raw.pseudo === "string" ? raw.pseudo : undefined, at: here(raw.seen === true), cadre: typeof raw.cadre === "number" ? raw.cadre : undefined, refId: typeof raw.refId === "string" ? raw.refId : undefined}),
       });
       const t = tokens(msgKey);
       t[res.id] = res.deleteToken;
       saveTokens(msgKey, t);
       void loadThread(true);
       return res.id;
+    }
+    if (op === "editMessage" || op === "deleteMessage") {
+      const message = typeof raw.message === "string" ? raw.message : "";
+      if (!message) throw new Error("message : id manquant");
+      const t = tokens(msgKey);
+      if (!t[message]) throw new Error("seul l'appareil qui a posé ce message peut le retoucher ou le retirer");
+      const url = `/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/messages/${encodeURIComponent(message)}`;
+      if (op === "deleteMessage") {
+        await call(`${url}${k}`, slug, {method: "DELETE", headers: {"X-Place-Token": t[message]}});
+        media.delete(message);
+      } else {
+        const m = await asDataUrl(raw.media);
+        await call(`${url}/edit${k}`, slug, {
+          method: "POST",
+          headers: {"X-Place-Token": t[message]},
+          body: JSON.stringify({text: typeof raw.text === "string" ? raw.text : undefined, media: m, at: here(raw.seen === true), cadre: typeof raw.cadre === "number" ? raw.cadre : undefined, refId: typeof raw.refId === "string" ? raw.refId : undefined}),
+        });
+        if (m) media.set(message, m);
+      }
+      void loadThread(true);
+      return message;
+    }
+    if (op === "edit") {
+      const t = tokens(tokensKey);
+      if (!t[place]) throw new Error("seul l'appareil qui a posé cette balise peut la retoucher");
+      const data = raw.data && typeof raw.data === "object" && !Array.isArray(raw.data) ? {...(raw.data as Record<string, unknown>)} : {};
+      for (const key of ["dessin", "voix"]) if (data[key] !== undefined && data[key] !== null && data[key] !== "") data[key] = await asDataUrl(data[key]);
+      await call(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/edit${k}`, slug, {method: "POST", headers: {"X-Place-Token": t[place]}, body: JSON.stringify({body: data, at: here(raw.seen === true)})});
+      bodies.delete(place); // corps rechargé avec la retouche
+      void loadThread(true);
+      return place;
     }
     if (op === "reportMessage") {
       const message = typeof raw.message === "string" ? raw.message : "";

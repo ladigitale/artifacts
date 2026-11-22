@@ -1,0 +1,72 @@
+{
+ "schema": "artifacts/1",
+ "title": "Guichet",
+ "defaultView": "g",
+ "page": {
+  "nav": "none"
+ },
+ "data": {
+  "stores": {
+   "g": {
+    "initial": {
+     "annonce": ""
+    },
+    "reducer": "$action.type = 'annonce' ? {\"annonce\": $action.payload.texte} : $state"
+   }
+  }
+ },
+ "views": [
+  {
+   "id": "g",
+   "title": "Guichet",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "sonic-qr",
+      "attributes": {
+       "id": "g-a",
+       "text-from": "artifactRun.pairs.b.url",
+       "size": 120
+      }
+     },
+     {
+      "tagName": "sonic-value",
+      "attributes": {
+       "id": "g-host",
+       "dataProvider": "artifactRun",
+       "key": "host.runId"
+      }
+     },
+     {
+      "tagName": "sonic-value",
+      "attributes": {
+       "id": "g-annonce",
+       "dataProvider": "g",
+       "key": "annonce"
+      }
+     }
+    ]
+   }
+  }
+ ],
+ "io": {
+  "title": "Guichet",
+  "modes": [
+   "interactive"
+  ],
+  "output": {
+   "schema": {
+    "type": "string"
+   },
+   "from": "g.annonce",
+   "when": "annonce = 'fin'"
+  },
+  "stream": {
+   "store": "g",
+   "actions": {
+    "annonce": {}
+   },
+   "inscription": true
+  }
+ }
+}

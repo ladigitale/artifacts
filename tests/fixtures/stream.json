@@ -93,6 +93,14 @@
       }
      },
      {
+      "tagName": "sonic-qr",
+      "attributes": {
+       "id": "qrdesk",
+       "text-from": "artifactRun.desk.url",
+       "size": 120
+      }
+     },
+     {
       "tagName": "p",
       "nodes": [
        {
@@ -185,7 +193,11 @@
      "map": "data",
      "max": 4
     }
-   ]
+   ],
+   "desk": {
+    "remote": "guichet",
+    "max": 2
+   }
   }
  }
 }
