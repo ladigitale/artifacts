@@ -244,9 +244,9 @@
     "@jridgewell/resolve-uri" "^3.1.0"
     "@jridgewell/sourcemap-codec" "^1.4.14"
 
-"@ladigitale/agent-stack@github:ladigitale/agent-stack#39606aa8141e621a5ffa1d36db984d36cda075f2":
+"@ladigitale/agent-stack@github:ladigitale/agent-stack#d68939069d058b2daae79a5f151bee8cc0a363cd":
   version "0.1.0"
-  resolved "https://codeload.github.com/ladigitale/agent-stack/tar.gz/39606aa8141e621a5ffa1d36db984d36cda075f2"
+  resolved "https://codeload.github.com/ladigitale/agent-stack/tar.gz/d68939069d058b2daae79a5f151bee8cc0a363cd"
 
 "@lit-labs/motion@^1.0.7":
   version "1.1.0"
@@ -501,9 +501,9 @@
     jsonata "^2.2.2"
     url-pattern "^1.0.3"
 
-"@supersoniks/creative-stack@github:ladigitale/creative-stack#a5dedb503243a192c86bff5f8a2a5d2d458c6f37":
+"@supersoniks/creative-stack@github:ladigitale/creative-stack#3e8a09e6c8ef81b167db765a579cb26ce8ce0d71":
   version "0.1.0"
-  resolved "https://codeload.github.com/ladigitale/creative-stack/tar.gz/a5dedb503243a192c86bff5f8a2a5d2d458c6f37"
+  resolved "https://codeload.github.com/ladigitale/creative-stack/tar.gz/3e8a09e6c8ef81b167db765a579cb26ce8ce0d71"
   dependencies:
     "@dimforge/rapier3d-compat" "0.21.0"
     jsonata "^2.2.2"
