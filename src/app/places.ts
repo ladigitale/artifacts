@@ -12,7 +12,9 @@ import {getApiRoot, loadArtifactsAccount} from "./cloud/account";
  *   avec ses champs courts, `mine` (posé depuis cet appareil) et, pour les `fetch` plus proches, son corps complet ;
  * - lit la boîte d'envoi `from` (tableau du store) : `{id, op: "add", lat, lon, data}` pose un lieu,
  *   `{id, op: "delete", place}` retire un lieu posé ici (jeton gardé dans ce navigateur), `{id, op: "report", place}`
- *   le signale, `{id, op: "addRef", place, ref}` lui ajoute une surface de remplacement ; puis envoie `place:ok` {id, op, placeId} ou `place:error` {id, op, error} au store `ack`.
+ *   le signale, `{id, op: "addRef", place, ref}` lui ajoute une surface de remplacement ; `message` et `addRef`
+ *   joignent la position de `near` (`at` : lat, lon, accuracy, et `seen` de l'op) : le serveur n'accepte vocal,
+ *   dessin et surface que sur place, un texte envoyé de loin devient un commentaire à distance (`onSite: false`) ; puis envoie `place:ok` {id, op, placeId} ou `place:error` {id, op, error} au store `ack`.
  *
  *   "places": {"balises": {"near": "geoState", "radius": 300, "fetch": 6, "from": "balises.outbox", "ack": "balises"}}
  */
@@ -32,7 +34,7 @@ export type PlacesDef = {
 };
 
 type Item = Record<string, unknown> & {id: string; lat: number; lon: number; distance?: number};
-type OutboxItem = {id?: unknown; op?: unknown; lat?: unknown; lon?: unknown; data?: unknown; place?: unknown; ref?: unknown; text?: unknown; media?: unknown; pseudo?: unknown; message?: unknown};
+type OutboxItem = {id?: unknown; op?: unknown; lat?: unknown; lon?: unknown; data?: unknown; place?: unknown; ref?: unknown; text?: unknown; media?: unknown; pseudo?: unknown; message?: unknown; seen?: unknown};
 type ThreadMessage = {id: string; kind: string; text?: string; pseudo?: string | null; at?: string; origin?: boolean; hasMedia?: boolean; media?: string; mine?: boolean};
 const OPS = ["delete", "report", "addRef", "message", "reportMessage"];
 
@@ -78,6 +80,14 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
     const v = get(def.near) as {lat?: unknown; lon?: unknown} | null | undefined;
     const lat = Number(v?.lat), lon = Number(v?.lon);
     return v && v.lat !== null && Number.isFinite(lat) && Number.isFinite(lon) ? {lat, lon} : null;
+  };
+
+  /** Position jointe aux ops faites sur place (message, addRef) : le serveur vérifie la distance au lieu. */
+  const here = (seen: boolean): {lat: number; lon: number; accuracy?: number; seen: boolean} | undefined => {
+    const pos = position();
+    if (!pos) return undefined;
+    const acc = Number((get(def.near!) as {accuracy?: unknown} | null | undefined)?.accuracy);
+    return {...pos, ...(Number.isFinite(acc) ? {accuracy: acc} : {}), seen};
   };
 
   const refresh = async (force = false): Promise<void> => {
@@ -163,7 +173,7 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
       if (!text.trim() && !media) throw new Error("message vide");
       const res = await call<{id: string; deleteToken: string}>(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/messages${k}`, slug, {
         method: "POST",
-        body: JSON.stringify({text, media, pseudo: typeof raw.pseudo === "string" ? raw.pseudo : undefined}),
+        body: JSON.stringify({text, media, pseudo: typeof raw.pseudo === "string" ? raw.pseudo : undefined, at: here(raw.seen === true)}),
       });
       const t = tokens(msgKey);
       t[res.id] = res.deleteToken;
@@ -180,7 +190,7 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
     }
     if (op === "addRef") {
       if (!raw.ref || typeof raw.ref !== "object" || Array.isArray(raw.ref)) throw new Error("ref : nouvelle surface manquante");
-      await call(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/refs${k}`, slug, {method: "POST", body: JSON.stringify({ref: raw.ref})});
+      await call(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/refs${k}`, slug, {method: "POST", body: JSON.stringify({ref: raw.ref, at: here(false)})});
       bodies.delete(place); // le corps rechargé portera la nouvelle surface
       return place;
     }
