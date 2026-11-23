@@ -19,6 +19,11 @@ import {getApiRoot, loadArtifactsAccount} from "./cloud/account";
  *   la zone visible, `lines` GeoJSON) et `<nom>Route` (parcours choisi, `sounds` des sons propres) ; ops de la
  *   boîte d'envoi principale `addRoute` {data: {title, ordered, mode, steps}}, `deleteRoute` et `reportRoute` {route}.
  *
+ * - « passés par là » (clé d'appareil aléatoire gardée dans ce navigateur, en-tête X-Place-Device) : `{id, op: "visitor",
+ *   pseudo, avatar}` enregistre le profil de l'appareil (avatar : SVG de sonic-sketch, blob: ou data:) ; `{id, op: "tag",
+ *   place, seen}` tague le lieu (sur place seulement, un par appareil) ; `{id, op: "reportAvatar", visitor}` signale un
+ *   avatar. La discussion publiée dans `<nom>Fil` porte `tags` [{id, pseudo, avatar (URL), at, mine}], `tagCount`, `tagMine` (date du tag de cet appareil).
+ *
  *   "places": {"balises": {"near": "geoState", "radius": 300, "fetch": 6, "from": "balises.outbox", "ack": "balises"}}
  */
 export type PlacesDef = {
@@ -41,9 +46,10 @@ export type PlacesDef = {
 };
 
 type Item = Record<string, unknown> & {id: string; lat: number; lon: number; distance?: number};
-type OutboxItem = {route?: unknown; id?: unknown; op?: unknown; lat?: unknown; lon?: unknown; data?: unknown; place?: unknown; ref?: unknown; text?: unknown; media?: unknown; pseudo?: unknown; message?: unknown; seen?: unknown; cadre?: unknown; refId?: unknown};
+type OutboxItem = {avatar?: unknown; visitor?: unknown; route?: unknown; id?: unknown; op?: unknown; lat?: unknown; lon?: unknown; data?: unknown; place?: unknown; ref?: unknown; text?: unknown; media?: unknown; pseudo?: unknown; message?: unknown; seen?: unknown; cadre?: unknown; refId?: unknown};
 type ThreadMessage = {id: string; kind: string; text?: string; pseudo?: string | null; at?: string; origin?: boolean; hasMedia?: boolean; media?: string; mine?: boolean; deleted?: string; editedAt?: string; refId?: string};
-const OPS = ["delete", "report", "addRef", "message", "reportMessage", "editMessage", "deleteMessage", "edit", "addRoute", "deleteRoute", "reportRoute"];
+const OPS = ["delete", "report", "addRef", "message", "reportMessage", "editMessage", "deleteMessage", "edit", "addRoute", "deleteRoute", "reportRoute", "visitor", "tag", "reportAvatar"];
+type TagRow = {id: string; pseudo?: string | null; avatar?: string | null; at?: string; mine?: boolean};
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const MOVE_M = 25;
@@ -71,6 +77,19 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
     return () => offs.forEach((off) => off());
   }
   const tokensKey = `artifacts-places:${slug}:${name}`;
+  const device = (): string => {
+    const key = `${tokensKey}:device`;
+    try {
+      const v = localStorage.getItem(key);
+      if (v && /^[A-Za-z0-9_-]{22,128}$/.test(v)) return v;
+      const b = crypto.getRandomValues(new Uint8Array(24));
+      const id = btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      localStorage.setItem(key, id);
+      return id;
+    } catch {
+      return "";
+    }
+  };
   const bodies = new Map<string, Record<string, unknown>>();
   const sent = new Set<string>();
   let last: {lat: number; lon: number} | null = null;
@@ -171,6 +190,23 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
       return res.id;
     }
     if (op === "addRoute" || op === "deleteRoute" || op === "reportRoute") return runRouteOp(op, raw, k);
+    if (op === "visitor") {
+      const d = device();
+      if (!d) throw new Error("ce navigateur ne garde rien en mémoire : impossible d'enregistrer ton avatar");
+      const avatar = raw.avatar === null || raw.avatar === "" ? null : await asDataUrl(raw.avatar);
+      const res = await call<{id: string}>(`/places/${encodeURIComponent(name)}/visitor${k}`, slug, {
+        method: "POST", headers: {"X-Place-Device": d}, body: JSON.stringify({pseudo: typeof raw.pseudo === "string" ? raw.pseudo : undefined, avatar}),
+      });
+      void loadThread(true);
+      return res.id;
+    }
+    if (op === "reportAvatar") {
+      const visitor = typeof raw.visitor === "string" ? raw.visitor : "";
+      if (!UUID.test(visitor)) throw new Error("visitor : id manquant");
+      await call(`/places/${encodeURIComponent(name)}/avatars/${encodeURIComponent(visitor)}/report${k}`, slug, {method: "POST"});
+      void loadThread(true);
+      return visitor;
+    }
     const place = typeof raw.place === "string" ? raw.place : "";
     if (!place) throw new Error("place : id du lieu manquant");
     if (op === "delete") {
@@ -223,6 +259,13 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
       for (const key of ["dessin", "voix"]) if (data[key] !== undefined && data[key] !== null && data[key] !== "") data[key] = await asDataUrl(data[key]);
       await call(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/edit${k}`, slug, {method: "POST", headers: {"X-Place-Token": t[place]}, body: JSON.stringify({body: data, at: here(raw.seen === true)})});
       bodies.delete(place); // corps rechargé avec la retouche
+      void loadThread(true);
+      return place;
+    }
+    if (op === "tag") {
+      const d = device();
+      if (!d) throw new Error("ce navigateur ne garde rien en mémoire : impossible de te taguer");
+      await call(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/tags${k}`, slug, {method: "POST", headers: {"X-Place-Device": d}, body: JSON.stringify({at: here(raw.seen === true)})});
       void loadThread(true);
       return place;
     }
@@ -299,7 +342,7 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
     if (!def.thread || stopped) return;
     const place = threadTarget();
     if (!place) {
-      if (threadPlace) publishThread({place: null, status: "idle", messages: [], drawings: [], count: 0, error: null});
+      if (threadPlace) publishThread({place: null, status: "idle", messages: [], drawings: [], count: 0, error: null, tags: [], tagCount: 0, tagMine: null});
       threadPlace = "";
       return;
     }
@@ -307,7 +350,7 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
     const changed = place !== threadPlace;
     threadPlace = place;
     threadBusy = true;
-    if (changed) publishThread({place, status: "loading", messages: [], drawings: [], count: 0, error: null});
+    if (changed) publishThread({place, status: "loading", messages: [], drawings: [], count: 0, error: null, tags: [], tagCount: 0, tagMine: null});
     try {
       const k = linkToken ? `?k=${encodeURIComponent(linkToken)}` : "";
       const res = await call<{messages?: ThreadMessage[]; count?: number}>(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/messages${k}`, slug);
@@ -331,6 +374,18 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
         }
       }
       publishList();
+      // « Passés par là » : liste à part (absente d'un ancien serveur : ignorée).
+      try {
+        const d = device();
+        const tg = await call<{count?: number; tags?: TagRow[]; mine?: string | null}>(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/tags${k}`, slug, d ? {headers: {"X-Place-Device": d}} : {});
+        if (stopped || threadPlace !== place) return;
+        const origin = normalizeApiBase(loadApiBaseUrl());
+        const kk = linkToken ? `&k=${encodeURIComponent(linkToken)}` : "";
+        const tags = (Array.isArray(tg?.tags) ? tg.tags : []).map((t) => ({...t, avatar: typeof t.avatar === "string" && t.avatar.startsWith("/api/") ? `${origin}${t.avatar}${kk}` : null}));
+        publishThread({tags, tagCount: Number(tg?.count) || 0, tagMine: tg?.mine ?? null});
+      } catch {
+        /* passés par là indisponibles : la discussion reste */
+      }
     } catch (e) {
       if (threadPlace === place) publishThread({status: "error", error: message(e)});
     } finally {
