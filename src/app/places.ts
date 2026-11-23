@@ -22,7 +22,7 @@ import {getApiRoot, loadArtifactsAccount} from "./cloud/account";
  * - « passés par là » (clé d'appareil aléatoire gardée dans ce navigateur, en-tête X-Place-Device) : `{id, op: "visitor",
  *   pseudo, avatar}` enregistre le profil de l'appareil (avatar : SVG de sonic-sketch, blob: ou data:) ; `{id, op: "tag",
  *   place, seen}` tague le lieu (sur place seulement, un par appareil) ; `{id, op: "reportAvatar", visitor}` signale un
- *   avatar. La discussion publiée dans `<nom>Fil` porte `tags` [{id, pseudo, avatar (URL), at, mine}], `tagCount`, `tagMine` (date du tag de cet appareil).
+ *   avatar. Le profil de l'appareil est publié dans `<nom>Moi` {id, pseudo, avatar (data: URL)}. La discussion publiée dans `<nom>Fil` porte `tags` [{id, pseudo, avatar (URL), at, mine}], `tagCount`, `tagMine` (date du tag de cet appareil).
  *
  *   "places": {"balises": {"near": "geoState", "radius": 300, "fetch": 6, "from": "balises.outbox", "ack": "balises"}}
  */
@@ -90,6 +90,24 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
       return "";
     }
   };
+  // Profil de cet appareil (pseudo, avatar SVG avec la source des traits) : gardé ici et republié dans
+  // `<nom>Moi` pour que la page puisse rouvrir l'avatar et l'afficher.
+  const meKey = `${tokensKey}:moi`;
+  const meOut = `${out}Moi`;
+  const saveMe = (me: {id: string; pseudo: string; avatar: string | null}) => {
+    try {
+      localStorage.setItem(meKey, JSON.stringify(me));
+    } catch {
+      /* stockage plein ou refusé : le profil reste publié pour la session */
+    }
+    set(meOut, me as never);
+  };
+  try {
+    const me = JSON.parse(localStorage.getItem(meKey) ?? "null") as unknown;
+    set(meOut, (me && typeof me === "object" ? me : {id: null, pseudo: "", avatar: null}) as never);
+  } catch {
+    set(meOut, {id: null, pseudo: "", avatar: null} as never);
+  }
   const bodies = new Map<string, Record<string, unknown>>();
   const sent = new Set<string>();
   let last: {lat: number; lon: number} | null = null;
@@ -194,9 +212,11 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
       const d = device();
       if (!d) throw new Error("ce navigateur ne garde rien en mémoire : impossible d'enregistrer ton avatar");
       const avatar = raw.avatar === null || raw.avatar === "" ? null : await asDataUrl(raw.avatar);
+      const pseudo = typeof raw.pseudo === "string" ? raw.pseudo : undefined;
       const res = await call<{id: string}>(`/places/${encodeURIComponent(name)}/visitor${k}`, slug, {
-        method: "POST", headers: {"X-Place-Device": d}, body: JSON.stringify({pseudo: typeof raw.pseudo === "string" ? raw.pseudo : undefined, avatar}),
+        method: "POST", headers: {"X-Place-Device": d}, body: JSON.stringify({pseudo, avatar}),
       });
+      saveMe({id: res.id, pseudo: pseudo ?? "", avatar: avatar ?? null});
       void loadThread(true);
       return res.id;
     }
