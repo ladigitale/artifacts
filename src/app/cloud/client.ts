@@ -331,8 +331,7 @@ export async function getResource(ref: string): Promise<{resource: ResourceSumma
   return {resource: data.resource, versions: data.versions ?? []};
 }
 
-/** Contenu brut (texte) d’une ressource ; null si binaire ou trop gros pour un aperçu. */
-export async function getResourceContent(ref: string, version?: number, maxChars = 20000): Promise<string | null> {
+async function fetchResourceContent(ref: string, version?: number): Promise<Response> {
   const acc = loadArtifactsAccount();
   const base = acc ? getApiRoot(acc) : `${normalizeApiBase(loadApiBaseUrl())}/api`;
   const headers = new Headers();
@@ -340,6 +339,17 @@ export async function getResourceContent(ref: string, version?: number, maxChars
   const q = version ? `?version=${version}` : "";
   const res = await fetch(`${base}/resources/${encodeURIComponent(ref)}/content${q}`, {headers});
   if (!res.ok) throw new ApiError(await res.text(), res.status);
+  return res;
+}
+
+/** Contenu d’une ressource tel quel (texte ou binaire), pour l’afficher : image, son, modèle 3D, shader. */
+export async function getResourceBlob(ref: string, version?: number): Promise<Blob> {
+  return (await fetchResourceContent(ref, version)).blob();
+}
+
+/** Contenu brut (texte) d’une ressource ; null si binaire ou trop gros pour un aperçu. */
+export async function getResourceContent(ref: string, version?: number, maxChars = 20000): Promise<string | null> {
+  const res = await fetchResourceContent(ref, version);
   const type = res.headers.get("Content-Type") ?? "";
   if (!/^(text\/|application\/(json|xml|javascript))/.test(type)) return null;
   const text = await res.text();
