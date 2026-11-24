@@ -3,6 +3,7 @@ import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/menu";
 import "@supersoniks/concorde/menu-item";
 import "@supersoniks/concorde/sdui";
+import "./artifact-loader";
 import "./artifact-a2ui-view";
 import {agentStackLibrary, injectAgentStackStyles} from "@ladigitale/agent-stack/libraries";
 import type {A2uiServerMessage} from "@ladigitale/agent-stack/a2ui";
@@ -1245,7 +1246,7 @@ export class ArtifactViewer extends LitElement {
   }
 
   private renderBody(root: Record<string, unknown> | null) {
-    if (!this.scriptsReady) return html`<p class="opacity-70">Préparation…</p>`;
+    if (!this.scriptsReady) return html`<artifact-loader></artifact-loader>`;
     const view = this.currentView();
     if (view && Array.isArray(view.a2ui)) {
       return html`<artifact-a2ui-view
@@ -1255,14 +1256,12 @@ export class ArtifactViewer extends LitElement {
         .prefix=${this.n(`a2ui_${this.slug}_`).replace(/[^\w-]/g, "_")}
       ></artifact-a2ui-view>`;
     }
-    return root ? html`<sonic-sdui .props=${root}></sonic-sdui>` : html`<p class="opacity-70">Préparation…</p>`;
+    return root ? html`<sonic-sdui .props=${root}></sonic-sdui>` : html`<artifact-loader></artifact-loader>`;
   }
 
   render() {
     if (this.loading) {
-      return html`<p class="p-4 m-0" role="status" style="color: color-mix(in srgb, currentColor 70%, transparent)">
-        Chargement…
-      </p>`;
+      return html`<artifact-loader></artifact-loader>`;
     }
     if (this.error) {
       return html`<div class="p-4 sm:p-6 flex flex-col gap-2 max-w-xl" role="alert">
