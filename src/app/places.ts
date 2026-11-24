@@ -1,7 +1,8 @@
 import {dispatch} from "@supersoniks/creative-stack/interactive";
 import {dp, get, set} from "@supersoniks/concorde/utils";
 import {loadApiBaseUrl, normalizeApiBase} from "./cloud/api-base";
-import {getApiRoot, loadArtifactsAccount} from "./cloud/account";
+import {clearArtifactsAccount, getApiRoot, loadArtifactsAccount} from "./cloud/account";
+import {cloudReturnUrl, tadaaaLoginUrl} from "./cloud/client";
 
 /**
  * `data.places` : lieux partagés posés par les visiteurs à une position GPS (API Tadaaa
@@ -19,10 +20,13 @@ import {getApiRoot, loadArtifactsAccount} from "./cloud/account";
  *   la zone visible, `lines` GeoJSON) et `<nom>Route` (parcours choisi, `sounds` des sons propres) ; ops de la
  *   boîte d'envoi principale `addRoute` {data: {title, ordered, mode, steps}}, `deleteRoute` et `reportRoute` {route}.
  *
- * - « passés par là » (clé d'appareil aléatoire gardée dans ce navigateur, en-tête X-Place-Device) : `{id, op: "visitor",
- *   pseudo, avatar}` enregistre le profil de l'appareil (avatar : SVG de sonic-sketch, blob: ou data:) ; `{id, op: "tag",
- *   place, seen}` tague le lieu (sur place seulement, un par appareil) ; `{id, op: "reportAvatar", visitor}` signale un
- *   avatar. Le profil de l'appareil est publié dans `<nom>Moi` {id, pseudo, avatar (data: URL)}. La discussion publiée dans `<nom>Fil` porte `tags` [{id, pseudo, avatar (URL), at, mine}], `tagCount`, `tagMine` (date du tag de cet appareil).
+ * - blaze (clé d'appareil aléatoire gardée dans ce navigateur, en-tête X-Place-Device, ou compte Tadaaa connecté) :
+ *   `{id, op: "visitor", pseudo, avatar}` l'enregistre (avatar : SVG de sonic-sketch, blob: ou data:) ;
+ *   `{id, op: "reportAvatar", visitor}` signale un avatar. Il est publié dans `<nom>Moi` {id, pseudo, avatar (data: URL),
+ *   compte} et accompagne tout ce que l'appareil pose : chaque message de `<nom>Fil` porte `pseudo`, `avatar` (URL, à jour)
+ *   et `auteur` (id du blaze).
+ * - compte (facultatif) : `<nom>Compte` {connecte, email} ; `{id, op: "login"}` ouvre la connexion Tadaaa et revient ici
+ *   (le blaze de l'appareil est alors rattaché au compte et retrouvé sur ses autres appareils) ; `{id, op: "logout"}`.
  *
  *   "places": {"balises": {"near": "geoState", "radius": 300, "fetch": 6, "from": "balises.outbox", "ack": "balises"}}
  */
@@ -47,9 +51,8 @@ export type PlacesDef = {
 
 type Item = Record<string, unknown> & {id: string; lat: number; lon: number; distance?: number};
 type OutboxItem = {avatar?: unknown; visitor?: unknown; route?: unknown; id?: unknown; op?: unknown; lat?: unknown; lon?: unknown; data?: unknown; place?: unknown; ref?: unknown; text?: unknown; media?: unknown; pseudo?: unknown; message?: unknown; seen?: unknown; cadre?: unknown; refId?: unknown};
-type ThreadMessage = {id: string; kind: string; text?: string; pseudo?: string | null; at?: string; origin?: boolean; hasMedia?: boolean; media?: string; mine?: boolean; deleted?: string; editedAt?: string; refId?: string};
-const OPS = ["delete", "report", "addRef", "message", "reportMessage", "editMessage", "deleteMessage", "edit", "addRoute", "deleteRoute", "reportRoute", "visitor", "tag", "reportAvatar"];
-type TagRow = {id: string; pseudo?: string | null; avatar?: string | null; at?: string; mine?: boolean};
+type ThreadMessage = {id: string; kind: string; text?: string; pseudo?: string | null; avatar?: string | null; auteur?: string | null; at?: string; origin?: boolean; hasMedia?: boolean; media?: string; mine?: boolean; deleted?: string; editedAt?: string; refId?: string};
+const OPS = ["delete", "report", "addRef", "message", "reportMessage", "editMessage", "deleteMessage", "edit", "addRoute", "deleteRoute", "reportRoute", "visitor", "reportAvatar", "login", "logout"];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const MOVE_M = 25;
@@ -94,7 +97,7 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
   // `<nom>Moi` pour que la page puisse rouvrir l'avatar et l'afficher.
   const meKey = `${tokensKey}:moi`;
   const meOut = `${out}Moi`;
-  const saveMe = (me: {id: string; pseudo: string; avatar: string | null}) => {
+  const saveMe = (me: {id: string | null; pseudo: string; avatar: string | null; compte?: boolean}) => {
     try {
       localStorage.setItem(meKey, JSON.stringify(me));
     } catch {
@@ -108,6 +111,28 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
   } catch {
     set(meOut, {id: null, pseudo: "", avatar: null} as never);
   }
+  // Compte Tadaaa (facultatif) et blaze du serveur : celui du compte prime (autre appareil, navigateur vidé).
+  const accountOut = `${out}Compte`;
+  const publishAccount = () => {
+    const acc = loadArtifactsAccount();
+    set(accountOut, {connecte: acc ? "oui" : "non", email: acc?.user?.email ?? ""} as never);
+  };
+  publishAccount();
+  const syncMe = async (): Promise<void> => {
+    const d = device();
+    if (!d && !loadArtifactsAccount()) return;
+    const k = linkToken ? `?k=${encodeURIComponent(linkToken)}` : "";
+    try {
+      const me = await call<{id: string | null; pseudo: string | null; avatar: string | null; compte?: boolean}>(`/places/${encodeURIComponent(name)}/visitor${k}`, slug, d ? {headers: {"X-Place-Device": d}} : {});
+      if (stopped || !me?.id) return;
+      const local = (get(meOut) as {pseudo?: string; avatar?: string | null} | undefined) ?? {};
+      // Blaze local pas encore envoyé (ancien serveur) : on le garde.
+      if (!me.pseudo && !me.avatar && (local.pseudo || local.avatar)) return;
+      saveMe({id: me.id, pseudo: me.pseudo ?? "", avatar: typeof me.avatar === "string" && me.avatar.startsWith("data:image/svg+xml") ? me.avatar : null, compte: me.compte === true});
+    } catch {
+      /* serveur injoignable : le blaze local reste */
+    }
+  };
   const bodies = new Map<string, Record<string, unknown>>();
   const sent = new Set<string>();
   let last: {lat: number; lon: number} | null = null;
@@ -201,22 +226,34 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
       const data = raw.data && typeof raw.data === "object" && !Array.isArray(raw.data) ? (raw.data as Record<string, unknown>) : {};
       const lat = Number(raw.lat ?? data.lat), lon = Number(raw.lon ?? data.lon);
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) throw new Error("position manquante (lat, lon) : active le GPS");
-      const res = await call<{id: string; deleteToken: string}>(`/places/${encodeURIComponent(name)}${k}`, slug, {method: "POST", body: JSON.stringify({lat, lon, body: data})});
+      const d = device();
+      const res = await call<{id: string; deleteToken: string}>(`/places/${encodeURIComponent(name)}${k}`, slug, {method: "POST", headers: d ? {"X-Place-Device": d} : {}, body: JSON.stringify({lat, lon, body: data})});
       const t = tokens(tokensKey);
       t[res.id] = res.deleteToken;
       saveTokens(tokensKey, t);
       return res.id;
     }
     if (op === "addRoute" || op === "deleteRoute" || op === "reportRoute") return runRouteOp(op, raw, k);
+    if (op === "login") {
+      // Retour ici après la connexion (page /cloud ?next=…) : le blaze se rattache au compte au prochain envoi.
+      location.assign(tadaaaLoginUrl(cloudReturnUrl(location.pathname + location.search)));
+      return "login";
+    }
+    if (op === "logout") {
+      clearArtifactsAccount();
+      publishAccount();
+      void syncMe();
+      return "logout";
+    }
     if (op === "visitor") {
       const d = device();
-      if (!d) throw new Error("ce navigateur ne garde rien en mémoire : impossible d'enregistrer ton avatar");
+      if (!d && !loadArtifactsAccount()) throw new Error("ce navigateur ne garde rien en mémoire : impossible d'enregistrer ton avatar");
       const avatar = raw.avatar === null || raw.avatar === "" ? null : await asDataUrl(raw.avatar);
       const pseudo = typeof raw.pseudo === "string" ? raw.pseudo : undefined;
-      const res = await call<{id: string}>(`/places/${encodeURIComponent(name)}/visitor${k}`, slug, {
-        method: "POST", headers: {"X-Place-Device": d}, body: JSON.stringify({pseudo, avatar}),
+      const res = await call<{id: string; compte?: boolean}>(`/places/${encodeURIComponent(name)}/visitor${k}`, slug, {
+        method: "POST", headers: d ? {"X-Place-Device": d} : {}, body: JSON.stringify({pseudo, avatar}),
       });
-      saveMe({id: res.id, pseudo: pseudo ?? "", avatar: avatar ?? null});
+      saveMe({id: res.id, pseudo: pseudo ?? "", avatar: avatar ?? null, compte: res.compte === true});
       void loadThread(true);
       return res.id;
     }
@@ -241,8 +278,10 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
       const text = typeof raw.text === "string" ? raw.text : "";
       const media = await asDataUrl(raw.media);
       if (!text.trim() && !media) throw new Error("message vide");
+      const d = device();
       const res = await call<{id: string; deleteToken: string}>(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/messages${k}`, slug, {
         method: "POST",
+        headers: d ? {"X-Place-Device": d} : {},
         body: JSON.stringify({text, media, pseudo: typeof raw.pseudo === "string" ? raw.pseudo : undefined, at: here(raw.seen === true), cadre: typeof raw.cadre === "number" ? raw.cadre : undefined, refId: typeof raw.refId === "string" ? raw.refId : undefined}),
       });
       const t = tokens(msgKey);
@@ -279,13 +318,6 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
       for (const key of ["dessin", "voix"]) if (data[key] !== undefined && data[key] !== null && data[key] !== "") data[key] = await asDataUrl(data[key]);
       await call(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/edit${k}`, slug, {method: "POST", headers: {"X-Place-Token": t[place]}, body: JSON.stringify({body: data, at: here(raw.seen === true)})});
       bodies.delete(place); // corps rechargé avec la retouche
-      void loadThread(true);
-      return place;
-    }
-    if (op === "tag") {
-      const d = device();
-      if (!d) throw new Error("ce navigateur ne garde rien en mémoire : impossible de te taguer");
-      await call(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/tags${k}`, slug, {method: "POST", headers: {"X-Place-Device": d}, body: JSON.stringify({at: here(raw.seen === true)})});
       void loadThread(true);
       return place;
     }
@@ -362,7 +394,7 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
     if (!def.thread || stopped) return;
     const place = threadTarget();
     if (!place) {
-      if (threadPlace) publishThread({place: null, status: "idle", messages: [], drawings: [], count: 0, error: null, tags: [], tagCount: 0, tagMine: null});
+      if (threadPlace) publishThread({place: null, status: "idle", messages: [], drawings: [], count: 0, error: null});
       threadPlace = "";
       return;
     }
@@ -370,13 +402,17 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
     const changed = place !== threadPlace;
     threadPlace = place;
     threadBusy = true;
-    if (changed) publishThread({place, status: "loading", messages: [], drawings: [], count: 0, error: null, tags: [], tagCount: 0, tagMine: null});
+    if (changed) publishThread({place, status: "loading", messages: [], drawings: [], count: 0, error: null});
     try {
       const k = linkToken ? `?k=${encodeURIComponent(linkToken)}` : "";
       const res = await call<{messages?: ThreadMessage[]; count?: number}>(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/messages${k}`, slug);
       if (stopped || threadPlace !== place) return;
       const mine = tokens(msgKey);
-      const list = (Array.isArray(res?.messages) ? res.messages : []).map((m) => ({...m, mine: m.id in mine, media: m.media ?? media.get(m.id)}));
+      // Avatar du blaze : chemin de l'API → URL absolue (lien de partage joint).
+      const origin = normalizeApiBase(loadApiBaseUrl());
+      const kk = linkToken ? `&k=${encodeURIComponent(linkToken)}` : "";
+      const avatarUrl = (a: unknown) => (typeof a === "string" && a.startsWith("/api/") ? `${origin}${a}${kk}` : null);
+      const list = (Array.isArray(res?.messages) ? res.messages : []).map((m) => ({...m, avatar: avatarUrl(m.avatar), mine: m.id in mine, media: m.media ?? media.get(m.id)}));
       const publishList = () => {
         const msgs = list.map((m) => ({...m, media: m.media ?? media.get(m.id)}));
         publishThread({place, status: "ready", messages: msgs, drawings: msgs.filter((m) => m.kind === "drawing" && m.media), count: msgs.length, error: null, at: new Date().toISOString()});
@@ -394,18 +430,6 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
         }
       }
       publishList();
-      // « Passés par là » : liste à part (absente d'un ancien serveur : ignorée).
-      try {
-        const d = device();
-        const tg = await call<{count?: number; tags?: TagRow[]; mine?: string | null}>(`/places/${encodeURIComponent(name)}/${encodeURIComponent(place)}/tags${k}`, slug, d ? {headers: {"X-Place-Device": d}} : {});
-        if (stopped || threadPlace !== place) return;
-        const origin = normalizeApiBase(loadApiBaseUrl());
-        const kk = linkToken ? `&k=${encodeURIComponent(linkToken)}` : "";
-        const tags = (Array.isArray(tg?.tags) ? tg.tags : []).map((t) => ({...t, avatar: typeof t.avatar === "string" && t.avatar.startsWith("/api/") ? `${origin}${t.avatar}${kk}` : null}));
-        publishThread({tags, tagCount: Number(tg?.count) || 0, tagMine: tg?.mine ?? null});
-      } catch {
-        /* passés par là indisponibles : la discussion reste */
-      }
     } catch (e) {
       if (threadPlace === place) publishThread({status: "error", error: message(e)});
     } finally {
@@ -431,6 +455,7 @@ function startOne(slug: string, linkToken: string | null, dpName: string, def: P
   const threadTimer = def.thread ? setInterval(() => void loadThread(true), 15000) : null;
   const timer = setInterval(() => void refresh(true), refreshMs);
   void refresh(true);
+  void syncMe();
   flush();
   return () => {
     stopped = true;
