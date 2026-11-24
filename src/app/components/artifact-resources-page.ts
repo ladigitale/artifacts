@@ -1,5 +1,9 @@
 import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/icon";
+import "@supersoniks/concorde/modal";
+import "@supersoniks/concorde/modal-title";
+import "@supersoniks/concorde/modal-content";
+import "./artifact-resource-preview";
 import {css, html, LitElement, nothing} from "lit";
 import {customElement, state} from "lit/decorators.js";
 import {repeat} from "lit/directives/repeat.js";
@@ -8,6 +12,7 @@ import {loadArtifactsAccount} from "../cloud/account";
 import {
   deleteResource,
   getResource,
+  getResourceBlob,
   getResourceContent,
   listResources,
   tadaaaLoginUrl,
@@ -43,17 +48,6 @@ function formatSize(n?: number): string {
 }
 
 const resourcesStyles = css`
-  .layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 26rem);
-    gap: var(--ui-4);
-    align-items: start;
-  }
-  @media (max-width: 62rem) {
-    .layout {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
   .filters {
     display: flex;
     flex-wrap: wrap;
@@ -98,7 +92,9 @@ const resourcesStyles = css`
     overflow: hidden;
   }
   .row {
-    display: block;
+    display: flex;
+    gap: var(--ui-3);
+    align-items: center;
     width: 100%;
     padding: var(--ui-3) var(--ui-4);
     border: 0;
@@ -109,9 +105,19 @@ const resourcesStyles = css`
     text-align: start;
     cursor: pointer;
   }
-  .row:hover,
-  .row[aria-current="true"] {
+  .row:hover {
     background: var(--ui-hover);
+  }
+  .row:focus-visible {
+    outline: 2px solid var(--sc-primary);
+    outline-offset: -2px;
+  }
+  li:last-child .row {
+    border-bottom: 0;
+  }
+  .row .text {
+    flex: 1;
+    min-width: 0;
   }
   .row .name {
     display: flex;
@@ -121,21 +127,31 @@ const resourcesStyles = css`
     font-weight: 600;
   }
   .row .meta {
+    display: block;
     margin-top: var(--ui-1);
     color: var(--ui-muted);
     font-size: var(--ui-fs-xs);
   }
   .row .desc {
+    display: block;
     margin-top: var(--ui-1);
     font-size: var(--ui-fs-sm);
   }
   .detail {
-    padding: var(--ui-4);
     display: grid;
-    gap: var(--ui-3);
+    gap: var(--ui-4);
+    min-width: 0;
   }
-  .detail h2 {
-    margin: 0;
+  .detail > * {
+    min-width: 0;
+  }
+  details summary {
+    cursor: pointer;
+    font-size: var(--ui-fs-sm);
+    font-weight: 600;
+  }
+  details pre {
+    margin-top: var(--ui-2);
   }
   .detail .actions {
     display: flex;
@@ -265,7 +281,8 @@ export class ArtifactResourcesPage extends LitElement {
   private async openResource(ref: string) {
     const seq = ++this.detailSeq;
     this.selectedRef = ref;
-    this.detail = null;
+    // La fiche de la liste suffit pour ouvrir tout de suite ; versions et contenu suivent.
+    this.detail = this.items.find((r) => r.ref === ref) ?? null;
     this.versions = [];
     this.content = undefined;
     this.notice = "";
@@ -274,12 +291,14 @@ export class ArtifactResourcesPage extends LitElement {
       if (seq !== this.detailSeq) return;
       this.detail = resource;
       this.versions = versions;
-      const text = await getResourceContent(ref).catch(() => null);
+      // Texte à copier / lire (shader, données) ; les binaires ne sont lus que par l’aperçu.
+      const text = resource.kind === "shader" || resource.kind === "data" ? await getResourceContent(ref).catch(() => null) : null;
       if (seq !== this.detailSeq) return;
       this.content = text;
     } catch (e) {
       if (seq !== this.detailSeq) return;
       this.error = explainFetchError(e, loadApiBaseUrl());
+      if (!this.detail) this.selectedRef = ""; // lien vers une ressource disparue : rien à ouvrir
     }
   }
 
@@ -300,18 +319,36 @@ export class ArtifactResourcesPage extends LitElement {
 
   private async downloadContent(r: ResourceSummary) {
     try {
-      const text = await getResourceContent(r.ref, undefined, Number.MAX_SAFE_INTEGER);
-      if (text === null) {
-        this.notice = "Fichier binaire : téléchargement non pris en charge depuis cette page.";
-        return;
-      }
-      const ext = r.kind === "shader" ? "glsl" : r.kind === "data" ? "json" : "txt";
-      const url = URL.createObjectURL(new Blob([text], {type: "text/plain"}));
+      const blob = await getResourceBlob(r.ref);
+      const head = await blob.slice(0, 16).text();
+      const byType: Record<string, string> = {
+        "image/png": "png",
+        "image/jpeg": "jpg",
+        "image/webp": "webp",
+        "image/gif": "gif",
+        "image/avif": "avif",
+        "image/svg+xml": "svg",
+        "audio/ogg": "ogg",
+        "audio/mpeg": "mp3",
+        "audio/wav": "wav",
+        "audio/x-wav": "wav",
+        "audio/flac": "flac",
+        "model/gltf-binary": "glb",
+        "application/json": "json",
+      };
+      const ext =
+        r.kind === "shader"
+          ? "glsl"
+          : r.kind === "data"
+            ? "json"
+            : (byType[(r.contentType ?? "").split(";")[0].trim()] ??
+              (head.startsWith("glTF") ? "glb" : /^\s*</.test(head) ? "svg" : /^\s*[{[]/.test(head) ? "json" : "bin"));
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${r.slug}.${ext}`;
+      a.download = `${r.slug.replace(/\//g, "-")}.${ext}`;
       a.click();
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (e) {
       this.error = explainFetchError(e, loadApiBaseUrl());
     }
@@ -337,8 +374,7 @@ export class ArtifactResourcesPage extends LitElement {
     this.busy = true;
     try {
       await deleteResource(r.slug);
-      this.selectedRef = "";
-      this.detail = null;
+      this.closeDetail();
       await this.refresh();
     } catch (e) {
       this.error = explainFetchError(e, loadApiBaseUrl());
@@ -357,12 +393,9 @@ export class ArtifactResourcesPage extends LitElement {
   private renderRow(r: ResourceSummary) {
     return html`
       <li>
-        <button
-          type="button"
-          class="row"
-          aria-current=${r.ref === this.selectedRef ? "true" : "false"}
-          @click=${() => void this.openResource(r.ref)}
-        >
+        <button type="button" class="row" aria-haspopup="dialog" @click=${() => void this.openResource(r.ref)}>
+          <artifact-resource-thumb .resource=${r}></artifact-resource-thumb>
+          <span class="text">
           <span class="name">
             ${r.name}
             <span class="pill">${kindLabel(r.kind)}</span>
@@ -371,102 +404,110 @@ export class ArtifactResourcesPage extends LitElement {
               ? html`<span class="pill" data-tone="warning">Mise à jour disponible</span>`
               : nothing}
           </span>
-          ${r.description ? html`<div class="desc">${r.description}</div>` : nothing}
-          <div class="meta">
+          ${r.description ? html`<span class="desc">${r.description}</span>` : nothing}
+          <span class="meta">
             v${r.version} · ${formatSize(r.sizeBytes)}${r.updatedAt ? html` · ${relativeTime(r.updatedAt)}` : nothing}
-          </div>
+          </span>
+          </span>
         </button>
       </li>
     `;
   }
 
+  private closeDetail() {
+    this.detailSeq++;
+    this.selectedRef = "";
+    this.detail = null;
+    this.versions = [];
+    this.content = undefined;
+    this.notice = "";
+  }
+
+  /** Fiche d’une ressource : aperçu en grand, actions, puis le détail. Toujours montée, ouverte par `selectedRef`. */
   private renderDetail() {
-    if (!this.selectedRef) {
-      return html`<div class="panel empty"><p>Sélectionnez une ressource pour la voir, la reprendre dans l’atelier ou la télécharger.</p></div>`;
-    }
     const r = this.detail;
-    if (!r) return html`<div class="panel empty"><p>Chargement…</p></div>`;
-    const params = Array.isArray(r.params) ? (r.params as Record<string, unknown>[]) : [];
     return html`
-      <div class="panel detail">
-        <div>
-          <h2>${r.name}</h2>
-          <div class="tags">
-            <span class="pill">${kindLabel(r.kind)}</span>
-            ${r.source === "base" ? html`<span class="pill">Base</span>` : nothing}
-            ${(r.tags ?? []).map((t) => html`<span class="pill">${t}</span>`)}
-          </div>
-        </div>
-        ${r.description ? html`<p>${r.description}</p>` : nothing}
-        ${r.updateAvailable && r.base
-          ? html`<div class="notice" data-tone="warning">
-              La base propose la v${r.base.latest} (votre copie : v${r.base.version}).
-            </div>`
+      <sonic-modal
+        maxWidth="min(100vw, 54rem)"
+        .visible=${!!this.selectedRef}
+        @hidden=${() => this.closeDetail()}
+      >
+        ${r
+          ? html`
+              <sonic-modal-title>${r.name}</sonic-modal-title>
+              <sonic-modal-content>
+                <div class="detail">
+                  <artifact-resource-preview .resource=${r}></artifact-resource-preview>
+                  ${r.description ? html`<p>${r.description}</p>` : nothing}
+                  <div class="tags">
+                    <span class="pill">${kindLabel(r.kind)}</span>
+                    ${r.source === "base" ? html`<span class="pill">Base</span>` : nothing}
+                    ${(r.tags ?? []).map((t) => html`<span class="pill">${t}</span>`)}
+                  </div>
+                  ${r.updateAvailable && r.base
+                    ? html`<div class="notice" data-tone="warning">
+                        La base propose la v${r.base.latest} (votre copie : v${r.base.version}).
+                      </div>`
+                    : nothing}
+                  ${this.notice ? html`<div class="notice">${this.notice}</div>` : nothing}
+                  <div class="actions">
+                    <sonic-button type="primary" size="sm" @click=${() => this.reprompt(r)}>
+                      <sonic-icon slot="prefix" library="custom" name="chat-bubble" size="sm"></sonic-icon>
+                      Reprompter
+                    </sonic-button>
+                    ${r.updateAvailable && r.base
+                      ? html`<sonic-button size="sm" ?disabled=${this.busy} @click=${() => void this.updateFromBase(r)}>
+                          <sonic-icon slot="prefix" library="custom" name="refresh" size="sm"></sonic-icon>
+                          Mettre à jour depuis la base
+                        </sonic-button>`
+                      : nothing}
+                    ${this.content
+                      ? html`<sonic-button size="sm" variant="outline" @click=${() => void this.copyContent()}>
+                          <sonic-icon slot="prefix" library="custom" name=${this.copied ? "check" : "copy"} size="sm"></sonic-icon>
+                          ${this.copied ? "Copié" : "Copier"}
+                        </sonic-button>`
+                      : nothing}
+                    <sonic-button size="sm" variant="outline" @click=${() => void this.downloadContent(r)}>
+                      Télécharger
+                    </sonic-button>
+                    ${r.source === "mine"
+                      ? html`<sonic-button size="sm" variant="ghost" ?disabled=${this.busy} @click=${() => void this.deleteResourceItem(r)}>
+                          <sonic-icon slot="prefix" library="custom" name="trash" size="sm"></sonic-icon>
+                          Supprimer
+                        </sonic-button>`
+                      : nothing}
+                  </div>
+                  <dl>
+                    <dt>Référence</dt>
+                    <dd><code>${r.ref}</code></dd>
+                    <dt>Version</dt>
+                    <dd>v${r.version}${r.base ? html` (base : <code>${r.base.ref}</code>)` : nothing}</dd>
+                    ${r.license ? html`<dt>Licence</dt><dd>${r.license}</dd>` : nothing}
+                    <dt>Taille</dt>
+                    <dd>${formatSize(r.sizeBytes)}</dd>
+                    ${this.versions.length > 1
+                      ? this.versions.map(
+                          (v) => html`<dt>v${v.version}</dt><dd>${relativeTime(v.createdAt)} · ${formatSize(v.sizeBytes)}</dd>`,
+                        )
+                      : nothing}
+                  </dl>
+                  ${r.prompt
+                    ? html`<details>
+                        <summary>Prompt d’origine</summary>
+                        <pre>${r.prompt}</pre>
+                      </details>`
+                    : nothing}
+                  ${r.kind === "shader" && this.content
+                    ? html`<details>
+                        <summary>Code source</summary>
+                        <pre>${this.content}</pre>
+                      </details>`
+                    : nothing}
+                </div>
+              </sonic-modal-content>
+            `
           : nothing}
-        ${this.notice ? html`<div class="notice">${this.notice}</div>` : nothing}
-        <div class="actions">
-          <sonic-button type="primary" size="sm" @click=${() => this.reprompt(r)}>
-            <sonic-icon slot="prefix" library="custom" name="chat-bubble" size="sm"></sonic-icon>
-            Reprompter
-          </sonic-button>
-          ${r.updateAvailable && r.base
-            ? html`<sonic-button size="sm" ?disabled=${this.busy} @click=${() => void this.updateFromBase(r)}>
-                <sonic-icon slot="prefix" library="custom" name="refresh" size="sm"></sonic-icon>
-                Mettre à jour depuis la base
-              </sonic-button>`
-            : nothing}
-          <sonic-button size="sm" variant="outline" ?disabled=${!this.content} @click=${() => void this.copyContent()}>
-            <sonic-icon slot="prefix" library="custom" name=${this.copied ? "check" : "copy"} size="sm"></sonic-icon>
-            ${this.copied ? "Copié" : "Copier"}
-          </sonic-button>
-          <sonic-button size="sm" variant="outline" @click=${() => void this.downloadContent(r)}>
-            Télécharger
-          </sonic-button>
-          ${r.source === "mine"
-            ? html`<sonic-button size="sm" variant="ghost" ?disabled=${this.busy} @click=${() => void this.deleteResourceItem(r)}>
-                <sonic-icon slot="prefix" library="custom" name="trash" size="sm"></sonic-icon>
-                Supprimer
-              </sonic-button>`
-            : nothing}
-        </div>
-        <dl>
-          <dt>Référence</dt>
-          <dd><code>${r.ref}</code></dd>
-          <dt>Version</dt>
-          <dd>v${r.version}${r.base ? html` (base : <code>${r.base.ref}</code>)` : nothing}</dd>
-          ${r.license ? html`<dt>Licence</dt><dd>${r.license}</dd>` : nothing}
-          <dt>Taille</dt>
-          <dd>${formatSize(r.sizeBytes)}</dd>
-        </dl>
-        ${r.prompt
-          ? html`<h3>Prompt d’origine</h3>
-              <pre>${r.prompt}</pre>`
-          : nothing}
-        ${params.length
-          ? html`<h3>Paramètres</h3>
-              <dl>
-                ${params.map(
-                  (p) =>
-                    html`<dt>${String(p.uParam ?? p.id ?? "")}</dt>
-                      <dd>${String(p.label ?? "")}${p.min !== undefined ? html` [${String(p.min)} – ${String(p.max)}]` : nothing}</dd>`,
-                )}
-              </dl>`
-          : nothing}
-        ${this.versions.length > 1
-          ? html`<h3>Versions</h3>
-              <dl>
-                ${this.versions.map(
-                  (v) => html`<dt>v${v.version}</dt><dd>${relativeTime(v.createdAt)} · ${formatSize(v.sizeBytes)}</dd>`,
-                )}
-              </dl>`
-          : nothing}
-        <h3>Contenu</h3>
-        ${this.content === undefined
-          ? html`<p class="sub">Chargement…</p>`
-          : this.content === null
-            ? html`<p class="sub">Aperçu indisponible pour ce type de fichier.</p>`
-            : html`<pre>${this.content}</pre>`}
-      </div>
+      </sonic-modal>
     `;
   }
 
@@ -561,18 +602,16 @@ export class ArtifactResourcesPage extends LitElement {
             </div>`
           : nothing}
 
-        <div class="layout">
-          <div class="panel list">
-            ${this.items.length
-              ? html`<ul class="list">
-                  ${repeat(this.items, (r) => r.ref, (r) => this.renderRow(r))}
-                </ul>`
-              : html`<div class="empty">
-                  <p>${this.loading ? "Chargement…" : "Aucune ressource ne correspond."}</p>
-                </div>`}
-          </div>
-          ${this.renderDetail()}
+        <div class="panel list">
+          ${this.items.length
+            ? html`<ul class="list">
+                ${repeat(this.items, (r) => r.ref, (r) => this.renderRow(r))}
+              </ul>`
+            : html`<div class="empty">
+                <p>${this.loading ? "Chargement…" : "Aucune ressource ne correspond."}</p>
+              </div>`}
         </div>
+        ${this.renderDetail()}
       </div>
     `;
   }
