@@ -93,6 +93,38 @@ async function apiFetch<T>(
   return (await res.json()) as T;
 }
 
+/** Dossier de modération (super admin) : un contenu signalé dans un artefact. */
+export type ModerationItem = {
+  id: string;
+  kind: "place" | "message" | "visitor" | "route";
+  status: "open" | "kept" | "hidden" | "deleted";
+  reports: number;
+  firstReportedAt: string;
+  lastReportedAt: string;
+  decidedAt: string | null;
+  decidedBy: string | null;
+  artifact: {slug: string; title: string};
+  content: null | {label: string; hidden: boolean; deleted: boolean; text: string | null; pseudo: string | null; image: string | null; audio: string | null; at: string | null};
+};
+
+export async function listModeration(status: string): Promise<{items: ModerationItem[]; open: number}> {
+  return apiFetch(`/admin/moderation${status ? `?status=${encodeURIComponent(status)}` : ""}`);
+}
+
+export async function decideModeration(id: string, action: "keep" | "hide" | "delete"): Promise<ModerationItem> {
+  return apiFetch(`/admin/moderation/${encodeURIComponent(id)}`, {method: "POST", body: JSON.stringify({action})});
+}
+
+/** Compte super admin ? (lu sur /auth/me : une session ouverte avant l'ajout du champ ne le porte pas). */
+export async function isSuperAdmin(): Promise<boolean> {
+  try {
+    const me = await apiFetch<{superAdmin?: boolean}>("/auth/me");
+    return me?.superAdmin === true;
+  } catch {
+    return false;
+  }
+}
+
 export async function exchangeHandoff(
   apiBaseUrl: string,
   code: string,
