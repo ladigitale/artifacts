@@ -3,6 +3,7 @@ import "@supersoniks/concorde/pop";
 import {css, html, LitElement, nothing} from "lit";
 import {customElement, state} from "lit/decorators.js";
 import {clearArtifactsAccount, loadArtifactsAccount} from "../cloud/account";
+import {isSuperAdmin} from "../cloud/client";
 import {navigate} from "../navigate";
 import {hidePop, uiStyles} from "../styles/ui";
 import "./artifact-logo";
@@ -15,6 +16,7 @@ function sectionOf(path: string): NavId | null {
   if (path.startsWith("/cloud")) return "account";
   if (path === "/admin/atelier" || /^\/admin\/[^/]+\/atelier\/?$/.test(path)) return "atelier";
   if (path === "/admin/ressources") return "resources";
+  if (path === "/admin/moderation") return null;
   if (path === "/admin" || path.startsWith("/admin/")) return "library";
   return null;
 }
@@ -277,10 +279,13 @@ export class ArtifactShell extends LitElement {
   ];
 
   @state() private path = location.pathname;
+  /** Lien « Modération » : compte super admin seulement (vérifié auprès de Tadaaa). */
+  @state() private superAdmin = false;
 
   connectedCallback() {
     super.connectedCallback();
     window.addEventListener("popstate", this.sync);
+    if (loadArtifactsAccount()) void isSuperAdmin().then((v) => (this.superAdmin = v));
   }
 
   disconnectedCallback() {
@@ -339,6 +344,19 @@ export class ArtifactShell extends LitElement {
             <small>Connecté avec Tadaaa</small>
             <strong>${email}</strong>
           </div>
+          ${this.superAdmin
+            ? html`<a
+                class="menu-item"
+                href="/admin/moderation"
+                @click=${(e: Event) => {
+                  hidePop(e);
+                  this.go("/admin/moderation", e);
+                }}
+              >
+                <sonic-icon library="custom" name="warning-triangle" size="sm"></sonic-icon>
+                Modération
+              </a>`
+            : nothing}
           <a
             class="menu-item"
             href="/cloud"
