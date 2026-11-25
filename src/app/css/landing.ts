@@ -712,6 +712,12 @@ export const landingStyles = css`
       grid-column: span 3;
     }
   }
+  @media (min-width: 640px) and (max-width: 959.98px) {
+    /* Nombre impair de cartes sur deux colonnes : la dernière prend toute la largeur. */
+    .showcase li:last-child:nth-child(odd) {
+      grid-column: span 6;
+    }
+  }
   @media (min-width: 960px) {
     .hero {
       grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
