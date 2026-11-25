@@ -1,6 +1,15 @@
+import {fetchPublicCollection} from "./cloud/client";
+import {loadApiBaseUrl, normalizeApiBase} from "./cloud/api-base";
+
 /**
  * Artefacts mis en avant sur l'accueil. Chacun doit être en visibilité « public » :
  * un artefact « par lien » ou privé n'est pas lisible par un visiteur.
+ *
+ * La sélection se règle dans `/admin/vitrine` (super admin) : elle est rangée dans la collection
+ * `vitrine` de l'artefact public `accueil-vitrine` (un seul enregistrement `{items, une}`), lisible
+ * sans compte. `FEATURED` sert de sélection par défaut (collection vide ou injoignable) et de
+ * bibliothèque d'illustrations : un artefact connu garde son motif dessiné, les autres reçoivent
+ * leur icône sur une palette tirée de leur slug.
  *
  * `colors` reprend la palette de l'artefact lui-même (fond, encre, accent) : ce sont des
  * couleurs de contenu, pas des couleurs d'interface, d'où les valeurs en dur.
@@ -16,7 +25,9 @@ export type FeaturedMotif =
   | "chart"
   | "voice"
   | "pumpkin"
-  | "brush";
+  | "brush"
+  /** Pas d'illustration dessinée : l'icône de l'artefact (`icon.svg` de l'API) sur sa palette. */
+  | "icon";
 
 export type FeaturedArtifact = {
   slug: string;
@@ -117,3 +128,88 @@ export const FEATURED: FeaturedArtifact[] = [
     colors: {bg: "#ff5d73", ink: "#2b0a1a", accent: "#ffe14d"},
   },
 ];
+
+/** Artefact public qui porte la sélection de l'accueil, et sa collection. */
+export const SHOWCASE_SLUG = "accueil-vitrine";
+export const SHOWCASE_COLLECTION = "vitrine";
+/** Au-delà, la vitrine devient un catalogue : l'admin ne peut pas en choisir plus. */
+export const SHOWCASE_MAX = 18;
+
+/** Ce que l'admin règle pour une carte ; le reste (motif, couleurs) vient de `coverOf`. */
+export type ShowcaseEntry = {slug: string; title: string; kind: string; blurb: string};
+export type Showcase = {items: ShowcaseEntry[]; une: string | null};
+
+const SLUG_RE = /^[a-z0-9][a-z0-9-]{2,63}$/;
+const clip = (v: unknown, max: number): string => (typeof v === "string" ? v.trim().slice(0, max) : "");
+
+/** Relit un enregistrement venu de l'API : rien d'inattendu ne passe (slug au bon format, textes bornés). */
+export function parseShowcase(raw: unknown): Showcase | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as {items?: unknown; une?: unknown};
+  if (!Array.isArray(r.items)) return null;
+  const seen = new Set<string>();
+  const items: ShowcaseEntry[] = [];
+  for (const it of r.items) {
+    if (!it || typeof it !== "object") continue;
+    const e = it as Record<string, unknown>;
+    const slug = clip(e.slug, 64);
+    if (!SLUG_RE.test(slug) || seen.has(slug)) continue;
+    seen.add(slug);
+    items.push({slug, title: clip(e.title, 60) || slug, kind: clip(e.kind, 24), blurb: clip(e.blurb, 160)});
+    if (items.length >= SHOWCASE_MAX) break;
+  }
+  const une = typeof r.une === "string" && seen.has(r.une) ? r.une : null;
+  return {items, une};
+}
+
+const KNOWN = new Map(FEATURED.map((f) => [f.slug, f]));
+const PALETTES = FEATURED.map((f) => f.colors);
+
+function hash(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+
+/** Illustration d'une carte : motif dessiné s'il est connu, sinon l'icône sur une palette stable. */
+export function coverOf(slug: string): {motif: FeaturedMotif; colors: FeaturedArtifact["colors"]} {
+  const known = KNOWN.get(slug);
+  if (known) return {motif: known.motif, colors: known.colors};
+  return {motif: "icon", colors: PALETTES[hash(slug) % PALETTES.length]};
+}
+
+export function toFeatured(e: ShowcaseEntry): FeaturedArtifact {
+  return {...e, ...coverOf(e.slug)};
+}
+
+export function iconUrl(slug: string): string {
+  return `${normalizeApiBase(loadApiBaseUrl())}/api/public/artifacts/${encodeURIComponent(slug)}/icon.svg`;
+}
+
+/** Sélection par défaut : la liste écrite ici, sans carte à la une. */
+export const DEFAULT_SHOWCASE: Showcase = {
+  items: FEATURED.map(({slug, title, kind, blurb}) => ({slug, title, kind, blurb})),
+  une: null,
+};
+
+/** Enregistrement de la collection (id compris, pour le réécrire). */
+export type ShowcaseRecord = {id: string; showcase: Showcase};
+
+export function pickShowcaseRecord(records: unknown[]): ShowcaseRecord | null {
+  for (const r of records) {
+    const rec = r as {id?: unknown; data?: unknown};
+    const showcase = parseShowcase(rec?.data);
+    if (typeof rec?.id === "string" && showcase) return {id: rec.id, showcase};
+  }
+  return null;
+}
+
+/** Sélection publiée (lecture publique) ; `null` si la collection est vide ou injoignable. */
+export async function loadShowcase(): Promise<Showcase | null> {
+  try {
+    const rec = pickShowcaseRecord(await fetchPublicCollection(SHOWCASE_SLUG, SHOWCASE_COLLECTION));
+    return rec && rec.showcase.items.length ? rec.showcase : null;
+  } catch {
+    return null;
+  }
+}

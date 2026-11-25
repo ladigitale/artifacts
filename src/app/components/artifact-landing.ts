@@ -7,7 +7,7 @@ import {artStyles, ensureArtFonts} from "../css/art";
 import {landingStyles} from "../css/landing";
 import {loadArtifactsAccount} from "../cloud/account";
 import {cloudReturnUrl, tadaaaLoginUrl} from "../cloud/client";
-import {FEATURED, type FeaturedArtifact} from "../featured";
+import {DEFAULT_SHOWCASE, iconUrl, loadShowcase, toFeatured, type FeaturedArtifact, type Showcase} from "../featured";
 import {LANDING_HERO_DOC} from "../landing-hero";
 import {LANDING_AQUARIUM_DOC} from "../landing-aquarium";
 import {navigate} from "../navigate";
@@ -42,6 +42,8 @@ export class ArtifactLanding extends LitElement {
   /** Astérisques trouvés (chasse discrète : cinq sont cachés dans la page). */
   @state() private found = new Set<number>();
   @state() private party = false;
+  /** Sélection de la vitrine : celle par défaut, remplacée par celle publiée dès qu'elle est lue. */
+  @state() private showcase: Showcase = DEFAULT_SHOWCASE;
 
   private typed = "";
   private partyTimer: ReturnType<typeof setTimeout> | undefined;
@@ -51,6 +53,23 @@ export class ArtifactLanding extends LitElement {
     this.authed = !!loadArtifactsAccount();
     ensureArtFonts();
     window.addEventListener("keydown", this.onKey);
+    void loadShowcase().then((sc) => {
+      if (sc && this.isConnected) this.showcase = sc;
+    });
+  }
+
+  protected updated(changed: Map<PropertyKey, unknown>): void {
+    // Cartes arrivées après le premier rendu (sélection publiée) : suivies pour leur apparition.
+    if (changed.has("showcase") && this.io) {
+      this.renderRoot.querySelectorAll(".showcase li.rv:not(.in)").forEach((el) => this.io!.observe(el));
+    }
+  }
+
+  /** Cartes dans l'ordre d'affichage : la carte à la une d'abord. */
+  private cards(): {f: FeaturedArtifact; une: boolean}[] {
+    const {items, une} = this.showcase;
+    const top = une ? items.filter((e) => e.slug === une) : [];
+    return [...top, ...items.filter((e) => e.slug !== une)].map((e) => ({f: toFeatured(e), une: e.slug === une}));
   }
 
   private io: IntersectionObserver | null = null;
@@ -166,7 +185,7 @@ export class ArtifactLanding extends LitElement {
   }
 
   /** Illustration de carte, dessinée dans la palette de l'artefact (pas une capture d'écran). */
-  private cover(f: FeaturedArtifact): SVGTemplateResult {
+  private cover(f: FeaturedArtifact, une = false): SVGTemplateResult {
     const {ink, accent} = f.colors;
     const body = (() => {
       switch (f.motif) {
@@ -259,9 +278,13 @@ export class ArtifactLanding extends LitElement {
             <path d="M20 40 C60 30 80 60 120 30" fill="none" stroke="#2b4cc0" stroke-width="10" stroke-linecap="round" opacity="0.55" />
             <path d="M60 126 C100 104 140 130 186 100" fill="none" stroke=${ink} stroke-width="3" stroke-linecap="round" stroke-dasharray="1 6" />
             <path d="M160 82 l4 9 10 1 -8 6 3 10 -9 -6 -9 6 3 -10 -8 -6 10 -1Z" fill=${ink} />`;
+        case "icon":
+          return svg`${[96, 74, 52].map(
+            (r, i) => svg`<circle cx="100" cy="70" r=${r} fill=${i === 2 ? accent : "none"} stroke=${ink} stroke-width="2" opacity=${i === 2 ? 1 : 0.3 + i * 0.2} />`,
+          )}<image href=${iconUrl(f.slug)} x="64" y="34" width="72" height="72" />`;
       }
     })();
-    return svg`<svg class="cover" viewBox="0 0 200 140" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${body}</svg>`;
+    return svg`<svg class="cover" viewBox="0 0 200 140" preserveAspectRatio=${une ? "xMaxYMid meet" : "xMidYMid slice"} aria-hidden="true">${body}</svg>`;
   }
 
   protected render() {
@@ -368,26 +391,35 @@ export class ArtifactLanding extends LitElement {
               <span class="wd" style="--i:3">${this.star(2)}</span>
             </h2>
             <p class="showcase-lede rv">Tous ont été décrits à un assistant, puis publiés ici. Aucun compte requis.</p>
-            <ul>
-              ${FEATURED.map(
-                (f, i) => html`
-                  <li class="rv" style=${`--i:${i < 2 ? i : (i - 2) % 3}`}>
-                    <a
-                      href=${`/${f.slug}`}
-                      data-featured=${f.slug}
-                      style=${`--card-bg:${f.colors.bg};--card-ink:${f.colors.ink};--card-accent:${f.colors.accent}`}
-                    >
-                      ${this.cover(f)}
-                      <span class="num" aria-hidden="true">${String(i + 1).padStart(2, "0")}</span>
-                      <span class="kind">${f.kind}</span>
-                      <strong>${f.title}</strong>
-                      <span class="blurb">${f.blurb}</span>
-                      <span class="go" aria-hidden="true">Ouvrir →</span>
-                    </a>
-                    ${i === 4 ? html`<span class="star-spot">${this.star(3)}</span>` : nothing}
-                  </li>
-                `,
-              )}
+            <ul class=${this.showcase.une ? "has-une" : ""}>
+              ${(() => {
+                const cards = this.cards();
+                // L'astérisque n° 4 se pose sur la cinquième carte, ou la dernière s'il y en a moins.
+                const starAt = Math.min(4, cards.length - 1);
+                const lead = cards[0]?.une ? 3 : 2;
+                return cards.map(
+                  ({f, une}, i) => html`
+                    <li class=${une ? "rv une" : "rv"} style=${`--i:${i < lead ? i : (i - lead) % 3}`}>
+                      <a
+                        href=${`/${f.slug}`}
+                        data-featured=${f.slug}
+                        ?data-une=${une}
+                        style=${`--card-bg:${f.colors.bg};--card-ink:${f.colors.ink};--card-accent:${f.colors.accent}`}
+                      >
+                        ${this.cover(f, une)}
+                        ${une
+                          ? html`<span class="une-badge">À la une</span>`
+                          : html`<span class="num" aria-hidden="true">${String(i + (cards[0]?.une ? 0 : 1)).padStart(2, "0")}</span>`}
+                        <span class="kind">${f.kind}</span>
+                        <strong>${f.title}</strong>
+                        <span class="blurb">${f.blurb}</span>
+                        <span class="go" aria-hidden="true">Ouvrir →</span>
+                      </a>
+                      ${i === starAt ? html`<span class="star-spot">${this.star(3)}</span>` : nothing}
+                    </li>
+                  `,
+                );
+              })()}
             </ul>
           </section>
 

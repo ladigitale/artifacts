@@ -549,3 +549,25 @@ export async function restoreVersion(idOrSlug: string, n: number): Promise<unkno
     body: "{}",
   });
 }
+
+/** Enregistrements d'une collection, lus en tant que membre du jeu de données. */
+export async function listRecords(artifactId: string, collection: string): Promise<{id: string; data: unknown}[]> {
+  const data = await apiFetch<{member?: {id: string; data: unknown}[]}>(
+    `/artifacts/${encodeURIComponent(artifactId)}/collections/${encodeURIComponent(collection)}/records`,
+  );
+  return data.member ?? [];
+}
+
+export async function createRecord(artifactId: string, collection: string, data: unknown): Promise<{id: string}> {
+  return apiFetch(`/artifacts/${encodeURIComponent(artifactId)}/collections/${encodeURIComponent(collection)}/records`, {
+    method: "POST",
+    body: JSON.stringify({data}),
+  });
+}
+
+export async function updateRecord(artifactId: string, collection: string, recordId: string, data: unknown): Promise<unknown> {
+  return apiFetch(
+    `/artifacts/${encodeURIComponent(artifactId)}/collections/${encodeURIComponent(collection)}/records/${encodeURIComponent(recordId)}`,
+    {method: "PATCH", body: JSON.stringify({data})},
+  );
+}

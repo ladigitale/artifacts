@@ -10,6 +10,7 @@ import admin_slugVersionsPage from "./admin/[slug]/versions/page";
 import adminAtelierPage from "./admin/atelier/page";
 import adminModerationPage from "./admin/moderation/page";
 import adminRessourcesPage from "./admin/ressources/page";
+import adminVitrinePage from "./admin/vitrine/page";
 import adminPage from "./admin/page";
 import cloudLayout from "./cloud/layout";
 import cloudPage from "./cloud/page";
@@ -47,11 +48,16 @@ const adminRessourcesDefaultLayoutRoutes = {
     "/admin/ressources$": adminRessourcesPage
 }        
 
+const adminVitrineDefaultLayoutRoutes = {
+    "/admin/vitrine$": adminVitrinePage
+}        
+
 const adminLayoutRoutes = {
     "/admin/:slug(/*)": () => html`<sonic-router .basePath=${basePath} .routes=${admin_slugDefaultLayoutRoutes}></sonic-router>`,
     "/admin/atelier\\b": () => html`<sonic-router .basePath=${basePath} .routes=${adminAtelierDefaultLayoutRoutes}></sonic-router>`,
     "/admin/moderation\\b": () => html`<sonic-router .basePath=${basePath} .routes=${adminModerationDefaultLayoutRoutes}></sonic-router>`,
     "/admin/ressources\\b": () => html`<sonic-router .basePath=${basePath} .routes=${adminRessourcesDefaultLayoutRoutes}></sonic-router>`,
+    "/admin/vitrine\\b": () => html`<sonic-router .basePath=${basePath} .routes=${adminVitrineDefaultLayoutRoutes}></sonic-router>`,
     "/admin$": adminPage
 }        
 
