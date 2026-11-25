@@ -199,6 +199,24 @@ await wait(page, 1500);
 cards = await all(page, "a[data-featured]");
 check("accueil : montre la vitrine publiée", cards.map((c) => c.slug).join(",") === "ma-chambre,pumpkin-run" && cards[0].une, cards.map((c) => c.slug).join(","));
 
+// ── Bibliothèque : la recherche filtre (le champ écrit `q` seul dans le DataProvider) ──
+await admin.goto(`${origin}/admin`);
+await wait(admin, 1800);
+const rows = async () => (await all(admin, "sonic-button.open")).length;
+const before = await rows();
+await admin.locator('sonic-input input[name="q"]').fill("pumpkin");
+await wait(admin, 500);
+check("bibliothèque : la recherche filtre la liste", before === 5 && (await rows()) === 1, `${before} → ${await rows()}`);
+
+// ── Édition : modifier un champ active « Enregistrer » ──
+await admin.goto(`${origin}/admin/billard-3d/edit`);
+await wait(admin, 1800);
+const saveOff = async () => (await all(admin, "artifact-edit-page sonic-button[type=primary], sonic-button[type=primary][loading], .form-actions sonic-button[type=primary]"))[0]?.disabled;
+check("édition : rien à enregistrer à l'ouverture", (await saveOff()) === true);
+await admin.locator('sonic-input input[name="title"]').fill("Billard !");
+await wait(admin, 400);
+check("édition : un champ modifié active Enregistrer", (await saveOff()) === false);
+
 check("aucune erreur de page", errors.length === 0, errors.join(" | "));
 await browser.close();
 server.close();
