@@ -7,7 +7,7 @@ import {artStyles, ensureArtFonts} from "../css/art";
 import {landingStyles} from "../css/landing";
 import {loadArtifactsAccount} from "../cloud/account";
 import {cloudReturnUrl, tadaaaLoginUrl} from "../cloud/client";
-import {FEATURED, type FeaturedArtifact} from "../featured";
+import {DEFAULT_SHOWCASE, iconUrl, loadShowcase, toFeatured, type FeaturedArtifact, type Showcase} from "../featured";
 import {LANDING_HERO_DOC} from "../landing-hero";
 import {LANDING_AQUARIUM_DOC} from "../landing-aquarium";
 import {navigate} from "../navigate";
@@ -42,6 +42,8 @@ export class ArtifactLanding extends LitElement {
   /** Astérisques trouvés (chasse discrète : cinq sont cachés dans la page). */
   @state() private found = new Set<number>();
   @state() private party = false;
+  /** Sélection de la vitrine : celle par défaut, remplacée par celle publiée dès qu'elle est lue. */
+  @state() private showcase: Showcase = DEFAULT_SHOWCASE;
 
   private typed = "";
   private partyTimer: ReturnType<typeof setTimeout> | undefined;
@@ -51,6 +53,23 @@ export class ArtifactLanding extends LitElement {
     this.authed = !!loadArtifactsAccount();
     ensureArtFonts();
     window.addEventListener("keydown", this.onKey);
+    void loadShowcase().then((sc) => {
+      if (sc && this.isConnected) this.showcase = sc;
+    });
+  }
+
+  protected updated(changed: Map<PropertyKey, unknown>): void {
+    // Cartes arrivées après le premier rendu (sélection publiée) : suivies pour leur apparition.
+    if (changed.has("showcase") && this.io) {
+      this.renderRoot.querySelectorAll(".showcase li.rv:not(.in)").forEach((el) => this.io!.observe(el));
+    }
+  }
+
+  /** Cartes dans l'ordre d'affichage : la carte à la une d'abord. */
+  private cards(): {f: FeaturedArtifact; une: boolean}[] {
+    const {items, une} = this.showcase;
+    const top = une ? items.filter((e) => e.slug === une) : [];
+    return [...top, ...items.filter((e) => e.slug !== une)].map((e) => ({f: toFeatured(e), une: e.slug === une}));
   }
 
   private io: IntersectionObserver | null = null;
@@ -166,7 +185,7 @@ export class ArtifactLanding extends LitElement {
   }
 
   /** Illustration de carte, dessinée dans la palette de l'artefact (pas une capture d'écran). */
-  private cover(f: FeaturedArtifact): SVGTemplateResult {
+  private cover(f: FeaturedArtifact, une = false): SVGTemplateResult {
     const {ink, accent} = f.colors;
     const body = (() => {
       switch (f.motif) {
@@ -201,9 +220,71 @@ export class ArtifactLanding extends LitElement {
           return svg`${[0, 1, 2].map(
             (i) => svg`<path d=${`M-10 ${50 + i * 22} C 30 ${10 + i * 22}, 50 ${90 + i * 22}, 90 ${50 + i * 22} S 150 ${10 + i * 22}, 210 ${50 + i * 22}`} fill="none" stroke=${i === 1 ? accent : ink} stroke-width=${i === 1 ? 9 : 4} stroke-linecap="round" opacity=${i === 1 ? 1 : 0.7} />`,
           )}`;
+        case "village":
+          return svg`<path d="M100 30 190 74 100 118 10 74Z" fill=${ink} opacity="0.08" />
+            ${(
+              [
+                [70, 62, accent],
+                [118, 50, ink],
+                [130, 82, accent],
+              ] as const
+            ).map(
+              ([x, y, c]) => svg`<path d=${`M${x} ${y} l16 -8 16 8 v18 l-16 8 -16 -8Z`} fill=${c} opacity="0.9" />
+                <path d=${`M${x - 3} ${y} l19 -22 19 22 -19 -8Z`} fill=${ink} />`,
+            )}
+            ${[
+              [44, 74],
+              [160, 70],
+              [98, 98],
+              [150, 98],
+              [92, 40],
+            ].map(([x, y]) => svg`<circle cx=${x} cy=${y} r="8" fill="#3f7a4a" /><rect x=${x - 1.5} y=${y + 6} width="3" height="7" fill=${ink} />`)}`;
+        case "pool": {
+          const colors = ["#f2c14e", "#2b4cc0", "#d62839", "#6a2c91", "#ff8a3d", "#2e9e4f", "#7a2e1c", "#111", "#f2c14e", "#2b4cc0", "#d62839", "#6a2c91", "#ff8a3d", "#2e9e4f", "#7a2e1c"];
+          let k = 0;
+          const balls = [0, 1, 2, 3, 4].flatMap((row) =>
+            Array.from({length: row + 1}, (_, j) => svg`<circle cx=${120 + row * 11} cy=${70 - row * 6.5 + j * 13} r="6" fill=${colors[k++]} />`),
+          );
+          return svg`<rect x="14" y="14" width="172" height="112" rx="10" fill=${accent} />
+            <line x1="40" y1="70" x2="112" y2="70" stroke=${ink} stroke-width="1.5" stroke-dasharray="3 4" opacity="0.8" />
+            <line x1="4" y1="78" x2="30" y2="71" stroke=${ink} stroke-width="4" stroke-linecap="round" />
+            <circle cx="38" cy="70" r="6" fill=${ink} />${balls}`;
+        }
+        case "chart":
+          return svg`${[30, 52, 44, 76, 96, 70, 58].map(
+            (h, i) => svg`<rect x=${30 + i * 22} y=${118 - h} width="14" height=${h} rx="3" fill=${i === 4 ? accent : ink} opacity=${i === 4 ? 1 : 0.85} />`,
+          )}<path d="M24 92 C60 70 80 88 110 44 S160 40 186 22" fill="none" stroke="#ffc83d" stroke-width="5" stroke-linecap="round" />`;
+        case "voice":
+          return svg`<rect x="40" y="16" width="120" height="84" rx="10" fill="none" stroke=${ink} stroke-width="3" />
+            ${Array.from({length: 13}, (_, i) => {
+              const h = 6 + Math.abs(Math.sin(i * 1.3)) * 46 * (1 - Math.abs(i - 6) / 8);
+              return svg`<rect x=${52 + i * 8} y=${58 - h / 2} width="4" height=${h} rx="2" fill=${accent} />`;
+            })}
+            <circle cx="100" cy="122" r="7" fill=${accent} /><circle cx="100" cy="122" r="13" fill="none" stroke=${accent} stroke-width="2" opacity="0.5" />`;
+        case "pumpkin":
+          return svg`<circle cx="150" cy="40" r="26" fill=${ink} opacity="0.9" />
+            ${[
+              [30, 22],
+              [118, 18],
+              [168, 26],
+            ].map(([x, h]) => svg`<path d=${`M${x} 128 v-${h} a10 10 0 0 1 20 0 v${h}Z`} fill=${ink} opacity="0.35" />`)}
+            <rect x="0" y="126" width="200" height="14" fill=${ink} opacity="0.2" />
+            <ellipse cx="82" cy="98" rx="22" ry="18" fill=${accent} />
+            <path d="M74 82 v16 M90 82 v16" stroke="#00000033" stroke-width="2" />
+            <rect x="79" y="74" width="5" height="9" rx="2" fill="#2e9e4f" />
+            <path d="M70 94 l5 -5 5 5Z M86 94 l5 -5 5 5Z M72 104 q10 7 20 0" fill="#1d1238" stroke="#1d1238" stroke-width="1.5" />`;
+        case "brush":
+          return svg`<path d="M10 104 C50 40 90 120 140 56 S184 30 196 42" fill="none" stroke=${accent} stroke-width="16" stroke-linecap="round" opacity="0.9" />
+            <path d="M20 40 C60 30 80 60 120 30" fill="none" stroke="#2b4cc0" stroke-width="10" stroke-linecap="round" opacity="0.55" />
+            <path d="M60 126 C100 104 140 130 186 100" fill="none" stroke=${ink} stroke-width="3" stroke-linecap="round" stroke-dasharray="1 6" />
+            <path d="M160 82 l4 9 10 1 -8 6 3 10 -9 -6 -9 6 3 -10 -8 -6 10 -1Z" fill=${ink} />`;
+        case "icon":
+          return svg`${[96, 74, 52].map(
+            (r, i) => svg`<circle cx="100" cy="70" r=${r} fill=${i === 2 ? accent : "none"} stroke=${ink} stroke-width="2" opacity=${i === 2 ? 1 : 0.3 + i * 0.2} />`,
+          )}<image href=${iconUrl(f.slug)} x="64" y="34" width="72" height="72" />`;
       }
     })();
-    return svg`<svg class="cover" viewBox="0 0 200 140" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${body}</svg>`;
+    return svg`<svg class="cover" viewBox="0 0 200 140" preserveAspectRatio=${une ? "xMaxYMid meet" : "xMidYMid slice"} aria-hidden="true">${body}</svg>`;
   }
 
   protected render() {
@@ -310,26 +391,35 @@ export class ArtifactLanding extends LitElement {
               <span class="wd" style="--i:3">${this.star(2)}</span>
             </h2>
             <p class="showcase-lede rv">Tous ont été décrits à un assistant, puis publiés ici. Aucun compte requis.</p>
-            <ul>
-              ${FEATURED.map(
-                (f, i) => html`
-                  <li class="rv" style=${`--i:${i}`}>
-                    <a
-                      href=${`/${f.slug}`}
-                      data-featured=${f.slug}
-                      style=${`--card-bg:${f.colors.bg};--card-ink:${f.colors.ink};--card-accent:${f.colors.accent}`}
-                    >
-                      ${this.cover(f)}
-                      <span class="num" aria-hidden="true">${String(i + 1).padStart(2, "0")}</span>
-                      <span class="kind">${f.kind}</span>
-                      <strong>${f.title}</strong>
-                      <span class="blurb">${f.blurb}</span>
-                      <span class="go" aria-hidden="true">Ouvrir →</span>
-                    </a>
-                    ${i === 4 ? html`<span class="star-spot">${this.star(3)}</span>` : nothing}
-                  </li>
-                `,
-              )}
+            <ul class=${this.showcase.une ? "has-une" : ""}>
+              ${(() => {
+                const cards = this.cards();
+                // L'astérisque n° 4 se pose sur la cinquième carte, ou la dernière s'il y en a moins.
+                const starAt = Math.min(4, cards.length - 1);
+                const lead = cards[0]?.une ? 3 : 2;
+                return cards.map(
+                  ({f, une}, i) => html`
+                    <li class=${une ? "rv une" : "rv"} style=${`--i:${i < lead ? i : (i - lead) % 3}`}>
+                      <a
+                        href=${`/${f.slug}`}
+                        data-featured=${f.slug}
+                        ?data-une=${une}
+                        style=${`--card-bg:${f.colors.bg};--card-ink:${f.colors.ink};--card-accent:${f.colors.accent}`}
+                      >
+                        ${this.cover(f, une)}
+                        ${une
+                          ? html`<span class="une-badge">À la une</span>`
+                          : html`<span class="num" aria-hidden="true">${String(i + (cards[0]?.une ? 0 : 1)).padStart(2, "0")}</span>`}
+                        <span class="kind">${f.kind}</span>
+                        <strong>${f.title}</strong>
+                        <span class="blurb">${f.blurb}</span>
+                        <span class="go" aria-hidden="true">Ouvrir →</span>
+                      </a>
+                      ${i === starAt ? html`<span class="star-spot">${this.star(3)}</span>` : nothing}
+                    </li>
+                  `,
+                );
+              })()}
             </ul>
           </section>
 

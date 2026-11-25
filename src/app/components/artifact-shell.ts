@@ -16,7 +16,7 @@ function sectionOf(path: string): NavId | null {
   if (path.startsWith("/cloud")) return "account";
   if (path === "/admin/atelier" || /^\/admin\/[^/]+\/atelier\/?$/.test(path)) return "atelier";
   if (path === "/admin/ressources") return "resources";
-  if (path === "/admin/moderation") return null;
+  if (path === "/admin/moderation" || path === "/admin/vitrine") return null;
   if (path === "/admin" || path.startsWith("/admin/")) return "library";
   return null;
 }
@@ -355,6 +355,17 @@ export class ArtifactShell extends LitElement {
               >
                 <sonic-icon library="custom" name="warning-triangle" size="sm"></sonic-icon>
                 Modération
+              </a>
+              <a
+                class="menu-item"
+                href="/admin/vitrine"
+                @click=${(e: Event) => {
+                  hidePop(e);
+                  this.go("/admin/vitrine", e);
+                }}
+              >
+                <sonic-icon library="custom" name="star" size="sm"></sonic-icon>
+                Vitrine de l’accueil
               </a>`
             : nothing}
           <a
