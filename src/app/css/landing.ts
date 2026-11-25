@@ -578,6 +578,60 @@ export const landingStyles = css`
     line-height: 1;
     transform: rotate(-8deg);
   }
+  .showcase .une-badge {
+    position: absolute;
+    top: var(--ui-3);
+    left: var(--ui-4);
+    padding: 0.35em 0.9em;
+    border: 2px solid var(--art-ink);
+    border-radius: 999px;
+    background: var(--card-accent);
+    color: #14121a;
+    font-family: var(--art-serif);
+    font-style: italic;
+    font-size: 1.25rem;
+    line-height: 1;
+    transform: rotate(-6deg);
+  }
+  .showcase li.une {
+    grid-column: 1 / -1;
+  }
+  .showcase li.une a {
+    min-height: 26rem;
+  }
+  /* Grande carte : l'illustration à sa taille (pas agrandie au rognage), à droite du texte sur grand écran. */
+  .showcase li.une .cover {
+    height: 50%;
+  }
+  @media (min-width: 960px) {
+    .showcase li.une .cover {
+      inset: 0 0 0 auto;
+      width: 56%;
+      height: 100%;
+    }
+    .showcase li.une a::before {
+      inset: 0 0 0 44%;
+    }
+    .showcase li.une a::after {
+      inset: 0 56% 0 0;
+      border-top: 0;
+      border-right: 2px solid var(--card-ink);
+    }
+    .showcase li.une a > span,
+    .showcase li.une a > strong {
+      max-width: 44%;
+    }
+    .showcase li.une .une-badge {
+      max-width: none;
+    }
+  }
+  .showcase li.une strong {
+    font-size: clamp(2.25rem, 5vw, 3.5rem);
+  }
+  .showcase li.une .blurb {
+    max-width: 40rem;
+    font-size: 1.1em;
+  }
   .showcase .kind {
     align-self: flex-start;
     padding: 0.25em 0.8em;
@@ -712,6 +766,13 @@ export const landingStyles = css`
       grid-column: span 3;
     }
   }
+  @media (min-width: 640px) and (max-width: 959.98px) {
+    /* Nombre impair de cartes sur deux colonnes : la dernière prend toute la largeur. */
+    .showcase ul:not(.has-une) li:last-child:nth-child(odd),
+    .showcase .has-une li:last-child:nth-child(even) {
+      grid-column: span 6;
+    }
+  }
   @media (min-width: 960px) {
     .hero {
       grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
@@ -721,6 +782,16 @@ export const landingStyles = css`
     }
     .showcase li:nth-child(-n + 2) a {
       min-height: 22rem;
+    }
+    /* Carte à la une en tête : les deux grandes cartes viennent juste après. */
+    .showcase .has-une li:nth-child(-n + 3):not(.une) {
+      grid-column: span 3;
+    }
+    .showcase .has-une li:nth-child(-n + 3):not(.une) a {
+      min-height: 22rem;
+    }
+    .showcase .has-une li.une a {
+      min-height: 30rem;
     }
   }
   /* ───── Apparitions au défilement (posées par le composant, sinon rien n'est caché) ───── */
