@@ -737,7 +737,7 @@ export class ArtifactViewer extends LitElement {
       applyDocFonts(this.guardErrors.length ? null : (this.data.document as {fonts?: unknown}).fonts);
       applyDocFontFiles(this.guardErrors.length ? null : (this.data.document as {fontFiles?: unknown}).fontFiles);
       // Page d'artefact (ni aperçu ni intégration) : titre, icônes et manifeste propres, installable.
-      if (!this.previewDocument && !this.embedded) applyAppIdentity(this.slug, String(fetched.title ?? ""), this.rawDocument, this.linkToken());
+      if (!this.previewDocument && !this.embedded) applyAppIdentity(this.slug, String(fetched.title ?? ""), this.rawDocument, this.linkToken(), {description: fetched.description, version: fetched.version});
       this.syncViewFromHash();
       this.watchView();
       if (this.viewId) this.publishView(this.viewId);
