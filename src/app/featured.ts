@@ -53,7 +53,7 @@ export const FEATURED: FeaturedArtifact[] = [
     slug: "theremine-3-octaves-continues",
     title: "Thérémine",
     kind: "Instrument",
-    blurb: "Trois octaves continues sous le doigt, timbres, vibrato et réverbe.",
+    blurb: "Trois octaves continues à la caméra : main droite pour la note, main gauche pour le volume.",
     motif: "wave",
     colors: {bg: "#ff5d73", ink: "#2b0a1a", accent: "#ffe14d"},
   },
