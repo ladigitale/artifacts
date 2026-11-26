@@ -57,7 +57,7 @@
   },
   "dependencies": {
     "@ladigitale/agent-stack": "github:ladigitale/agent-stack#d68939069d058b2daae79a5f151bee8cc0a363cd",
-    "@supersoniks/creative-stack": "github:ladigitale/creative-stack#3a2c362abe9088574809b448715e35f063aeeb00",
+    "@supersoniks/creative-stack": "github:ladigitale/creative-stack#303ddb687378ea3f037cf9c8688e3efe9600bff0",
     "pixi.js": "8.19.0",
     "three": "0.180.0",
     "maplibre-gl": "5.24.0"
