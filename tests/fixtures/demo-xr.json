@@ -49,12 +49,42 @@
         "attributes": {
          "id": "casque",
          "target": "scene",
-         "for": "entrer poser regard",
+         "for": "entrer poser regard quitter",
          "mode": "auto",
          "store": "chambre",
-         "features": "hit-test",
+         "features": "hit-test dom-overlay",
+         "overlay": "hud",
          "reticle": true
         }
+       },
+       {
+        "tagName": "div",
+        "attributes": {
+         "id": "hud",
+         "style": "display:flex;justify-content:center;align-items:flex-end;padding:0 16px 24px;pointer-events:none"
+        },
+        "nodes": [
+         {
+          "tagName": "sonic-if",
+          "attributes": {
+           "dataProvider": "casqueState",
+           "key": "presenting",
+           "equals": "true",
+           "style": "pointer-events:auto"
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-button",
+            "attributes": {
+             "id": "quitter",
+             "type": "primary",
+             "size": "lg"
+            },
+            "textContent": "Quitter"
+           }
+          ]
+         }
+        ]
        },
        {
         "tagName": "div",
