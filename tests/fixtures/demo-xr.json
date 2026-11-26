@@ -74,13 +74,50 @@
           },
           "nodes": [
            {
-            "tagName": "sonic-button",
+            "tagName": "div",
             "attributes": {
-             "id": "quitter",
-             "type": "primary",
-             "size": "lg"
+             "style": "display:flex;flex-direction:column;align-items:center;gap:8px"
             },
-            "textContent": "Quitter"
+            "nodes": [
+             {
+              "tagName": "sonic-button",
+              "attributes": {
+               "id": "quitter",
+               "type": "primary",
+               "size": "lg"
+              },
+              "textContent": "Quitter"
+             },
+             {
+              "tagName": "sonic-badge",
+              "attributes": {
+               "type": "neutral"
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "casqueState",
+                 "key": "blend"
+                }
+               },
+               {
+                "tagName": "span",
+                "attributes": {
+                 "style": ""
+                },
+                "textContent": " · "
+               },
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "casqueState",
+                 "key": "layer"
+                }
+               }
+              ]
+             }
+            ]
            }
           ]
          }
