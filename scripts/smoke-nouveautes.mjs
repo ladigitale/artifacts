@@ -9,7 +9,8 @@
  * - sonic-graph : un tap sur un lieu calcule et affiche le plus court chemin ($graphPath) ;
  * - sonic-video-export : un vrai fichier WebM (en-tête EBML) de 120 images est produit par WebCodecs ;
  * - sonic-capabilities : hid, usb, nfc, xr, voix présents ;
- * - sonic-xr : avec un faux navigator.xr qui accepte la VR, le bouton « Entrer en VR » apparaît ;
+ * - sonic-xr : avec un faux navigator.xr qui accepte la VR, le bouton « Entrer en VR » apparaît ; sans WebXR, la fenêtre
+ *   magique s'ouvre au clic et Échap la referme ;
  * - sonic-speak : avec une fausse synthèse vocale, le clic sur « Lire » parle et publie le texte prononcé ;
  * - aucune erreur JS / CSP.
  */
@@ -105,6 +106,26 @@ async function open(slug, init) {
   check("VR : bouton « Entrer en VR » affiché quand le casque est disponible", visible);
   const ar = await page.evaluate(`(() => { ${DEEP} const b = deep(document, "#poser")[0]; return !!b && b.getBoundingClientRect().width > 0; })()`);
   check("VR : bouton AR masqué sans AR", !ar);
+  await page.context().close();
+}
+
+// 4 bis. Fenêtre magique : sans WebXR, « Regarder autour » place la caméra dans la scène, glisser la tourne.
+{
+  const page = await open("demo-xr");
+  await page.evaluate(`(() => { ${DEEP} deep(document, "#regard")[0].click(); })()`);
+  await page.waitForTimeout(500);
+  const st = await page.evaluate(`(() => { ${DEEP} return deep(document, "sonic-xr")[0].getState(); })()`);
+  check("fenêtre magique : ouverte au clic", st?.magic === true && st?.active === true, JSON.stringify(st && {magic: st.magic, status: st.status, error: st.error}));
+  const box = await page.evaluate(`(() => { ${DEEP} const r = deep(document, "sonic-3d")[0].getBoundingClientRect(); return {x: r.x, y: r.y, w: r.width, h: r.height}; })()`);
+  await page.mouse.move(box.x + box.w * 0.5, box.y + box.h * 0.5);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.w * 0.8, box.y + box.h * 0.5, {steps: 6});
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(200);
+  const after = await page.evaluate(`(() => { ${DEEP} return deep(document, "sonic-xr")[0].getState().magic; })()`);
+  check("fenêtre magique : Échap la referme", after === false);
   await page.context().close();
 }
 
