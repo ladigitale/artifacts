@@ -198,12 +198,12 @@ await wait(admin, 300);
 sel = await selected();
 check("admin : retirer enlève la carte", sel.map((s) => s.slug).join(",") === "ma-chambre,pumpkin-run", sel.map((s) => s.slug).join(","));
 
-// Publication
-await click(admin, "sonic-button[data-save]");
-await wait(admin, 700);
+// Publication automatique : aucun clic, chaque changement part tout seul
+await wait(admin, 1200);
 const last = writes.at(-1);
-check("admin : publication = PATCH de l'enregistrement", last?.method === "PATCH" && last.data.une === "ma-chambre" && last.data.items.map((i) => i.slug).join(",") === "ma-chambre,pumpkin-run", JSON.stringify(last));
-check("admin : toast de confirmation", (await all(admin, "p.toast")).some((t) => t.text.includes("publiée")));
+check("admin : publication automatique = PATCH de l'enregistrement", last?.method === "PATCH" && last.data.une === "ma-chambre" && last.data.items.map((i) => i.slug).join(",") === "ma-chambre,pumpkin-run", JSON.stringify(last));
+check("admin : toast de confirmation", (await all(admin, "p.toast")).some((t) => t.text.includes("Accueil mis à jour")));
+check("admin : bouton « Accueil à jour » après publication", (await all(admin, "sonic-button[data-save]"))[0]?.disabled === true);
 await shot(admin, "showcase-admin-saved.png");
 
 await page.reload();
