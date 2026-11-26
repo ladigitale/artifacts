@@ -1,0 +1,1241 @@
+{
+ "schema": "artifacts/1",
+ "title": "Appareil",
+ "theme": "default",
+ "defaultView": "main",
+ "icon": {
+  "emoji": "🎮",
+  "background": "#1d4ed8"
+ },
+ "views": [
+  {
+   "id": "main",
+   "title": "Appareil",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "div",
+      "attributes": {
+       "data-fullscreen-root": "",
+       "style": "background:var(--sc-base-100);min-height:100%"
+      },
+      "nodes": [
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "display:flex;flex-direction:column;gap:16px;max-width:48rem;margin:0 auto;padding:24px 16px"
+        },
+        "nodes": [
+         {
+          "tagName": "h1",
+          "attributes": {
+           "style": "margin:0"
+          },
+          "textContent": "Appareil"
+         },
+         {
+          "tagName": "sonic-capabilities",
+          "attributes": {
+           "id": "capacites",
+           "out-data-provider": "caps"
+          }
+         },
+         {
+          "tagName": "div",
+          "attributes": {
+           "class": "panel",
+           "style": "display:flex;flex-direction:column;gap:12px;padding:16px;border:2px solid var(--sc-base-content);border-radius:16px"
+          },
+          "nodes": [
+           {
+            "tagName": "h2",
+            "attributes": {
+             "style": "margin:0"
+            },
+            "textContent": "Session de jeu"
+           },
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "display:flex;flex-wrap:wrap;gap:12px;align-items:center"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-fullscreen",
+              "attributes": {
+               "id": "pe"
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-button",
+                "attributes": {
+                 "id": "plein",
+                 "type": "primary"
+                },
+                "textContent": "Plein écran"
+               }
+              ]
+             },
+             {
+              "tagName": "sonic-wake-lock",
+              "attributes": {
+               "id": "eveil",
+               "for": "veille"
+              }
+             },
+             {
+              "tagName": "sonic-button",
+              "attributes": {
+               "id": "veille",
+               "type": "default",
+               "variant": "outline"
+              },
+              "textContent": "Garder l’écran allumé"
+             },
+             {
+              "tagName": "sonic-pointer-lock",
+              "attributes": {
+               "id": "souris",
+               "for": "zone"
+              }
+             }
+            ]
+           },
+           {
+            "tagName": "div",
+            "attributes": {
+             "id": "zone",
+             "style": "padding:24px;border:2px dashed var(--sc-base-content);border-radius:12px;text-align:center;cursor:crosshair"
+            },
+            "nodes": [
+             {
+              "tagName": "strong",
+              "attributes": {
+               "style": ""
+              },
+              "textContent": "Cliquer ici pour verrouiller la souris"
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;flex-wrap:wrap;gap:12px;align-items:center"
+              },
+              "nodes": [
+               {
+                "tagName": "div",
+                "attributes": {
+                 "style": "display:flex;flex-direction:column;gap:2px;min-width:7rem"
+                },
+                "nodes": [
+                 {
+                  "tagName": "strong",
+                  "attributes": {
+                   "style": "font-size:1.6rem"
+                  },
+                  "nodes": [
+                   {
+                    "tagName": "sonic-value",
+                    "attributes": {
+                     "dataProvider": "sourisState",
+                     "key": "x"
+                    }
+                   }
+                  ]
+                 },
+                 {
+                  "tagName": "span",
+                  "attributes": {
+                   "style": ""
+                  },
+                  "textContent": "x"
+                 }
+                ]
+               },
+               {
+                "tagName": "div",
+                "attributes": {
+                 "style": "display:flex;flex-direction:column;gap:2px;min-width:7rem"
+                },
+                "nodes": [
+                 {
+                  "tagName": "strong",
+                  "attributes": {
+                   "style": "font-size:1.6rem"
+                  },
+                  "nodes": [
+                   {
+                    "tagName": "sonic-value",
+                    "attributes": {
+                     "dataProvider": "sourisState",
+                     "key": "y"
+                    }
+                   }
+                  ]
+                 },
+                 {
+                  "tagName": "span",
+                  "attributes": {
+                   "style": ""
+                  },
+                  "textContent": "y"
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "display:flex;flex-wrap:wrap;gap:12px;align-items:center"
+            },
+            "nodes": [
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;gap:8px;align-items:center"
+              },
+              "nodes": [
+               {
+                "tagName": "span",
+                "attributes": {
+                 "style": ""
+                },
+                "textContent": "Écran allumé"
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "eveilState",
+                 "key": "active",
+                 "equals": "true",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "success"
+                  },
+                  "textContent": "oui"
+                 }
+                ]
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "eveilState",
+                 "key": "active",
+                 "equals": "false",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "neutral"
+                  },
+                  "textContent": "non"
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;gap:8px;align-items:center"
+              },
+              "nodes": [
+               {
+                "tagName": "span",
+                "attributes": {
+                 "style": ""
+                },
+                "textContent": "Plein écran"
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "peState",
+                 "key": "active",
+                 "equals": "true",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "success"
+                  },
+                  "textContent": "oui"
+                 }
+                ]
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "peState",
+                 "key": "active",
+                 "equals": "false",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "neutral"
+                  },
+                  "textContent": "non"
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "tagName": "div",
+          "attributes": {
+           "class": "panel",
+           "style": "display:flex;flex-direction:column;gap:12px;padding:16px;border:2px solid var(--sc-base-content);border-radius:16px"
+          },
+          "nodes": [
+           {
+            "tagName": "h2",
+            "attributes": {
+             "style": "margin:0"
+            },
+            "textContent": "Manette"
+           },
+           {
+            "tagName": "sonic-store",
+            "attributes": {
+             "id": "manette",
+             "initial": "{\"rumble\": {\"n\": 0, \"duration\": 500, \"strong\": 1, \"weak\": 0.6}}",
+             "reducer": "$action.type = 'vibrer' ? $merge([$state, {'rumble': {'n': $state.rumble.n + 1, 'duration': 500, 'strong': 1, 'weak': 0.6}}]) : $state"
+            }
+           },
+           {
+            "tagName": "sonic-gamepad",
+            "attributes": {
+             "id": "pad",
+             "control": "manette",
+             "out-data-provider": "padState"
+            }
+           },
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "display:flex;flex-wrap:wrap;gap:12px;align-items:center"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-action",
+              "attributes": {
+               "target": "manette",
+               "type": "vibrer"
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-button",
+                "attributes": {
+                 "id": "vibrer",
+                 "type": "primary"
+                },
+                "textContent": "Faire vibrer la manette"
+               }
+              ]
+             },
+             {
+              "tagName": "sonic-if",
+              "attributes": {
+               "dataProvider": "padState",
+               "key": "connected",
+               "equals": "true",
+               "style": ""
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-badge",
+                "attributes": {
+                 "type": "success"
+                },
+                "textContent": "Manette branchée"
+               }
+              ]
+             },
+             {
+              "tagName": "sonic-if",
+              "attributes": {
+               "dataProvider": "padState",
+               "key": "connected",
+               "equals": "false",
+               "style": ""
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-badge",
+                "attributes": {
+                 "type": "neutral"
+                },
+                "textContent": "Aucune manette : appuyez sur un bouton de la vôtre"
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "tagName": "div",
+          "attributes": {
+           "class": "panel",
+           "style": "display:flex;flex-direction:column;gap:12px;padding:16px;border:2px solid var(--sc-base-content);border-radius:16px"
+          },
+          "nodes": [
+           {
+            "tagName": "h2",
+            "attributes": {
+             "style": "margin:0"
+            },
+            "textContent": "Ce que ce navigateur sait faire"
+           },
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": ""
+            },
+            "nodes": [
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--sc-base-300)"
+              },
+              "nodes": [
+               {
+                "tagName": "span",
+                "attributes": {
+                 "style": ""
+                },
+                "textContent": "Plein écran"
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "fullscreen.supported",
+                 "equals": "true",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "success"
+                  },
+                  "textContent": "oui"
+                 }
+                ]
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "fullscreen.supported",
+                 "equals": "false",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "neutral"
+                  },
+                  "textContent": "non"
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--sc-base-300)"
+              },
+              "nodes": [
+               {
+                "tagName": "span",
+                "attributes": {
+                 "style": ""
+                },
+                "textContent": "Écran allumé"
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "wakeLock.supported",
+                 "equals": "true",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "success"
+                  },
+                  "textContent": "oui"
+                 }
+                ]
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "wakeLock.supported",
+                 "equals": "false",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "neutral"
+                  },
+                  "textContent": "non"
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--sc-base-300)"
+              },
+              "nodes": [
+               {
+                "tagName": "span",
+                "attributes": {
+                 "style": ""
+                },
+                "textContent": "Souris verrouillée"
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "pointerLock.supported",
+                 "equals": "true",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "success"
+                  },
+                  "textContent": "oui"
+                 }
+                ]
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "pointerLock.supported",
+                 "equals": "false",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "neutral"
+                  },
+                  "textContent": "non"
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--sc-base-300)"
+              },
+              "nodes": [
+               {
+                "tagName": "span",
+                "attributes": {
+                 "style": ""
+                },
+                "textContent": "Manettes"
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "gamepad.supported",
+                 "equals": "true",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "success"
+                  },
+                  "textContent": "oui"
+                 }
+                ]
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "gamepad.supported",
+                 "equals": "false",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "neutral"
+                  },
+                  "textContent": "non"
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--sc-base-300)"
+              },
+              "nodes": [
+               {
+                "tagName": "span",
+                "attributes": {
+                 "style": ""
+                },
+                "textContent": "Vibration"
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "vibrate.supported",
+                 "equals": "true",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "success"
+                  },
+                  "textContent": "oui"
+                 }
+                ]
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "vibrate.supported",
+                 "equals": "false",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "neutral"
+                  },
+                  "textContent": "non"
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--sc-base-300)"
+              },
+              "nodes": [
+               {
+                "tagName": "span",
+                "attributes": {
+                 "style": ""
+                },
+                "textContent": "Capteurs"
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "orientation.supported",
+                 "equals": "true",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "success"
+                  },
+                  "textContent": "oui"
+                 }
+                ]
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "orientation.supported",
+                 "equals": "false",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "neutral"
+                  },
+                  "textContent": "non"
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--sc-base-300)"
+              },
+              "nodes": [
+               {
+                "tagName": "span",
+                "attributes": {
+                 "style": ""
+                },
+                "textContent": "Bluetooth"
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "bluetooth.supported",
+                 "equals": "true",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "success"
+                  },
+                  "textContent": "oui"
+                 }
+                ]
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "bluetooth.supported",
+                 "equals": "false",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "neutral"
+                  },
+                  "textContent": "non"
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--sc-base-300)"
+              },
+              "nodes": [
+               {
+                "tagName": "span",
+                "attributes": {
+                 "style": ""
+                },
+                "textContent": "Port série"
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "serial.supported",
+                 "equals": "true",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "success"
+                  },
+                  "textContent": "oui"
+                 }
+                ]
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "serial.supported",
+                 "equals": "false",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "neutral"
+                  },
+                  "textContent": "non"
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--sc-base-300)"
+              },
+              "nodes": [
+               {
+                "tagName": "span",
+                "attributes": {
+                 "style": ""
+                },
+                "textContent": "HID"
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "hid.supported",
+                 "equals": "true",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "success"
+                  },
+                  "textContent": "oui"
+                 }
+                ]
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "hid.supported",
+                 "equals": "false",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "neutral"
+                  },
+                  "textContent": "non"
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--sc-base-300)"
+              },
+              "nodes": [
+               {
+                "tagName": "span",
+                "attributes": {
+                 "style": ""
+                },
+                "textContent": "USB"
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "usb.supported",
+                 "equals": "true",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "success"
+                  },
+                  "textContent": "oui"
+                 }
+                ]
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "usb.supported",
+                 "equals": "false",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "neutral"
+                  },
+                  "textContent": "non"
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--sc-base-300)"
+              },
+              "nodes": [
+               {
+                "tagName": "span",
+                "attributes": {
+                 "style": ""
+                },
+                "textContent": "NFC"
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "nfc.supported",
+                 "equals": "true",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "success"
+                  },
+                  "textContent": "oui"
+                 }
+                ]
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "nfc.supported",
+                 "equals": "false",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "neutral"
+                  },
+                  "textContent": "non"
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--sc-base-300)"
+              },
+              "nodes": [
+               {
+                "tagName": "span",
+                "attributes": {
+                 "style": ""
+                },
+                "textContent": "VR / AR"
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "xr.supported",
+                 "equals": "true",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "success"
+                  },
+                  "textContent": "oui"
+                 }
+                ]
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "xr.supported",
+                 "equals": "false",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "neutral"
+                  },
+                  "textContent": "non"
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--sc-base-300)"
+              },
+              "nodes": [
+               {
+                "tagName": "span",
+                "attributes": {
+                 "style": ""
+                },
+                "textContent": "Synthèse vocale"
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "speechSynthesis.supported",
+                 "equals": "true",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "success"
+                  },
+                  "textContent": "oui"
+                 }
+                ]
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "speechSynthesis.supported",
+                 "equals": "false",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "neutral"
+                  },
+                  "textContent": "non"
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--sc-base-300)"
+              },
+              "nodes": [
+               {
+                "tagName": "span",
+                "attributes": {
+                 "style": ""
+                },
+                "textContent": "Reconnaissance vocale"
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "speechRecognition.supported",
+                 "equals": "true",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "success"
+                  },
+                  "textContent": "oui"
+                 }
+                ]
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "speechRecognition.supported",
+                 "equals": "false",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "neutral"
+                  },
+                  "textContent": "non"
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--sc-base-300)"
+              },
+              "nodes": [
+               {
+                "tagName": "span",
+                "attributes": {
+                 "style": ""
+                },
+                "textContent": "MIDI"
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "midi.supported",
+                 "equals": "true",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "success"
+                  },
+                  "textContent": "oui"
+                 }
+                ]
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "midi.supported",
+                 "equals": "false",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "neutral"
+                  },
+                  "textContent": "non"
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--sc-base-300)"
+              },
+              "nodes": [
+               {
+                "tagName": "span",
+                "attributes": {
+                 "style": ""
+                },
+                "textContent": "Caméra"
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "camera.supported",
+                 "equals": "true",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "success"
+                  },
+                  "textContent": "oui"
+                 }
+                ]
+               },
+               {
+                "tagName": "sonic-if",
+                "attributes": {
+                 "dataProvider": "caps",
+                 "key": "camera.supported",
+                 "equals": "false",
+                 "style": ""
+                },
+                "nodes": [
+                 {
+                  "tagName": "sonic-badge",
+                  "attributes": {
+                   "type": "neutral"
+                  },
+                  "textContent": "non"
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}

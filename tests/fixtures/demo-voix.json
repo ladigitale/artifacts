@@ -1,0 +1,248 @@
+{
+ "schema": "artifacts/1",
+ "title": "Voix",
+ "theme": "default",
+ "defaultView": "main",
+ "icon": {
+  "emoji": "🗣️",
+  "background": "#7c3aed"
+ },
+ "views": [
+  {
+   "id": "main",
+   "title": "Voix",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "div",
+      "attributes": {
+       "style": "display:flex;flex-direction:column;gap:16px;max-width:48rem;margin:0 auto;padding:24px 16px"
+      },
+      "nodes": [
+       {
+        "tagName": "h1",
+        "attributes": {
+         "style": "margin:0"
+        },
+        "textContent": "Voix"
+       },
+       {
+        "tagName": "div",
+        "attributes": {
+         "class": "panel",
+         "style": "display:flex;flex-direction:column;gap:12px;padding:16px;border:2px solid var(--sc-base-content);border-radius:16px"
+        },
+        "nodes": [
+         {
+          "tagName": "h2",
+          "attributes": {
+           "style": "margin:0"
+          },
+          "textContent": "Lecture à voix haute"
+         },
+         {
+          "tagName": "sonic-input",
+          "attributes": {
+           "formDataProvider": "lecture",
+           "name": "texte",
+           "value": "Bonjour ! Cette phrase est lue par la synthèse vocale du navigateur, sans aucun service extérieur.",
+           "style": "width:100%"
+          }
+         },
+         {
+          "tagName": "sonic-speak",
+          "attributes": {
+           "id": "voix",
+           "for": "lire",
+           "lang": "fr-FR",
+           "text-from": "lecture.texte",
+           "boundary": true
+          }
+         },
+         {
+          "tagName": "div",
+          "attributes": {
+           "style": "display:flex;flex-wrap:wrap;gap:12px;align-items:center"
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-button",
+            "attributes": {
+             "id": "lire",
+             "type": "primary"
+            },
+            "textContent": "Lire"
+           },
+           {
+            "tagName": "span",
+            "attributes": {
+             "style": ""
+            },
+            "nodes": [
+             {
+              "tagName": "strong",
+              "attributes": {
+               "style": ""
+              },
+              "textContent": "Mot : "
+             },
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "voixState",
+               "key": "word"
+              }
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tagName": "div",
+        "attributes": {
+         "class": "panel",
+         "style": "display:flex;flex-direction:column;gap:12px;padding:16px;border:2px solid var(--sc-base-content);border-radius:16px"
+        },
+        "nodes": [
+         {
+          "tagName": "h2",
+          "attributes": {
+           "style": "margin:0"
+          },
+          "textContent": "Dictée"
+         },
+         {
+          "tagName": "sonic-store",
+          "attributes": {
+           "id": "notes",
+           "initial": "{\"lignes\": [], \"ordre\": \"—\"}",
+           "reducer": "$action.type = 'listen:result' and $action.payload.isFinal ? $merge([$state, {'lignes': $append($state.lignes, [{'texte': $action.payload.text}])}]) : $action.type = 'listen:match' ? $merge([$state, {'ordre': $action.payload.phrase}]) : $action.type = 'vider' ? $merge([$state, {'lignes': [], 'ordre': '—'}]) : $state"
+          }
+         },
+         {
+          "tagName": "sonic-listen",
+          "attributes": {
+           "id": "dictee",
+           "for": "dicter",
+           "lang": "fr-FR",
+           "continuous": true,
+           "interim": true,
+           "phrases": "effacer, nouvelle ligne, merci",
+           "target": "notes"
+          }
+         },
+         {
+          "tagName": "div",
+          "attributes": {
+           "style": "display:flex;flex-wrap:wrap;gap:12px;align-items:center"
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-button",
+            "attributes": {
+             "id": "dicter",
+             "type": "primary"
+            },
+            "textContent": "Dicter / arrêter"
+           },
+           {
+            "tagName": "sonic-action",
+            "attributes": {
+             "target": "notes",
+             "type": "vider"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-button",
+              "attributes": {
+               "id": "vider",
+               "type": "default",
+               "variant": "outline"
+              },
+              "textContent": "Vider"
+             }
+            ]
+           },
+           {
+            "tagName": "span",
+            "attributes": {
+             "style": ""
+            },
+            "nodes": [
+             {
+              "tagName": "strong",
+              "attributes": {
+               "style": ""
+              },
+              "textContent": "Mot-clé : "
+             },
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "notes",
+               "key": "ordre"
+              }
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "tagName": "p",
+          "attributes": {
+           "style": "margin:0;font-style:italic"
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-value",
+            "attributes": {
+             "dataProvider": "dicteeState",
+             "key": "interim"
+            }
+           }
+          ]
+         },
+         {
+          "tagName": "sonic-list",
+          "attributes": {
+           "dataProvider": "notes.lignes"
+          },
+          "nodes": [
+           {
+            "tagName": "template",
+            "attributes": {
+             "style": ""
+            },
+            "nodes": [
+             {
+              "tagName": "p",
+              "attributes": {
+               "style": "margin:0"
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "key": "texte"
+                }
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "capabilities": [
+  "microphone"
+ ]
+}

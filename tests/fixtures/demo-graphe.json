@@ -1,0 +1,171 @@
+{
+ "schema": "artifacts/1",
+ "title": "Plus court chemin",
+ "theme": "default",
+ "defaultView": "main",
+ "icon": {
+  "emoji": "🕸️",
+  "background": "#0f766e"
+ },
+ "views": [
+  {
+   "id": "main",
+   "title": "Plus court chemin",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "div",
+      "attributes": {
+       "style": "display:flex;flex-direction:column;gap:16px;max-width:48rem;margin:0 auto;padding:24px 16px"
+      },
+      "nodes": [
+       {
+        "tagName": "h1",
+        "attributes": {
+         "style": "margin:0"
+        },
+        "textContent": "Plus court chemin"
+       },
+       {
+        "tagName": "sonic-store",
+        "attributes": {
+         "id": "carte",
+         "initial": "{\"depart\": \"gare\", \"graphe\": {\"nodes\": [{\"id\": \"gare\", \"label\": \"Gare\", \"group\": \"transport\"}, {\"id\": \"bus\", \"label\": \"Gare routière\", \"group\": \"transport\"}, {\"id\": \"marche\", \"label\": \"Marché\", \"group\": \"commerce\"}, {\"id\": \"halles\", \"label\": \"Halles\", \"group\": \"commerce\"}, {\"id\": \"ecole\", \"label\": \"École\", \"group\": \"service\"}, {\"id\": \"mairie\", \"label\": \"Mairie\", \"group\": \"service\"}, {\"id\": \"poste\", \"label\": \"Poste\", \"group\": \"service\"}, {\"id\": \"parc\", \"label\": \"Parc\", \"group\": \"loisir\"}, {\"id\": \"piscine\", \"label\": \"Piscine\", \"group\": \"loisir\"}, {\"id\": \"musee\", \"label\": \"Musée\", \"group\": \"loisir\"}, {\"id\": \"port\", \"label\": \"Port\", \"group\": \"transport\"}, {\"id\": \"phare\", \"label\": \"Phare\", \"group\": \"loisir\"}], \"edges\": [[\"gare\", \"bus\", 1], [\"gare\", \"marche\", 4], [\"gare\", \"ecole\", 2], [\"ecole\", \"marche\", 1], [\"marche\", \"halles\", 1], [\"marche\", \"parc\", 3], [\"ecole\", \"mairie\", 5], [\"mairie\", \"parc\", 1], [\"mairie\", \"poste\", 1], [\"poste\", \"musee\", 2], [\"parc\", \"piscine\", 2], [\"piscine\", \"port\", 4], [\"musee\", \"port\", 3], [\"port\", \"phare\", 2], [\"bus\", \"halles\", 3], [\"halles\", \"musee\", 4]]}, \"chemin\": null, \"arrivee\": \"—\", \"cout\": 0, \"etapes\": 0}",
+         "reducer": "$action.type = 'graph:select' ? ($p := $graphPath({'edges': $state.graphe.edges}, $state.depart, $action.payload.id);$merge([$state, {'chemin': $p, 'arrivee': $action.payload.node.label, 'cout': $p.found ? $p.cost : 0, 'etapes': $p.found ? $count($p.path) - 1 : 0}])) : $action.type = 'reset' ? $merge([$state, {'chemin': null, 'arrivee': '—', 'cout': 0, 'etapes': 0}]) : $state"
+        }
+       },
+       {
+        "tagName": "sonic-graph",
+        "attributes": {
+         "id": "plan",
+         "data-provider": "carte.graphe",
+         "selection": "carte.chemin",
+         "target": "carte",
+         "seed": "4",
+         "height": "440",
+         "labels": "always"
+        }
+       },
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "display:flex;flex-wrap:wrap;gap:12px;align-items:center"
+        },
+        "nodes": [
+         {
+          "tagName": "div",
+          "attributes": {
+           "style": "display:flex;flex-direction:column;gap:2px;min-width:7rem"
+          },
+          "nodes": [
+           {
+            "tagName": "strong",
+            "attributes": {
+             "style": "font-size:1.6rem"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "carte",
+               "key": "arrivee"
+              }
+             }
+            ]
+           },
+           {
+            "tagName": "span",
+            "attributes": {
+             "style": ""
+            },
+            "textContent": "destination"
+           }
+          ]
+         },
+         {
+          "tagName": "div",
+          "attributes": {
+           "style": "display:flex;flex-direction:column;gap:2px;min-width:7rem"
+          },
+          "nodes": [
+           {
+            "tagName": "strong",
+            "attributes": {
+             "style": "font-size:1.6rem"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "carte",
+               "key": "cout"
+              }
+             }
+            ]
+           },
+           {
+            "tagName": "span",
+            "attributes": {
+             "style": ""
+            },
+            "textContent": "minutes depuis la gare"
+           }
+          ]
+         },
+         {
+          "tagName": "div",
+          "attributes": {
+           "style": "display:flex;flex-direction:column;gap:2px;min-width:7rem"
+          },
+          "nodes": [
+           {
+            "tagName": "strong",
+            "attributes": {
+             "style": "font-size:1.6rem"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "carte",
+               "key": "etapes"
+              }
+             }
+            ]
+           },
+           {
+            "tagName": "span",
+            "attributes": {
+             "style": ""
+            },
+            "textContent": "étapes"
+           }
+          ]
+         },
+         {
+          "tagName": "sonic-action",
+          "attributes": {
+           "target": "carte",
+           "type": "reset"
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-button",
+            "attributes": {
+             "id": "raz",
+             "type": "default",
+             "variant": "outline"
+            },
+            "textContent": "Effacer"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}
