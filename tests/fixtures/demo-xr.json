@@ -87,35 +87,6 @@
                "size": "lg"
               },
               "textContent": "Quitter"
-             },
-             {
-              "tagName": "sonic-badge",
-              "attributes": {
-               "type": "neutral"
-              },
-              "nodes": [
-               {
-                "tagName": "sonic-value",
-                "attributes": {
-                 "dataProvider": "casqueState",
-                 "key": "blend"
-                }
-               },
-               {
-                "tagName": "span",
-                "attributes": {
-                 "style": ""
-                },
-                "textContent": " · "
-               },
-               {
-                "tagName": "sonic-value",
-                "attributes": {
-                 "dataProvider": "casqueState",
-                 "key": "layer"
-                }
-               }
-              ]
              }
             ]
            }
