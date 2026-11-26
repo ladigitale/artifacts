@@ -65,19 +65,34 @@ const MAX_AUDIO: Record<string, number> = {
   "sonic-gcode": 4,
   "sonic-laser-pattern": 4,
   "sonic-gcode-view": 4,
+  // Une session immersive, une écoute vocale, un lecteur NFC par page ; HID / USB : un sélecteur et une connexion.
+  "sonic-xr": 1,
+  "sonic-listen": 1,
+  "sonic-speak": 2,
+  "sonic-nfc": 1,
+  "sonic-hid": 2,
+  "sonic-usb": 2,
+  // Encodeur vidéo et fichier gardés en mémoire.
+  "sonic-video-export": 2,
+  "sonic-graph": 4,
 };
 
 /** Accès sensibles : le composant n'est accepté que si le document les déclare dans `capabilities`. */
-export const CAPABILITY_TAGS: Record<string, "camera" | "microphone" | "midi" | "screen" | "bluetooth" | "serial"> = {
+export const CAPABILITY_TAGS: Record<string, "camera" | "microphone" | "midi" | "screen" | "bluetooth" | "serial" | "nfc" | "hid" | "usb" | "xr"> = {
   "sonic-camera": "camera",
   "sonic-mic": "microphone",
   "sonic-midi": "midi",
   "sonic-screen": "screen",
   "sonic-bluetooth": "bluetooth",
   "sonic-serial": "serial",
+  "sonic-listen": "microphone",
+  "sonic-nfc": "nfc",
+  "sonic-hid": "hid",
+  "sonic-usb": "usb",
+  "sonic-xr": "xr",
 };
 
-export const KNOWN_CAPABILITIES = ["camera", "microphone", "midi", "screen", "bluetooth", "serial"] as const;
+export const KNOWN_CAPABILITIES = ["camera", "microphone", "midi", "screen", "bluetooth", "serial", "nfc", "hid", "usb", "xr"] as const;
 
 /** Capacités déclarées par le document (inconnues ignorées). */
 export function docCapabilities(doc: unknown): string[] {
