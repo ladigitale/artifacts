@@ -115,15 +115,26 @@ export async function decideModeration(id: string, action: "keep" | "hide" | "de
   return apiFetch(`/admin/moderation/${encodeURIComponent(id)}`, {method: "POST", body: JSON.stringify({action})});
 }
 
-/** Compte super admin ? (lu sur /auth/me : une session ouverte avant l'ajout du champ ne le porte pas). */
-export async function isSuperAdmin(): Promise<boolean> {
+type MeResponse = {superAdmin?: boolean; user?: {superAdmin?: boolean; roles?: string[]}};
+
+/**
+ * Droits du compte, lus sur /auth/me (`{user: {…, roles, superAdmin}, quotas}`).
+ * `superAdmin` = ROLE_ADMIN + e-mail dans OPS_DEPLOY_USERS côté Tadaaa ; `admin` = ROLE_ADMIN.
+ */
+export async function getAccountRights(): Promise<{admin: boolean; superAdmin: boolean}> {
   try {
-    // L'API répond {user: {…, superAdmin}, quotas} ; on accepte aussi le champ à la racine.
-    const me = await apiFetch<{superAdmin?: boolean; user?: {superAdmin?: boolean}}>("/auth/me");
-    return me?.user?.superAdmin === true || me?.superAdmin === true;
+    const me = await apiFetch<MeResponse>("/auth/me");
+    const superAdmin = me?.user?.superAdmin === true || me?.superAdmin === true;
+    const admin = superAdmin || (me?.user?.roles ?? []).includes("ROLE_ADMIN");
+    return {admin, superAdmin};
   } catch {
-    return false;
+    return {admin: false, superAdmin: false};
   }
+}
+
+/** Compte super admin ? (une session ouverte avant l'ajout du champ ne le porte pas). */
+export async function isSuperAdmin(): Promise<boolean> {
+  return (await getAccountRights()).superAdmin;
 }
 
 export async function exchangeHandoff(

@@ -28,6 +28,8 @@ const artifacts = [
 ].map((a) => ({...a, url: `http://localhost:${PORT}/${a.slug}`, updatedAt: new Date().toISOString(), datasetId: "d", currentVersion: 1}));
 
 let superAdmin = true;
+let roles = ["ROLE_USER", "ROLE_ADMIN"];
+let vitrineAccess = true;
 let collectionDown = false;
 let record = {id: "r1", data: {une: null, items: [{slug: "billard-3d", title: "Billard", kind: "Jeu 3D", blurb: "Quinze billes."}, {slug: "pumpkin-run", title: "Pumpkin Run", kind: "Jeu", blurb: "Une citrouille."}]}};
 const writes = [];
@@ -39,7 +41,7 @@ const ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect 
 const server = http.createServer(async (q, r) => {
   const u = new URL(q.url, "http://x");
   const p = u.pathname;
-  if (p === "/api/auth/me") return json(r, {user: {email: "admin@example.org", superAdmin}, quotas: {}}); // forme réelle de Tadaaa
+  if (p === "/api/auth/me") return json(r, {user: {email: "admin@example.org", roles, superAdmin}, quotas: {}}); // forme réelle de Tadaaa
   if (p === "/api/public/artifacts/accueil-vitrine/collections/vitrine") {
     if (collectionDown) return json(r, {error: "down"}, 503);
     return json(r, {member: record ? [record] : []});
@@ -56,6 +58,7 @@ const server = http.createServer(async (q, r) => {
   }
   m = p.match(/^\/api\/artifacts\/([^/]+)$/);
   if (m) {
+    if (m[1] === "accueil-vitrine" && !vitrineAccess) return json(r, {error: "Accès refusé"}, 403);
     const a = artifacts.find((x) => x.id === m[1] || x.slug === m[1]);
     if (!a) return json(r, {error: "nope"}, 404);
     if (q.method === "PATCH") { Object.assign(a, await readBody(q)); }
@@ -115,12 +118,21 @@ admin.on("pageerror", (e) => errors.push(String(e)));
 await admin.goto(`${origin}/`);
 await admin.evaluate((o) => localStorage.setItem("artifacts-account", JSON.stringify({apiBaseUrl: o, token: "jwt", user: {email: "admin@example.org"}})), origin);
 superAdmin = false;
+roles = ["ROLE_USER"];
 await admin.goto(`${origin}/admin/vitrine`);
 await wait(admin, 1500);
-check("admin : refusé hors super admin", (await all(admin, "h2")).some((h) => h.text.includes("Réservé au super admin")));
-superAdmin = true;
+check("admin : refusé à un compte non admin", (await all(admin, "h2")).some((h) => h.text.includes("Réservé aux administrateurs")));
+roles = ["ROLE_USER", "ROLE_ADMIN"];
+vitrineAccess = false;
+await admin.goto(`${origin}/admin/vitrine`);
+await wait(admin, 1500);
+check("admin : un admin hors du jeu de données de la vitrine est prévenu", (await all(admin, "h2")).some((h) => h.text.includes("Pas d’accès à la vitrine")));
+vitrineAccess = true;
+// Admin sans être super admin (pas dans OPS_DEPLOY_USERS) : la vitrine lui est ouverte, pas la modération.
 await admin.goto(`${origin}/admin/vitrine`);
 await wait(admin, 1800);
+const menu = (await all(admin, "a.menu-item")).map((a) => a.text).join(" | ");
+check("menu : lien vitrine pour un admin, pas de modération", menu.includes("Vitrine de l’accueil") && !menu.includes("Modération"), menu);
 const selected = () => all(admin, "section[aria-labelledby=sel-title] li.row");
 const catalogue = () => all(admin, "section[aria-labelledby=all-title] li.row");
 let sel = await selected();
