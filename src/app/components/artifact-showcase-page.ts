@@ -20,7 +20,8 @@ import {
   cloudReturnUrl,
   createRecord,
   getArtifact,
-  isSuperAdmin,
+  getAccountRights,
+  ApiError,
   listMyArtifacts,
   listRecords,
   patchArtifact,
@@ -209,6 +210,8 @@ export class ArtifactShowcasePage extends LitElement {
   }
 
   @state() private allowed: boolean | null = null;
+  /** Admin dont le compte n'est pas membre du jeu de données de `accueil-vitrine` : lecture et écriture refusées. */
+  @state() private noAccess = false;
   @state() private loading = true;
   @state() private error = "";
   @state() private saving = false;
@@ -245,7 +248,7 @@ export class ArtifactShowcasePage extends LitElement {
       this.loading = false;
       return;
     }
-    this.allowed = await isSuperAdmin();
+    this.allowed = (await getAccountRights()).admin;
     if (this.allowed) await this.load();
     else this.loading = false;
   }
@@ -262,7 +265,8 @@ export class ArtifactShowcasePage extends LitElement {
       this.showcase = rec?.showcase ?? DEFAULT_SHOWCASE;
       this.saved = rec ? JSON.stringify(rec.showcase) : "";
     } catch (e) {
-      this.error = explainFetchError(e, loadApiBaseUrl());
+      if (e instanceof ApiError && (e.status === 403 || e.status === 404)) this.noAccess = true;
+      else this.error = explainFetchError(e, loadApiBaseUrl());
     } finally {
       this.loading = false;
     }
@@ -508,14 +512,25 @@ export class ArtifactShowcasePage extends LitElement {
   }
 
   render() {
+    if (this.noAccess) {
+      return html`
+        <div class="page page-narrow">
+          <h1>Vitrine</h1>
+          <div class="panel empty">
+            <h2>Pas d’accès à la vitrine</h2>
+            <p>La sélection est rangée dans l’artefact <code>/${SHOWCASE_SLUG}</code>, qui appartient à un autre compte. Il faut être membre de son jeu de données pour la modifier.</p>
+          </div>
+        </div>
+      `;
+    }
     if (this.allowed === false) {
       const connected = !!loadArtifactsAccount();
       return html`
         <div class="page page-narrow">
           <h1>Vitrine</h1>
           <div class="panel empty">
-            <h2>${connected ? "Réservé au super admin" : "Connectez-vous"}</h2>
-            <p>Le choix des artefacts montrés sur l’accueil est réservé à l’administrateur.</p>
+            <h2>${connected ? "Réservé aux administrateurs" : "Connectez-vous"}</h2>
+            <p>Le choix des artefacts montrés sur l’accueil est réservé aux comptes administrateurs.</p>
             ${connected
               ? nothing
               : html`<sonic-button type="primary" @click=${() => location.assign(tadaaaLoginUrl(cloudReturnUrl("/admin/vitrine")))}>Se connecter avec Tadaaa</sonic-button>`}
