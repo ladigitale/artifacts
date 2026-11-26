@@ -38,7 +38,7 @@
         "tagName": "sonic-3d",
         "attributes": {
          "id": "scene",
-         "monde": "{\"unite\": \"cm\", \"espace\": {\"contour\": [[0, 0], [440, 0], [440, 330], [0, 330]], \"hauteur\": 250, \"zones\": [{\"nom\": \"plancher\", \"revetement\": \"parquet\"}]}, \"place\": [{\"model\": \"lit\", \"name\": \"lit\", \"against\": \"mur2\", \"at\": 85, \"params\": {\"type\": \"mezzanine\", \"couette\": \"#e07a5f\"}}, {\"model\": \"bureau\", \"name\": \"bureau\", \"against\": \"mur0\", \"at\": 310, \"params\": {\"largeur\": 140, \"caisson\": true}}, {\"model\": \"lampe\", \"on\": \"bureau\", \"at\": [-50, 0], \"params\": {\"abat\": \"boule\"}}, {\"model\": \"etagere\", \"on\": \"mur0\", \"at\": [120, 125], \"params\": {\"niveaux\": 3, \"largeur\": 100}}, {\"model\": \"plante\", \"name\": \"plante\", \"against\": \"mur1\", \"at\": 40}, {\"model\": \"suspension\", \"on\": \"plafond\", \"at\": [220, 165]}, {\"model\": \"tapis\", \"on\": \"plancher\", \"at\": [240, 150], \"params\": {\"forme\": \"rond\", \"largeur\": 150}}, {\"model\": \"coussin\", \"on\": \"lit\"}]}",
+         "monde": "{\"unite\": \"cm\", \"espace\": {\"contour\": [[0, 0], [440, 0], [440, 330], [0, 330]], \"hauteur\": 250, \"zones\": [{\"nom\": \"plancher\", \"revetement\": \"parquet\"}], \"plafond\": true}, \"place\": [{\"model\": \"lit\", \"name\": \"lit\", \"against\": \"mur2\", \"at\": 85, \"params\": {\"type\": \"mezzanine\", \"couette\": \"#e07a5f\"}}, {\"model\": \"bureau\", \"name\": \"bureau\", \"against\": \"mur0\", \"at\": 310, \"params\": {\"largeur\": 140, \"caisson\": true}}, {\"model\": \"lampe\", \"on\": \"bureau\", \"at\": [-50, 0], \"params\": {\"abat\": \"boule\"}}, {\"model\": \"etagere\", \"on\": \"mur0\", \"at\": [120, 125], \"params\": {\"niveaux\": 3, \"largeur\": 100}}, {\"model\": \"plante\", \"name\": \"plante\", \"against\": \"mur1\", \"at\": 40}, {\"model\": \"suspension\", \"on\": \"plafond\", \"at\": [220, 165]}, {\"model\": \"tapis\", \"on\": \"plancher\", \"at\": [240, 150], \"params\": {\"forme\": \"rond\", \"largeur\": 150}}, {\"model\": \"coussin\", \"on\": \"lit\"}]}",
          "target": "chambre",
          "pick": true,
          "style": "display:block;width:100%;height:460px;border-radius:16px"
@@ -49,7 +49,7 @@
         "attributes": {
          "id": "casque",
          "target": "scene",
-         "for": "entrer poser",
+         "for": "entrer poser regard",
          "mode": "auto",
          "store": "chambre",
          "features": "hit-test",
@@ -75,7 +75,8 @@
             "tagName": "sonic-button",
             "attributes": {
              "id": "entrer",
-             "type": "primary"
+             "type": "primary",
+             "data-xr-mode": "vr"
             },
             "textContent": "Entrer en VR"
            }
@@ -95,9 +96,46 @@
             "attributes": {
              "id": "poser",
              "type": "default",
-             "variant": "outline"
+             "variant": "outline",
+             "data-xr-mode": "ar"
             },
             "textContent": "Poser dans la pièce (AR)"
+           }
+          ]
+         },
+         {
+          "tagName": "sonic-button",
+          "attributes": {
+           "id": "regard",
+           "type": "default",
+           "variant": "outline",
+           "data-xr-mode": "magic"
+          },
+          "textContent": "Regarder autour"
+         },
+         {
+          "tagName": "sonic-if",
+          "attributes": {
+           "dataProvider": "casqueState",
+           "key": "status",
+           "equals": "error",
+           "style": ""
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-badge",
+            "attributes": {
+             "type": "danger"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "casqueState",
+               "key": "error"
+              }
+             }
+            ]
            }
           ]
          },
@@ -105,26 +143,23 @@
           "tagName": "sonic-if",
           "attributes": {
            "dataProvider": "casqueState",
-           "key": "modes.vr",
-           "equals": "false",
+           "key": "status",
+           "equals": "denied",
            "style": ""
           },
           "nodes": [
            {
-            "tagName": "sonic-if",
+            "tagName": "sonic-badge",
             "attributes": {
-             "dataProvider": "casqueState",
-             "key": "modes.ar",
-             "equals": "false",
-             "style": ""
+             "type": "danger"
             },
             "nodes": [
              {
-              "tagName": "sonic-badge",
+              "tagName": "sonic-value",
               "attributes": {
-               "type": "warning"
-              },
-              "textContent": "Ouvrir sur un casque VR ou Chrome Android pour l’immersion"
+               "dataProvider": "casqueState",
+               "key": "error"
+              }
              }
             ]
            }
