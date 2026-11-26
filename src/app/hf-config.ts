@@ -259,6 +259,17 @@ async function resolveFromHub(id: string): Promise<{def: ModelDef} | {error: str
 /* Document → modèles                                                  */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Alias résolus en direct sur le Hub (révision = sha courant, figée pour la page) : pas de révision
+ * épinglée ici, le modèle suit son dépôt officiel. `whisper-tiny` est le modèle par défaut de
+ * `sonic-listen engine="whisper"` (reconnaissance vocale sur l'appareil).
+ */
+const HUB_ALIASES: Record<string, string> = {
+  "whisper-tiny": "onnx-community/whisper-tiny",
+  "whisper-base": "onnx-community/whisper-base",
+  "whisper-small": "onnx-community/whisper-small",
+};
+
 function collectModels(value: unknown, out: Set<string>, depth = 0): void {
   if (depth > 64 || !value || typeof value !== "object") return;
   if (Array.isArray(value)) {
@@ -270,6 +281,12 @@ function collectModels(value: unknown, out: Set<string>, depth = 0): void {
   if (typeof node.tagName === "string" && node.tagName.toLowerCase() === "sonic-hugging-face-infer") {
     const model = (node.attributes as Record<string, unknown> | undefined)?.model;
     if (typeof model === "string") out.add(model);
+  }
+  // sonic-listen engine="whisper" | "auto" : reconnaissance vocale locale (modèle par défaut whisper-tiny).
+  if (typeof node.tagName === "string" && node.tagName.toLowerCase() === "sonic-listen") {
+    const attrs = (node.attributes as Record<string, unknown> | undefined) ?? {};
+    const engine = typeof attrs.engine === "string" ? attrs.engine : "native";
+    if (engine === "whisper" || engine === "auto") out.add(typeof attrs.model === "string" && attrs.model ? attrs.model : "whisper-tiny");
   }
   for (const v of Object.values(node)) collectModels(v, out, depth + 1);
 }
@@ -289,7 +306,7 @@ export async function configureViewerHuggingFace(doc: unknown): Promise<void> {
   await Promise.all(
     [...wanted].map(async (value) => {
       if (Object.prototype.hasOwnProperty.call(HF_SHORTCUTS, value) || resolved.has(value)) return;
-      const id = hubIdOf(value);
+      const id = HUB_ALIASES[value] ?? hubIdOf(value);
       if (!id) {
         console.warn(`[artifacts] modèle HF « ${value} » : utiliser org/nom, l'URL du modèle ou un raccourci (${Object.keys(HF_SHORTCUTS).join(", ")}).`);
         resolved.set(value, null);

@@ -83,7 +83,7 @@ export async function ensureAddonsFor(doc: unknown): Promise<void> {
   await Promise.all([...needed].map(loadOnce));
   // `model` n'existe que si la liste est configurée : raccourcis + modèles `org/nom` du document,
   // résolus avant le rendu.
-  if (tags.has("sonic-hugging-face-infer") || tags.has("sonic-segment-anything")) {
+  if (tags.has("sonic-hugging-face-infer") || tags.has("sonic-segment-anything") || tags.has("sonic-listen")) {
     const {configureViewerHuggingFace} = await import("./hf-config");
     await configureViewerHuggingFace(doc);
   }
