@@ -1,0 +1,235 @@
+{
+ "schema": "artifacts/1",
+ "title": "Export vidéo",
+ "theme": "default",
+ "defaultView": "main",
+ "icon": {
+  "emoji": "🎞️",
+  "background": "#be123c"
+ },
+ "views": [
+  {
+   "id": "main",
+   "title": "Export vidéo",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "div",
+      "attributes": {
+       "style": "display:flex;flex-direction:column;gap:16px;max-width:48rem;margin:0 auto;padding:24px 16px"
+      },
+      "nodes": [
+       {
+        "tagName": "h1",
+        "attributes": {
+         "style": "margin:0"
+        },
+        "textContent": "Export vidéo image par image"
+       },
+       {
+        "tagName": "sonic-shader",
+        "attributes": {
+         "id": "fond",
+         "image": "void mainImage(out vec4 o, in vec2 f){ vec2 uv=(f-0.5*iResolution.xy)/iResolution.y; float t=iTime*0.6; float r=length(uv); float a=atan(uv.y,uv.x); float w=sin(8.0*r-3.0*t+3.0*sin(a*3.0+t)); vec3 c=0.5+0.5*cos(6.2831*(vec3(0.0,0.33,0.67)+r*0.8-t*0.2)); o=vec4(c*smoothstep(-0.2,0.9,w)*(1.2-r),1.0); }",
+         "style": "display:block;width:100%;aspect-ratio:16/9;border-radius:16px"
+        }
+       },
+       {
+        "tagName": "sonic-video-export",
+        "attributes": {
+         "id": "film",
+         "source": "#fond",
+         "mode": "frames",
+         "fps": "30",
+         "duration": "4",
+         "width": "960",
+         "height": "540",
+         "for": "filmer"
+        }
+       },
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "display:flex;flex-wrap:wrap;gap:12px;align-items:center"
+        },
+        "nodes": [
+         {
+          "tagName": "sonic-button",
+          "attributes": {
+           "id": "filmer",
+           "type": "primary"
+          },
+          "textContent": "Filmer 4 secondes"
+         },
+         {
+          "tagName": "sonic-media-download",
+          "attributes": {
+           "source": "filmState.file",
+           "filename": "spirale"
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-button",
+            "attributes": {
+             "id": "dl",
+             "type": "default",
+             "variant": "outline"
+            },
+            "textContent": "Télécharger le WebM"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "display:flex;flex-wrap:wrap;gap:12px;align-items:center"
+        },
+        "nodes": [
+         {
+          "tagName": "div",
+          "attributes": {
+           "style": "display:flex;flex-direction:column;gap:2px;min-width:7rem"
+          },
+          "nodes": [
+           {
+            "tagName": "strong",
+            "attributes": {
+             "style": "font-size:1.6rem"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "filmState",
+               "key": "frames"
+              }
+             }
+            ]
+           },
+           {
+            "tagName": "span",
+            "attributes": {
+             "style": ""
+            },
+            "textContent": "images"
+           }
+          ]
+         },
+         {
+          "tagName": "div",
+          "attributes": {
+           "style": "display:flex;flex-direction:column;gap:2px;min-width:7rem"
+          },
+          "nodes": [
+           {
+            "tagName": "strong",
+            "attributes": {
+             "style": "font-size:1.6rem"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "filmState",
+               "key": "seconds"
+              }
+             }
+            ]
+           },
+           {
+            "tagName": "span",
+            "attributes": {
+             "style": ""
+            },
+            "textContent": "secondes"
+           }
+          ]
+         },
+         {
+          "tagName": "div",
+          "attributes": {
+           "style": "display:flex;flex-direction:column;gap:2px;min-width:7rem"
+          },
+          "nodes": [
+           {
+            "tagName": "strong",
+            "attributes": {
+             "style": "font-size:1.6rem"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "filmState",
+               "key": "bytes"
+              }
+             }
+            ]
+           },
+           {
+            "tagName": "span",
+            "attributes": {
+             "style": ""
+            },
+            "textContent": "octets"
+           }
+          ]
+         },
+         {
+          "tagName": "div",
+          "attributes": {
+           "style": "display:flex;flex-direction:column;gap:2px;min-width:7rem"
+          },
+          "nodes": [
+           {
+            "tagName": "strong",
+            "attributes": {
+             "style": "font-size:1.6rem"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "filmState",
+               "key": "codec"
+              }
+             }
+            ]
+           },
+           {
+            "tagName": "span",
+            "attributes": {
+             "style": ""
+            },
+            "textContent": "codec"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tagName": "div",
+        "attributes": {
+         "dataProvider": "filmState"
+        },
+        "nodes": [
+         {
+          "tagName": "sonic-progress",
+          "attributes": {
+           "data-bind": "",
+           "::value": "$progress",
+           "max": "1",
+           "style": "width:100%"
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}
