@@ -3,7 +3,7 @@ import "@supersoniks/concorde/pop";
 import {css, html, LitElement, nothing} from "lit";
 import {customElement, state} from "lit/decorators.js";
 import {clearArtifactsAccount, loadArtifactsAccount} from "../cloud/account";
-import {isSuperAdmin} from "../cloud/client";
+import {getAccountRights} from "../cloud/client";
 import {navigate} from "../navigate";
 import {hidePop, uiStyles} from "../styles/ui";
 import "./artifact-logo";
@@ -16,7 +16,7 @@ function sectionOf(path: string): NavId | null {
   if (path.startsWith("/cloud")) return "account";
   if (path === "/admin/atelier" || /^\/admin\/[^/]+\/atelier\/?$/.test(path)) return "atelier";
   if (path === "/admin/ressources") return "resources";
-  if (path === "/admin/moderation") return null;
+  if (path === "/admin/moderation" || path === "/admin/vitrine") return null;
   if (path === "/admin" || path.startsWith("/admin/")) return "library";
   return null;
 }
@@ -281,11 +281,18 @@ export class ArtifactShell extends LitElement {
   @state() private path = location.pathname;
   /** Lien « Modération » : compte super admin seulement (vérifié auprès de Tadaaa). */
   @state() private superAdmin = false;
+  /** Lien « Vitrine de l'accueil » : compte admin (ROLE_ADMIN), super admin compris. */
+  @state() private admin = false;
 
   connectedCallback() {
     super.connectedCallback();
     window.addEventListener("popstate", this.sync);
-    if (loadArtifactsAccount()) void isSuperAdmin().then((v) => (this.superAdmin = v));
+    if (loadArtifactsAccount()) {
+      void getAccountRights().then((r) => {
+        this.superAdmin = r.superAdmin;
+        this.admin = r.admin;
+      });
+    }
   }
 
   disconnectedCallback() {
@@ -355,6 +362,19 @@ export class ArtifactShell extends LitElement {
               >
                 <sonic-icon library="custom" name="warning-triangle" size="sm"></sonic-icon>
                 Modération
+              </a>`
+            : nothing}
+          ${this.admin
+            ? html`<a
+                class="menu-item"
+                href="/admin/vitrine"
+                @click=${(e: Event) => {
+                  hidePop(e);
+                  this.go("/admin/vitrine", e);
+                }}
+              >
+                <sonic-icon library="custom" name="star" size="sm"></sonic-icon>
+                Vitrine de l’accueil
               </a>`
             : nothing}
           <a

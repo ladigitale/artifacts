@@ -4,7 +4,7 @@ import "@supersoniks/concorde/input";
 import {css, html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
 import {dp, set} from "@supersoniks/concorde/utils";
-import {subscribe} from "@supersoniks/concorde/decorators";
+import {handle} from "@supersoniks/concorde/decorators";
 import {fullDate, uiStyles, VISIBILITY_LABELS} from "../styles/ui";
 import {
   artifactEditFormKey,
@@ -109,9 +109,28 @@ const editStyles = css`
 export class ArtifactEditPage extends LitElement {
   static styles = [uiStyles, editStyles];
 
-  @subscribe(artifactEditFormKey)
-  @state()
-  form: ArtifactEditForm = emptyArtifactEditForm();
+  @state() form: ArtifactEditForm = emptyArtifactEditForm();
+
+  /** Chaque champ (sonic-input) écrit sa clé seule : écoute par clé, la racine ne voit pas ces écritures. */
+  @handle(artifactEditFormKey.title)
+  onTitle(v: string | null | undefined): void {
+    this.form = {...this.form, title: v ?? ""};
+  }
+
+  @handle(artifactEditFormKey.description)
+  onDescription(v: string | null | undefined): void {
+    this.form = {...this.form, description: v ?? ""};
+  }
+
+  @handle(artifactEditFormKey.slug)
+  onSlug(v: string | null | undefined): void {
+    this.form = {...this.form, slug: v ?? ""};
+  }
+
+  @handle(artifactEditFormKey.visibility)
+  onVisibility(v: string | null | undefined): void {
+    this.form = {...this.form, visibility: v || "private"};
+  }
 
   @property({type: String}) slug = "";
 

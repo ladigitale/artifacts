@@ -115,14 +115,26 @@ export async function decideModeration(id: string, action: "keep" | "hide" | "de
   return apiFetch(`/admin/moderation/${encodeURIComponent(id)}`, {method: "POST", body: JSON.stringify({action})});
 }
 
-/** Compte super admin ? (lu sur /auth/me : une session ouverte avant l'ajout du champ ne le porte pas). */
-export async function isSuperAdmin(): Promise<boolean> {
+type MeResponse = {superAdmin?: boolean; user?: {superAdmin?: boolean; roles?: string[]}};
+
+/**
+ * Droits du compte, lus sur /auth/me (`{user: {…, roles, superAdmin}, quotas}`).
+ * `superAdmin` = ROLE_ADMIN + e-mail dans OPS_DEPLOY_USERS côté Tadaaa ; `admin` = ROLE_ADMIN.
+ */
+export async function getAccountRights(): Promise<{admin: boolean; superAdmin: boolean}> {
   try {
-    const me = await apiFetch<{superAdmin?: boolean}>("/auth/me");
-    return me?.superAdmin === true;
+    const me = await apiFetch<MeResponse>("/auth/me");
+    const superAdmin = me?.user?.superAdmin === true || me?.superAdmin === true;
+    const admin = superAdmin || (me?.user?.roles ?? []).includes("ROLE_ADMIN");
+    return {admin, superAdmin};
   } catch {
-    return false;
+    return {admin: false, superAdmin: false};
   }
+}
+
+/** Compte super admin ? (une session ouverte avant l'ajout du champ ne le porte pas). */
+export async function isSuperAdmin(): Promise<boolean> {
+  return (await getAccountRights()).superAdmin;
 }
 
 export async function exchangeHandoff(
@@ -548,4 +560,26 @@ export async function restoreVersion(idOrSlug: string, n: number): Promise<unkno
     method: "POST",
     body: "{}",
   });
+}
+
+/** Enregistrements d'une collection, lus en tant que membre du jeu de données. */
+export async function listRecords(artifactId: string, collection: string): Promise<{id: string; data: unknown}[]> {
+  const data = await apiFetch<{member?: {id: string; data: unknown}[]}>(
+    `/artifacts/${encodeURIComponent(artifactId)}/collections/${encodeURIComponent(collection)}/records`,
+  );
+  return data.member ?? [];
+}
+
+export async function createRecord(artifactId: string, collection: string, data: unknown): Promise<{id: string}> {
+  return apiFetch(`/artifacts/${encodeURIComponent(artifactId)}/collections/${encodeURIComponent(collection)}/records`, {
+    method: "POST",
+    body: JSON.stringify({data}),
+  });
+}
+
+export async function updateRecord(artifactId: string, collection: string, recordId: string, data: unknown): Promise<unknown> {
+  return apiFetch(
+    `/artifacts/${encodeURIComponent(artifactId)}/collections/${encodeURIComponent(collection)}/records/${encodeURIComponent(recordId)}`,
+    {method: "PATCH", body: JSON.stringify({data})},
+  );
 }

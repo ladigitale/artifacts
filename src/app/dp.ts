@@ -29,3 +29,14 @@ export const artifactEditFormKey = new DataProviderKey<ArtifactEditForm>("artifa
 export function emptyArtifactEditForm(): ArtifactEditForm {
   return {title: "", description: "", slug: "", visibility: "private"};
 }
+
+/** Filtres de `/admin/vitrine` : recherche, visibilité, place sur l'accueil. */
+export type ShowcaseFilter = {q: string; visibility: string; place: string};
+export const showcaseFilterKey = new DataProviderKey<ShowcaseFilter>("showcaseFilter");
+export function emptyShowcaseFilter(): ShowcaseFilter {
+  return {q: "", visibility: "all", place: "all"};
+}
+
+/** Carte en cours de réglage dans la modale de `/admin/vitrine`. */
+export type ShowcaseCardForm = {title: string; kind: string; blurb: string};
+export const showcaseCardFormKey = new DataProviderKey<ShowcaseCardForm>("showcaseCardForm");

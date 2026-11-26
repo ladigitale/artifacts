@@ -9,7 +9,7 @@ import "@supersoniks/concorde/divider";
 import "@supersoniks/concorde/tooltip";
 import {css, html, LitElement, nothing} from "lit";
 import {customElement, state} from "lit/decorators.js";
-import {subscribe} from "@supersoniks/concorde/decorators";
+import {handle} from "@supersoniks/concorde/decorators";
 import {dp, set} from "@supersoniks/concorde/utils";
 import {repeat} from "lit/directives/repeat.js";
 import {fullDate, hidePop, relativeTime, uiStyles, VISIBILITY_LABELS} from "../styles/ui";
@@ -250,9 +250,26 @@ const libraryStyles = css`
 export class ArtifactLibraryPage extends LitElement {
   static styles = [uiStyles, libraryStyles];
 
-  @subscribe(artifactListFilterKey)
-  @state()
-  filter: ArtifactListFilter = emptyArtifactListFilter();
+  @state() filter: ArtifactListFilter = emptyArtifactListFilter();
+
+  /**
+   * Le champ de recherche (sonic-input) écrit `q` seul : un abonnement à la racine du DataProvider ne
+   * voit pas cette écriture, d'où une écoute par clé (les menus, qui écrivent tout l'objet, passent aussi).
+   */
+  @handle(artifactListFilterKey.q)
+  onQuery(v: string | null | undefined): void {
+    this.filter = {...this.filter, q: v ?? ""};
+  }
+
+  @handle(artifactListFilterKey.visibility)
+  onVisibility(v: string | null | undefined): void {
+    this.filter = {...this.filter, visibility: v || "all"};
+  }
+
+  @handle(artifactListFilterKey.sort)
+  onSort(v: string | null | undefined): void {
+    this.filter = {...this.filter, sort: v || "updatedAt"};
+  }
 
   @state() private items: ArtifactSummary[] = [];
   @state() private error = "";

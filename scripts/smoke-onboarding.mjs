@@ -61,7 +61,7 @@ await page.waitForTimeout(1200);
 const themeOf = (p) => p.evaluate(() => `${document.documentElement.getAttribute("data-theme")} ${getComputedStyle(document.documentElement).getPropertyValue("--sc-primary").trim()}`);
 check("accueil : thème maison appliqué", (await themeOf(page)) === "affiche #17130e", await themeOf(page));
 const cards = await q(page, "a[data-featured]");
-check("accueil : vitrine de 5 artefacts", cards.length === 5, cards.map((c) => c.href).join(" "));
+check("accueil : vitrine de 11 artefacts", cards.length === 11, cards.map((c) => c.href).join(" "));
 await page.waitForTimeout(2500);
 const tiles = await q(page, "sonic-stage > div:not([id^=aq-])");
 check("accueil : scène creative-stack montée (9 éléments posés par la physique)", tiles.length === 9, String(tiles.length));
