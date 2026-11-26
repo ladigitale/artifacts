@@ -19,6 +19,7 @@ import {loadArtifactsAccount} from "../cloud/account";
 import {
   cloudReturnUrl,
   createRecord,
+  fetchPublicCollection,
   getArtifact,
   getAccountRights,
   ApiError,
@@ -228,21 +229,30 @@ export class ArtifactShowcasePage extends LitElement {
   private vitrineId = "";
   private recordId = "";
   private toastTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Chaque changement est publié tout seul, peu après le dernier geste. */
+  private saveTimer: ReturnType<typeof setTimeout> | undefined;
+  private saveAgain = false;
 
   connectedCallback(): void {
     super.connectedCallback();
     dp(showcaseFilterKey);
     if (!dp(showcaseFilterKey).get()) set(showcaseFilterKey, emptyShowcaseFilter());
     dp(showcaseCardFormKey);
+    window.addEventListener("beforeunload", this.onBeforeUnload);
     void this.start();
   }
 
   disconnectedCallback(): void {
     clearTimeout(this.toastTimer);
+    window.removeEventListener("beforeunload", this.onBeforeUnload);
+    if (this.dirty) void this.save();
     super.disconnectedCallback();
   }
 
   private async start(): Promise<void> {
+    // Page remontée par le routeur (navigation interne) : on garde la sélection en cours au lieu de relire
+    // l'enregistrement, qui écraserait des changements pas encore partis.
+    if (this.vitrineId) return;
     if (!loadArtifactsAccount()) {
       this.allowed = false;
       this.loading = false;
@@ -282,25 +292,55 @@ export class ArtifactShowcasePage extends LitElement {
     this.toastTimer = setTimeout(() => (this.toast = ""), 2600);
   }
 
+  /** Un changement pas encore arrivé sur l'accueil : le navigateur demande confirmation avant de quitter. */
+  private onBeforeUnload = (e: BeforeUnloadEvent): void => {
+    if (this.dirty || this.saving) e.preventDefault();
+  };
+
+  private scheduleSave(): void {
+    clearTimeout(this.saveTimer);
+    this.saveTimer = setTimeout(() => void this.save(), 400);
+  }
+
+  /**
+   * Publie la sélection puis la relit comme l'accueil la lit (lecture publique) : un écart est signalé
+   * au lieu d'annoncer une publication qui n'a pas eu lieu.
+   */
   private async save(): Promise<void> {
-    if (this.saving || !this.vitrineId) return;
+    clearTimeout(this.saveTimer);
+    if (!this.vitrineId) return;
+    if (this.saving) {
+      this.saveAgain = true;
+      return;
+    }
     this.saving = true;
     this.error = "";
+    const data = this.showcase;
+    const sent = JSON.stringify(data);
     try {
-      const data = this.showcase;
       if (this.recordId) await updateRecord(this.vitrineId, SHOWCASE_COLLECTION, this.recordId, data);
       else this.recordId = (await createRecord(this.vitrineId, SHOWCASE_COLLECTION, data)).id;
-      this.saved = JSON.stringify(data);
-      this.flash("Vitrine publiée sur l’accueil");
+      const back = pickShowcaseRecord(await fetchPublicCollection(SHOWCASE_SLUG, SHOWCASE_COLLECTION));
+      if (!back || JSON.stringify(back.showcase) !== sent) {
+        this.error = "L’accueil ne montre pas encore cette sélection : elle a été envoyée mais pas relue à l’identique.";
+      } else {
+        this.saved = sent;
+        if (JSON.stringify(this.showcase) === sent) this.flash("Accueil mis à jour");
+      }
     } catch (e) {
       this.error = explainFetchError(e, loadApiBaseUrl());
     } finally {
       this.saving = false;
     }
+    if (this.saveAgain || (this.dirty && !this.error)) {
+      this.saveAgain = false;
+      void this.save();
+    }
   }
 
   private setItems(items: ShowcaseEntry[], une = this.showcase.une): void {
     this.showcase = {items, une: une && items.some((e) => e.slug === une) ? une : null};
+    this.scheduleSave();
   }
 
   private add(a: ArtifactSummary): void {
@@ -557,7 +597,7 @@ export class ArtifactShowcasePage extends LitElement {
               Voir l’accueil
             </sonic-button>
             <sonic-button size="sm" type="primary" data-save ?disabled=${this.loading || this.saving || !this.dirty} @click=${() => void this.save()}>
-              ${this.saving ? "Publication…" : "Publier la vitrine"}
+              ${this.saving ? "Publication…" : this.dirty ? "Publier maintenant" : "Accueil à jour"}
             </sonic-button>
           </div>
         </div>
