@@ -250,6 +250,9 @@ export class ArtifactShowcasePage extends LitElement {
   }
 
   private async start(): Promise<void> {
+    // Page remontée par le routeur (navigation interne) : on garde la sélection en cours au lieu de relire
+    // l'enregistrement, qui écraserait des changements pas encore partis.
+    if (this.vitrineId) return;
     if (!loadArtifactsAccount()) {
       this.allowed = false;
       this.loading = false;
