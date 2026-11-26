@@ -118,8 +118,9 @@ export async function decideModeration(id: string, action: "keep" | "hide" | "de
 /** Compte super admin ? (lu sur /auth/me : une session ouverte avant l'ajout du champ ne le porte pas). */
 export async function isSuperAdmin(): Promise<boolean> {
   try {
-    const me = await apiFetch<{superAdmin?: boolean}>("/auth/me");
-    return me?.superAdmin === true;
+    // L'API répond {user: {…, superAdmin}, quotas} ; on accepte aussi le champ à la racine.
+    const me = await apiFetch<{superAdmin?: boolean; user?: {superAdmin?: boolean}}>("/auth/me");
+    return me?.user?.superAdmin === true || me?.superAdmin === true;
   } catch {
     return false;
   }
