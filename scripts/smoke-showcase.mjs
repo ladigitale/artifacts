@@ -39,7 +39,7 @@ const ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect 
 const server = http.createServer(async (q, r) => {
   const u = new URL(q.url, "http://x");
   const p = u.pathname;
-  if (p === "/api/auth/me") return json(r, {user: {email: "admin@example.org"}, superAdmin});
+  if (p === "/api/auth/me") return json(r, {user: {email: "admin@example.org", superAdmin}, quotas: {}}); // forme réelle de Tadaaa
   if (p === "/api/public/artifacts/accueil-vitrine/collections/vitrine") {
     if (collectionDown) return json(r, {error: "down"}, 503);
     return json(r, {member: record ? [record] : []});
