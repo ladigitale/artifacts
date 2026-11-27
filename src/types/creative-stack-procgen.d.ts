@@ -12,3 +12,4 @@ export declare class WorkerTileRunner implements TileRunner {
   dispose(): void;
 }
 export declare function serveTileWorker(scope: unknown): void;
+export declare function setProcgenCharacterWorkers(f: (() => unknown) | null, size?: number): void;
