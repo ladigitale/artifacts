@@ -469,10 +469,41 @@ export async function fetchPublicCollection(
   if (query?.sort) params.set("sort", query.sort);
   if (query?.limit && query.limit > 0) params.set("limit", String(Math.floor(query.limit)));
   const q = params.toString() ? `?${params}` : "";
+  // Lecture anonyme servie avec `max-age=30` : sans `no-store`, le navigateur rendrait la même
+  // copie pendant 30 s, quelle que soit la cadence de relecture.
   const data = await apiFetch<{member?: unknown[]}>(
     `/public/artifacts/${encodeURIComponent(slug)}/collections/${encodeURIComponent(collection)}${q}`,
+    {cache: "no-store"},
   );
   return data.member ?? [];
+}
+
+export type CollectionLiveCredentials = {hubUrl: string; token: string; topic: string; expiresIn: number};
+
+/**
+ * Abonnement en direct à une collection (`GET …/collections/{nom}/live`, mêmes droits que la
+ * lecture) : `null` si l'API n'a pas de hub Mercure ou ne connaît pas encore cette route.
+ */
+export async function fetchCollectionLive(
+  slug: string,
+  collection: string,
+  linkToken?: string | null,
+  readKey?: string | null,
+): Promise<CollectionLiveCredentials | null> {
+  const params = new URLSearchParams();
+  if (linkToken) params.set("k", linkToken);
+  if (readKey) params.set("rk", readKey);
+  const q = params.toString() ? `?${params}` : "";
+  try {
+    const data = await apiFetch<{mercure?: CollectionLiveCredentials | null}>(
+      `/public/artifacts/${encodeURIComponent(slug)}/collections/${encodeURIComponent(collection)}/live${q}`,
+      {cache: "no-store"},
+    );
+    const m = data.mercure;
+    return m && typeof m.hubUrl === "string" && typeof m.token === "string" && typeof m.topic === "string" ? m : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
