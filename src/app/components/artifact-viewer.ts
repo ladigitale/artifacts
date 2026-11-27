@@ -22,6 +22,7 @@ import {applySafeTransforms} from "../jsonata-safe";
 import {loadScriptAssets} from "../script-loader";
 import {ensureAddonsFor} from "../addons";
 import {startSinks, type SinkDef} from "../sinks";
+import {applyLive, sortAndLimit, startCollectionLive, type LiveMessage, type LiveRow} from "../collection-live";
 import {startPlaces, type PlacesDef} from "../places";
 import {persistDecl, persistKey, plain, readSaved, writeSaved} from "../persist";
 import {OnlineSave, onlineDecl} from "../online-save";
@@ -226,6 +227,13 @@ export class ArtifactViewer extends LitElement {
   /** Sources de collection lues (canaux compris), pour la relecture qui suit un envoi. */
   private liveSources = new Map<string, {collection: string; channels: string[]; sort?: string; limit?: number}>();
   private refreshSoonTimer = 0;
+  /** Records de chaque source de collection (avec leur id), pour appliquer les changements en direct. */
+  private sourceRows = new Map<string, LiveRow[]>();
+  private sourceReadAt = new Map<string, number>();
+  /** Abonnements en direct par collection ; `liveGen` invalide ceux qui arrivent après un démontage. */
+  private liveStops = new Map<string, () => void>();
+  private liveStarting = new Set<string>();
+  private liveGen = 0;
   private refreshSoonPending = new Set<string>();
   private stopSinks: (() => void) | null = null;
   private stopPlaces: (() => void) | null = null;
@@ -360,6 +368,12 @@ export class ArtifactViewer extends LitElement {
     this.refreshSoonTimer = 0;
     this.refreshSoonPending.clear();
     this.liveSources.clear();
+    this.liveStops.forEach((stop) => stop());
+    this.liveStops.clear();
+    this.liveStarting.clear();
+    this.liveGen++;
+    this.sourceRows.clear();
+    this.sourceReadAt.clear();
     this.stopSinks?.();
     this.stopSinks = null;
     this.stopPlaces?.();
@@ -1037,6 +1051,7 @@ export class ArtifactViewer extends LitElement {
         member = [];
         denied = isDenied(e);
       }
+      this.sourceRows.set(name, member as LiveRow[]);
       const items = member.map((row) => {
         if (row && typeof row === "object" && "data" in row) {
           return (row as {data: unknown}).data;
@@ -1055,10 +1070,14 @@ export class ArtifactViewer extends LitElement {
       if (!this.previewDocument && !denied && Number.isFinite(every) && every >= 5) {
         this.liveSources.set(name, {collection, channels, sort: src.sort, limit: src.limit});
         const timer = window.setInterval(async () => {
+          // En direct : relecture de secours seulement (le hub apporte chaque changement).
+          if (this.isLive(channels) && Date.now() - (this.sourceReadAt.get(name) ?? 0) < LIVE_FALLBACK_MS) return;
           if (await this.refreshSource(name, collection, {sort: src.sort, limit: src.limit}, channels)) return;
           clearInterval(timer);
         }, Math.min(every, 3600) * 1000);
         this.refreshTimers.push(timer);
+        this.sourceReadAt.set(name, Date.now());
+        for (const c of channels) void this.startLive(c);
       }
     }
 
@@ -1124,6 +1143,8 @@ export class ArtifactViewer extends LitElement {
    * collection, sans attendre leur prochain `refresh` (l'envoi est visible tout de suite).
    */
   private refreshSoon(collection: string) {
+    // En direct, le hub apporte déjà l'envoi.
+    if (this.liveStops.has(collection)) return;
     if (this.refreshSoonTimer) clearTimeout(this.refreshSoonTimer);
     this.refreshSoonPending.add(collection);
     this.refreshSoonTimer = window.setTimeout(() => {
@@ -1138,6 +1159,62 @@ export class ArtifactViewer extends LitElement {
     }, REFRESH_SOON_MS);
   }
 
+  private publishRows(name: string, collection: string, rows: LiveRow[]) {
+    this.sourceRows.set(name, rows);
+    const items = rows.map((row) =>
+      row && typeof row === "object" && "data" in row ? (row as {data: unknown}).data : row,
+    );
+    set(this.n(name), {member: items});
+    set(this.n(collection), {member: items});
+    set(this.n(`artifact:${this.slug}:${name}`), {member: items});
+  }
+
+  private isLive(channels: string[]): boolean {
+    return channels.every((c) => this.liveStops.has(c));
+  }
+
+  /**
+   * Abonnement en direct à une collection (une fois par collection, partagé par les sources qui
+   * la lisent). Sans hub ou sur une API plus ancienne : rien, la relecture périodique continue.
+   */
+  private async startLive(collection: string) {
+    if (this.liveStops.has(collection) || this.liveStarting.has(collection) || this.previewDocument) return;
+    this.liveStarting.add(collection);
+    const gen = this.liveGen;
+    const stop = await startCollectionLive(this.slug, collection, this.linkToken(), this.readKey(), {
+      onMessage: (msg) => this.applyLiveMessage(collection, msg),
+      onResync: () => this.resyncCollection(collection),
+    });
+    this.liveStarting.delete(collection);
+    if (!stop) return;
+    if (gen !== this.liveGen) {
+      stop();
+      return;
+    }
+    this.liveStops.set(collection, stop);
+  }
+
+  private applyLiveMessage(collection: string, msg: LiveMessage) {
+    for (const [name, src] of this.liveSources) {
+      if (!src.channels.includes(collection)) continue;
+      // Retrait dans une source bornée (`limit`) : le suivant n'est pas connu ici, relecture.
+      if (src.limit && msg.remove?.length) {
+        void this.refreshSource(name, src.collection, {sort: src.sort, limit: src.limit}, src.channels);
+        continue;
+      }
+      const rows = sortAndLimit(applyLive(this.sourceRows.get(name) ?? [], msg), src.sort, src.limit);
+      this.publishRows(name, src.collection, rows);
+    }
+  }
+
+  private resyncCollection(collection: string) {
+    for (const [name, src] of this.liveSources) {
+      if (src.channels.includes(collection)) {
+        void this.refreshSource(name, src.collection, {sort: src.sort, limit: src.limit}, src.channels);
+      }
+    }
+  }
+
   /** Relecture périodique (`sources.<x>.refresh`, en secondes) — onglet visible seulement. */
   private async refreshSource(
     name: string,
@@ -1148,12 +1225,8 @@ export class ArtifactViewer extends LitElement {
     if (document.hidden) return true;
     try {
       const member = await this.fetchChannels(channels, this.linkToken(), this.readKey(), query);
-      const items = member.map((row) =>
-        row && typeof row === "object" && "data" in row ? (row as {data: unknown}).data : row,
-      );
-      set(this.n(name), {member: items});
-      set(this.n(collection), {member: items});
-      set(this.n(`artifact:${this.slug}:${name}`), {member: items});
+      this.sourceReadAt.set(name, Date.now());
+      this.publishRows(name, collection, member as LiveRow[]);
       return true;
     } catch (e) {
       // Garde les dernières données ; arrête la relecture si l’accès est refusé.
@@ -1449,6 +1522,8 @@ function isDenied(e: unknown): boolean {
 const STREAM_STORE_BUDGET_MS = 50;
 /** Délai entre un envoi réussi d'un sink et la relecture des sources de sa collection. */
 const REFRESH_SOON_MS = 300;
+/** Source en direct : relecture de secours au plus une fois par minute. */
+const LIVE_FALLBACK_MS = 60_000;
 /** `minInterval` par défaut d'une collecte permanente côté API. */
 const PERMANENT_MIN_INTERVAL_S = 3;
 /** Hôte d'un appairage : relecture du code et des places prises. */
