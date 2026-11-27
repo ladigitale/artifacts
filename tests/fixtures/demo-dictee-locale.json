@@ -1,0 +1,264 @@
+{
+ "schema": "artifacts/1",
+ "title": "Dictée sur l'appareil",
+ "theme": "default",
+ "defaultView": "main",
+ "icon": {
+  "emoji": "🎙️",
+  "background": "#0f766e"
+ },
+ "views": [
+  {
+   "id": "main",
+   "title": "Dictée sur l'appareil",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "div",
+      "attributes": {
+       "style": "display:flex;flex-direction:column;gap:16px;max-width:48rem;margin:0 auto;padding:24px 16px"
+      },
+      "nodes": [
+       {
+        "tagName": "h1",
+        "attributes": {
+         "style": "margin:0"
+        },
+        "textContent": "Dictée sur l'appareil"
+       },
+       {
+        "tagName": "sonic-store",
+        "attributes": {
+         "id": "notes",
+         "initial": "{\"lignes\": []}",
+         "reducer": "$action.type = 'listen:result' and $action.payload.isFinal and $action.payload.text != '' ? $merge([$state, {'lignes': $append($state.lignes, [{'texte': $action.payload.text}])}]) : $action.type = 'vider' ? $merge([$state, {'lignes': []}]) : $state"
+        }
+       },
+       {
+        "tagName": "sonic-listen",
+        "attributes": {
+         "id": "dictee",
+         "engine": "whisper",
+         "for": "dicter",
+         "lang": "fr-FR",
+         "continuous": true,
+         "interim": true,
+         "consent-provider": "dicteeConsent.accepted",
+         "target": "notes"
+        }
+       },
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "display:flex;flex-wrap:wrap;gap:12px;align-items:center"
+        },
+        "nodes": [
+         {
+          "tagName": "sonic-button",
+          "attributes": {
+           "id": "dicter",
+           "type": "primary"
+          },
+          "textContent": "Dicter / arrêter"
+         },
+         {
+          "tagName": "sonic-action",
+          "attributes": {
+           "target": "notes",
+           "type": "vider"
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-button",
+            "attributes": {
+             "id": "vider",
+             "type": "default",
+             "variant": "outline"
+            },
+            "textContent": "Vider"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tagName": "sonic-states",
+        "attributes": {
+         "dataProvider": "dicteeState",
+         "data-path": "modelPhase"
+        },
+        "nodes": [
+         {
+          "tagName": "template",
+          "attributes": {
+           "data-value": "awaiting-consent"
+          },
+          "nodes": [
+           {
+            "tagName": "div",
+            "attributes": {
+             "formDataProvider": "dicteeConsent",
+             "style": ""
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-button",
+              "attributes": {
+               "radio": true,
+               "name": "accepted",
+               "value": "accepted",
+               "type": "primary"
+              },
+              "textContent": "Télécharger le modèle (≈ 40 Mo, une seule fois)"
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "tagName": "template",
+          "attributes": {
+           "data-value": "downloading"
+          },
+          "nodes": [
+           {
+            "tagName": "div",
+            "attributes": {
+             "dataProvider": "dicteeState",
+             "style": "display:flex;flex-direction:column;gap:4px"
+            },
+            "nodes": [
+             {
+              "tagName": "span",
+              "attributes": {
+               "style": ""
+              },
+              "textContent": "Téléchargement du modèle"
+             },
+             {
+              "tagName": "sonic-progress",
+              "attributes": {
+               "data-bind": "",
+               "::value": "$loading",
+               "max": "100",
+               "style": "width:100%"
+              }
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "tagName": "template",
+          "attributes": {
+           "data-value": "loading"
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-badge",
+            "attributes": {
+             "type": "info"
+            },
+            "textContent": "Préparation du modèle…"
+           }
+          ]
+         },
+         {
+          "tagName": "template",
+          "attributes": {
+           "data-value": "ready"
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-badge",
+            "attributes": {
+             "type": "success"
+            },
+            "textContent": "Modèle prêt, rien ne quitte l'appareil"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tagName": "sonic-if",
+        "attributes": {
+         "dataProvider": "dicteeState",
+         "key": "error",
+         "truthy": true,
+         "style": ""
+        },
+        "nodes": [
+         {
+          "tagName": "sonic-badge",
+          "attributes": {
+           "type": "danger",
+           "style": "white-space:normal"
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-value",
+            "attributes": {
+             "dataProvider": "dicteeState",
+             "key": "error"
+            }
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tagName": "p",
+        "attributes": {
+         "style": "margin:0;font-style:italic"
+        },
+        "nodes": [
+         {
+          "tagName": "sonic-value",
+          "attributes": {
+           "dataProvider": "dicteeState",
+           "key": "interim"
+          }
+         }
+        ]
+       },
+       {
+        "tagName": "sonic-list",
+        "attributes": {
+         "dataProvider": "notes.lignes"
+        },
+        "nodes": [
+         {
+          "tagName": "template",
+          "attributes": {
+           "style": ""
+          },
+          "nodes": [
+           {
+            "tagName": "p",
+            "attributes": {
+             "style": "margin:0"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "key": "texte"
+              }
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "capabilities": [
+  "microphone"
+ ]
+}

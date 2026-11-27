@@ -232,7 +232,9 @@ async function resolveFromHub(id: string): Promise<{def: ModelDef} | {error: str
       return suffix ? stem.endsWith(suffix) : !KNOWN_SUFFIX.test(stem);
     });
     if (!files.length) continue;
-    const stems = new Set(files.map((f) => f.rfilename));
+    // Reconnaissance vocale (Whisper) : Transformers.js ne télécharge que l'encodeur et le décodeur fusionné.
+    const used = task === "automatic-speech-recognition" ? files.filter((f) => /^onnx\/(encoder_model|decoder_model_merged)(_[a-z0-9]+)?\.onnx$/.test(f.rfilename)) : files;
+    const stems = new Set((used.length ? used : files).map((f) => f.rfilename));
     // Poids externes (`.onnx_data`) des fichiers retenus.
     const sizeBytes = (info.siblings ?? [])
       .filter((f) => stems.has(f.rfilename) || [...stems].some((s) => f.rfilename.startsWith(`${s}_data`)))
@@ -314,7 +316,15 @@ export async function configureViewerHuggingFace(doc: unknown): Promise<void> {
       }
       const r = await resolveFromHub(id);
       if ("error" in r) console.warn(`[artifacts] modèle HF « ${id} » refusé : ${r.error}.`);
-      resolved.set(value, "def" in r ? r.def : null);
+      const def = "def" in r ? r.def : null;
+      // Whisper (dictée de sonic-listen) : sur le processeur, comme SAM. Sur Chrome Android, WebGPU est pris
+      // d'abord et le modèle 8 bits y échoue ; la version processeur a été vérifiée de bout en bout.
+      if (def && HUB_ALIASES[value]) {
+        def.devices = ["wasm"];
+        def.label = "Dictée sur l'appareil (Whisper)";
+        def.description = "Transcrit ta voix localement dans ton navigateur : rien n'est envoyé.";
+      }
+      resolved.set(value, def);
     }),
   );
 
