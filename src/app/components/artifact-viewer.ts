@@ -73,6 +73,29 @@ function withAgentLibraries(doc: Record<string, unknown>): Record<string, unknow
     ),
   };
 }
+
+type SourceDef = {
+  collection?: string;
+  /** Collections en plus, lues avec `collection` (canaux d'un sink à plusieurs canaux). */
+  channels?: string[];
+  asset?: string;
+  key?: string;
+  refresh?: number;
+  sort?: string;
+  limit?: number;
+  intake?: {minInterval?: number; permanent?: boolean};
+};
+
+const MAX_SOURCE_CHANNELS = 8;
+
+function sourceChannels(src: SourceDef): string[] {
+  const all = [src.collection, ...(Array.isArray(src.channels) ? src.channels : [])];
+  return all
+    .filter((c): c is string => typeof c === "string" && c !== "")
+    .filter((c, i, list) => list.indexOf(c) === i)
+    .slice(0, MAX_SOURCE_CHANNELS);
+}
+
 type StoreDef = {
   initial?: unknown;
   reducer?: string;
@@ -200,6 +223,10 @@ export class ArtifactViewer extends LitElement {
   /** Désabonnement du DataProvider des vues (`artifactView`). */
   private viewUnsub: (() => void) | null = null;
   private refreshTimers: number[] = [];
+  /** Sources de collection lues (canaux compris), pour la relecture qui suit un envoi. */
+  private liveSources = new Map<string, {collection: string; channels: string[]; sort?: string; limit?: number}>();
+  private refreshSoonTimer = 0;
+  private refreshSoonPending = new Set<string>();
   private stopSinks: (() => void) | null = null;
   private stopPlaces: (() => void) | null = null;
   private stopIo: (() => void) | null = null;
@@ -329,6 +356,10 @@ export class ArtifactViewer extends LitElement {
   private clearLiveData() {
     this.refreshTimers.forEach((t) => clearInterval(t));
     this.refreshTimers = [];
+    if (this.refreshSoonTimer) clearTimeout(this.refreshSoonTimer);
+    this.refreshSoonTimer = 0;
+    this.refreshSoonPending.clear();
+    this.liveSources.clear();
     this.stopSinks?.();
     this.stopSinks = null;
     this.stopPlaces?.();
@@ -754,7 +785,12 @@ export class ArtifactViewer extends LitElement {
         await this.applyDataProviders();
         this.watchOnline();
         const sinks = (this.data.document as {data?: {sinks?: Record<string, SinkDef>}}).data?.sinks;
-        if (!this.previewDocument) this.stopSinks = startSinks(this.slug, this.linkToken(), this.nsSinks(sinks));
+        if (!this.previewDocument) {
+          this.stopSinks = startSinks(this.slug, this.linkToken(), this.nsSinks(sinks), {
+            minInterval: this.intakeIntervals(),
+            onSent: (collection) => this.refreshSoon(collection),
+          });
+        }
         const places = (this.data.document as {data?: {places?: Record<string, PlacesDef>}}).data?.places;
         if (!this.previewDocument && places) this.stopPlaces = startPlaces(this.slug, this.linkToken(), this.nsPlaces(places), (n) => this.nsPlaceName(n));
         if (target?.role === "watcher" && join) {
@@ -976,7 +1012,7 @@ export class ArtifactViewer extends LitElement {
     if (!this.data) return;
     const doc = this.data.document as {
       data?: {
-        sources?: Record<string, {collection?: string; asset?: string; key?: string; refresh?: number; sort?: string; limit?: number}>;
+        sources?: Record<string, SourceDef>;
         transforms?: Record<string, {jsonata: string}>;
       };
     };
@@ -992,10 +1028,11 @@ export class ArtifactViewer extends LitElement {
       }
       const collection = src.collection;
       if (typeof collection !== "string") continue;
+      const channels = sourceChannels(src);
       let member: unknown[] = [];
       let denied = false;
       try {
-        member = this.previewDocument ? [] : await fetchPublicCollection(this.slug, collection, k, rk, {sort: src.sort, limit: src.limit});
+        member = this.previewDocument ? [] : await this.fetchChannels(channels, k, rk, {sort: src.sort, limit: src.limit});
       } catch (e) {
         member = [];
         denied = isDenied(e);
@@ -1016,8 +1053,9 @@ export class ArtifactViewer extends LitElement {
       // Pas de relecture si l’accès est refusé (élève sans lien secret) : toute une classe
       // derrière la même IP épuiserait la limite de requêtes.
       if (!this.previewDocument && !denied && Number.isFinite(every) && every >= 5) {
+        this.liveSources.set(name, {collection, channels, sort: src.sort, limit: src.limit});
         const timer = window.setInterval(async () => {
-          if (await this.refreshSource(name, collection, {sort: src.sort, limit: src.limit})) return;
+          if (await this.refreshSource(name, collection, {sort: src.sort, limit: src.limit}, channels)) return;
           clearInterval(timer);
         }, Math.min(every, 3600) * 1000);
         this.refreshTimers.push(timer);
@@ -1053,11 +1091,63 @@ export class ArtifactViewer extends LitElement {
     set(this.n(`artifact:${this.slug}:${name}`), published);
   }
 
+  /**
+   * Lit une collection et ses canaux (`sources.<x>.channels`, écrits par un sink à plusieurs
+   * canaux) en parallèle, puis les met bout à bout (chaque canal trié / limité par le serveur).
+   */
+  private async fetchChannels(
+    channels: string[],
+    k: string | null,
+    rk: string | null,
+    query?: {sort?: string; limit?: number},
+  ): Promise<unknown[]> {
+    if (channels.length === 1) return fetchPublicCollection(this.slug, channels[0], k, rk, query);
+    const parts = await Promise.all(channels.map((c) => fetchPublicCollection(this.slug, c, k, rk, query)));
+    return parts.flat();
+  }
+
+  /** `intake.minInterval` de chaque collection déclarée dans `data.sources` (cadence des sinks). */
+  private intakeIntervals(): Record<string, number> {
+    const sources = (this.data?.document as {data?: {sources?: Record<string, SourceDef>}} | undefined)?.data?.sources ?? {};
+    const out: Record<string, number> = {};
+    for (const src of Object.values(sources)) {
+      if (typeof src?.collection !== "string" || !src.intake) continue;
+      // Défauts de l'API (ArtifactIntakeSchema) : 3 s pour une collecte permanente, 0 sinon.
+      const min = Number(src.intake.minInterval ?? (src.intake.permanent ? PERMANENT_MIN_INTERVAL_S : 0));
+      if (Number.isFinite(min) && min > 0) out[src.collection] = min;
+    }
+    return out;
+  }
+
+  /**
+   * Après un envoi réussi : relit, peu après, les sources relues périodiquement qui lisent cette
+   * collection, sans attendre leur prochain `refresh` (l'envoi est visible tout de suite).
+   */
+  private refreshSoon(collection: string) {
+    if (this.refreshSoonTimer) clearTimeout(this.refreshSoonTimer);
+    this.refreshSoonPending.add(collection);
+    this.refreshSoonTimer = window.setTimeout(() => {
+      this.refreshSoonTimer = 0;
+      const touched = new Set(this.refreshSoonPending);
+      this.refreshSoonPending.clear();
+      for (const [name, src] of this.liveSources) {
+        if (src.channels.some((c) => touched.has(c))) {
+          void this.refreshSource(name, src.collection, {sort: src.sort, limit: src.limit}, src.channels);
+        }
+      }
+    }, REFRESH_SOON_MS);
+  }
+
   /** Relecture périodique (`sources.<x>.refresh`, en secondes) — onglet visible seulement. */
-  private async refreshSource(name: string, collection: string, query?: {sort?: string; limit?: number}): Promise<boolean> {
+  private async refreshSource(
+    name: string,
+    collection: string,
+    query?: {sort?: string; limit?: number},
+    channels: string[] = [collection],
+  ): Promise<boolean> {
     if (document.hidden) return true;
     try {
-      const member = await fetchPublicCollection(this.slug, collection, this.linkToken(), this.readKey(), query);
+      const member = await this.fetchChannels(channels, this.linkToken(), this.readKey(), query);
       const items = member.map((row) =>
         row && typeof row === "object" && "data" in row ? (row as {data: unknown}).data : row,
       );
@@ -1357,6 +1447,10 @@ function isDenied(e: unknown): boolean {
 }
 
 const STREAM_STORE_BUDGET_MS = 50;
+/** Délai entre un envoi réussi d'un sink et la relecture des sources de sa collection. */
+const REFRESH_SOON_MS = 300;
+/** `minInterval` par défaut d'une collecte permanente côté API. */
+const PERMANENT_MIN_INTERVAL_S = 3;
 /** Hôte d'un appairage : relecture du code et des places prises. */
 const DESK_REFRESH_MS = 10_000;
 const PAIR_REFRESH_MS = 20_000;
