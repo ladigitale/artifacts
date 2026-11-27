@@ -39,7 +39,7 @@
         "attributes": {
          "id": "dictee",
          "engine": "whisper",
-         "for": "dicter",
+         "for": "dicter arreter",
          "lang": "fr-FR",
          "continuous": true,
          "interim": true,
@@ -54,12 +54,42 @@
         },
         "nodes": [
          {
-          "tagName": "sonic-button",
+          "tagName": "sonic-if",
           "attributes": {
-           "id": "dicter",
-           "type": "primary"
+           "dataProvider": "dicteeState",
+           "key": "listening",
+           "not": "true",
+           "style": ""
           },
-          "textContent": "Dicter / arrêter"
+          "nodes": [
+           {
+            "tagName": "sonic-button",
+            "attributes": {
+             "id": "dicter",
+             "type": "primary"
+            },
+            "textContent": "Dicter"
+           }
+          ]
+         },
+         {
+          "tagName": "sonic-if",
+          "attributes": {
+           "dataProvider": "dicteeState",
+           "key": "listening",
+           "truthy": true,
+           "style": ""
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-button",
+            "attributes": {
+             "id": "arreter",
+             "type": "danger"
+            },
+            "textContent": "Arrêter"
+           }
+          ]
          },
          {
           "tagName": "sonic-action",
@@ -76,6 +106,115 @@
              "variant": "outline"
             },
             "textContent": "Vider"
+           }
+          ]
+         },
+         {
+          "tagName": "sonic-if",
+          "attributes": {
+           "dataProvider": "dicteeState",
+           "key": "voice",
+           "truthy": true,
+           "style": ""
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-badge",
+            "attributes": {
+             "type": "success"
+            },
+            "textContent": "Parole détectée"
+           }
+          ]
+         },
+         {
+          "tagName": "sonic-if",
+          "attributes": {
+           "dataProvider": "dicteeState",
+           "key": "transcribing",
+           "truthy": true,
+           "style": ""
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-badge",
+            "attributes": {
+             "type": "info"
+            },
+            "textContent": "Transcription…"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tagName": "sonic-if",
+        "attributes": {
+         "dataProvider": "dicteeState",
+         "key": "listening",
+         "truthy": true,
+         "style": ""
+        },
+        "nodes": [
+         {
+          "tagName": "div",
+          "attributes": {
+           "dataProvider": "dicteeState",
+           "style": "display:flex;flex-direction:column;gap:6px"
+          },
+          "nodes": [
+           {
+            "tagName": "span",
+            "attributes": {
+             "style": ""
+            },
+            "textContent": "Niveau du micro"
+           },
+           {
+            "tagName": "sonic-progress",
+            "attributes": {
+             "data-bind": "",
+             "::value": "$micLevel",
+             "max": "1",
+             "style": "width:100%"
+            }
+           },
+           {
+            "tagName": "sonic-badge",
+            "attributes": {
+             "type": "neutral",
+             "style": "align-self:flex-start"
+            },
+            "nodes": [
+             {
+              "tagName": "span",
+              "attributes": {
+               "style": ""
+              },
+              "textContent": "moteur audio : "
+             },
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "dicteeState",
+               "key": "audioState"
+              }
+             },
+             {
+              "tagName": "span",
+              "attributes": {
+               "style": ""
+              },
+              "textContent": " · blocs reçus : "
+             },
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "dicteeState",
+               "key": "audioBlocks"
+              }
+             }
+            ]
            }
           ]
          }
