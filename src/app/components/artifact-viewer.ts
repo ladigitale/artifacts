@@ -83,7 +83,7 @@ type SourceDef = {
   refresh?: number;
   sort?: string;
   limit?: number;
-  intake?: {minInterval?: number};
+  intake?: {minInterval?: number; permanent?: boolean};
 };
 
 const MAX_SOURCE_CHANNELS = 8;
@@ -1111,8 +1111,10 @@ export class ArtifactViewer extends LitElement {
     const sources = (this.data?.document as {data?: {sources?: Record<string, SourceDef>}} | undefined)?.data?.sources ?? {};
     const out: Record<string, number> = {};
     for (const src of Object.values(sources)) {
-      const min = Number(src?.intake?.minInterval);
-      if (typeof src?.collection === "string" && Number.isFinite(min) && min > 0) out[src.collection] = min;
+      if (typeof src?.collection !== "string" || !src.intake) continue;
+      // Défauts de l'API (ArtifactIntakeSchema) : 3 s pour une collecte permanente, 0 sinon.
+      const min = Number(src.intake.minInterval ?? (src.intake.permanent ? PERMANENT_MIN_INTERVAL_S : 0));
+      if (Number.isFinite(min) && min > 0) out[src.collection] = min;
     }
     return out;
   }
@@ -1447,6 +1449,8 @@ function isDenied(e: unknown): boolean {
 const STREAM_STORE_BUDGET_MS = 50;
 /** Délai entre un envoi réussi d'un sink et la relecture des sources de sa collection. */
 const REFRESH_SOON_MS = 300;
+/** `minInterval` par défaut d'une collecte permanente côté API. */
+const PERMANENT_MIN_INTERVAL_S = 3;
 /** Hôte d'un appairage : relecture du code et des places prises. */
 const DESK_REFRESH_MS = 10_000;
 const PAIR_REFRESH_MS = 20_000;
