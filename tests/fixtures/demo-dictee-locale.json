@@ -1,6 +1,6 @@
 {
  "schema": "artifacts/1",
- "title": "Dictée sur l'appareil",
+ "title": "Dictée",
  "theme": "default",
  "defaultView": "main",
  "icon": {
@@ -10,7 +10,7 @@
  "views": [
   {
    "id": "main",
-   "title": "Dictée sur l'appareil",
+   "title": "Dictée",
    "root": {
     "nodes": [
      {
@@ -24,7 +24,7 @@
         "attributes": {
          "style": "margin:0"
         },
-        "textContent": "Dictée sur l'appareil"
+        "textContent": "Dictée"
        },
        {
         "tagName": "sonic-store",
@@ -35,17 +35,66 @@
         }
        },
        {
-        "tagName": "sonic-listen",
+        "tagName": "div",
         "attributes": {
-         "id": "dictee",
-         "engine": "whisper",
-         "for": "dicter arreter",
-         "lang": "fr-FR",
-         "continuous": true,
-         "interim": true,
-         "consent-provider": "dicteeConsent.accepted",
-         "target": "notes"
-        }
+         "formDataProvider": "reglage",
+         "style": "display:flex;flex-wrap:wrap;gap:8px;align-items:center"
+        },
+        "nodes": [
+         {
+          "tagName": "span",
+          "attributes": {
+           "style": ""
+          },
+          "textContent": "Moteur :"
+         },
+         {
+          "tagName": "sonic-button",
+          "attributes": {
+           "radio": true,
+           "name": "moteur",
+           "value": "native",
+           "type": "default",
+           "variant": "outline",
+           "checked": true
+          },
+          "textContent": "Navigateur (rapide)"
+         },
+         {
+          "tagName": "sonic-button",
+          "attributes": {
+           "radio": true,
+           "name": "moteur",
+           "value": "whisper",
+           "type": "default",
+           "variant": "outline"
+          },
+          "textContent": "Whisper, sur l'appareil"
+         }
+        ]
+       },
+       {
+        "tagName": "div",
+        "attributes": {
+         "dataProvider": "reglage",
+         "style": ""
+        },
+        "nodes": [
+         {
+          "tagName": "sonic-listen",
+          "attributes": {
+           "id": "dictee",
+           "data-bind": "",
+           "::engine": "$moteur",
+           "for": "dicter arreter",
+           "lang": "fr-FR",
+           "continuous": true,
+           "interim": true,
+           "consent-provider": "dicteeConsent.accepted",
+           "target": "notes"
+          }
+         }
+        ]
        },
        {
         "tagName": "div",
@@ -340,6 +389,68 @@
             "attributes": {
              "dataProvider": "dicteeState",
              "key": "error"
+            }
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tagName": "sonic-if",
+        "attributes": {
+         "dataProvider": "dicteeState",
+         "key": "raw",
+         "truthy": true,
+         "style": ""
+        },
+        "nodes": [
+         {
+          "tagName": "sonic-badge",
+          "attributes": {
+           "type": "neutral",
+           "style": "white-space:normal;align-self:flex-start"
+          },
+          "nodes": [
+           {
+            "tagName": "span",
+            "attributes": {
+             "style": ""
+            },
+            "textContent": "Whisper a rendu : « "
+           },
+           {
+            "tagName": "sonic-value",
+            "attributes": {
+             "dataProvider": "dicteeState",
+             "key": "raw.text"
+            }
+           },
+           {
+            "tagName": "span",
+            "attributes": {
+             "style": ""
+            },
+            "textContent": " » · gardé : "
+           },
+           {
+            "tagName": "sonic-value",
+            "attributes": {
+             "dataProvider": "dicteeState",
+             "key": "raw.kept"
+            }
+           },
+           {
+            "tagName": "span",
+            "attributes": {
+             "style": ""
+            },
+            "textContent": " · calcul (ms) : "
+           },
+           {
+            "tagName": "sonic-value",
+            "attributes": {
+             "dataProvider": "dicteeState",
+             "key": "raw.ms"
             }
            }
           ]
