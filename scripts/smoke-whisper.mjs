@@ -4,7 +4,7 @@
  * cdn.jsdelivr.net). Trois visites : téléchargement puis modèle en cache.
  *
  * Prérequis : VITE_API_BASE_URL=http://localhost:4455 yarn build
- * Lancer   : DOC=tests/fixtures/demo-dictee-locale.json WAV=parole.wav CHROME_PATH=… node scripts/smoke-whisper.mjs
+ * Lancer   : DOC=tests/fixtures/whisper-dictee.json WAV=parole.wav CHROME_PATH=… node scripts/smoke-whisper.mjs
  *            (WAV : par exemple https://huggingface.co/datasets/Xenova/transformers.js-docs/resolve/main/jfk.wav)
  */
 import http from "node:http";
