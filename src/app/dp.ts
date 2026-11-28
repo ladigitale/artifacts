@@ -22,12 +22,14 @@ export type ArtifactEditForm = {
   description: string;
   slug: string;
   visibility: string;
+  /** Catégories séparées par des virgules (la première s'affiche sur les cartes). */
+  tags: string;
 };
 
 export const artifactEditFormKey = new DataProviderKey<ArtifactEditForm>("artifactEditForm");
 
 export function emptyArtifactEditForm(): ArtifactEditForm {
-  return {title: "", description: "", slug: "", visibility: "private"};
+  return {title: "", description: "", slug: "", visibility: "private", tags: ""};
 }
 
 /** Filtres de `/admin/vitrine` : recherche, visibilité, place sur l'accueil. */

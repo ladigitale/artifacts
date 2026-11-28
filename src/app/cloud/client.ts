@@ -20,14 +20,34 @@ export type ArtifactSummary = {
   currentVersion: number;
   hasLinkToken?: boolean;
   linkToken?: string | null;
+  /** Catégories : étiquettes de l'espace, la première est celle des cartes. */
+  tags?: ArtifactTag[];
 };
+
+export type ArtifactTag = {id?: string; name: string; color: string};
 
 export type ArtifactPatch = {
   title?: string;
   description?: string | null;
   slug?: string;
   visibility?: string;
+  /** Noms d'étiquettes (créées au besoin dans l'espace) ; `[]` les retire. */
+  tags?: string[];
 };
+
+/** Carte publique d'un artefact (vitrine) : titre, description, catégories. */
+export type PublicArtifactCard = {slug: string; title: string; description?: string | null; tags: ArtifactTag[]};
+
+/** Cartes des artefacts publics demandés, dans l'ordre (les autres sont omis) ; `[]` si l'API ne répond pas. */
+export async function fetchPublicCards(slugs: string[]): Promise<PublicArtifactCard[]> {
+  if (!slugs.length) return [];
+  try {
+    const data = await apiFetch<{cards?: PublicArtifactCard[]}>(`/public/artifacts/_cards?slugs=${encodeURIComponent(slugs.join(","))}`);
+    return Array.isArray(data.cards) ? data.cards : [];
+  } catch {
+    return [];
+  }
+}
 
 export type PublicArtifact = {
   id: string;
