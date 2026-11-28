@@ -501,9 +501,9 @@
     jsonata "^2.2.2"
     url-pattern "^1.0.3"
 
-"@supersoniks/creative-stack@github:ladigitale/creative-stack#813ce7943cac6a9bda0871f7372a99b19e01628b":
+"@supersoniks/creative-stack@github:ladigitale/creative-stack#de05f9f66b2fff9ec26b0d08c305349b158fdadd":
   version "0.1.0"
-  resolved "https://codeload.github.com/ladigitale/creative-stack/tar.gz/813ce7943cac6a9bda0871f7372a99b19e01628b"
+  resolved "https://codeload.github.com/ladigitale/creative-stack/tar.gz/de05f9f66b2fff9ec26b0d08c305349b158fdadd"
   dependencies:
     "@dimforge/rapier3d-compat" "0.21.0"
     jsonata "^2.2.2"
