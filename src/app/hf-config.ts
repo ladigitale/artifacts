@@ -288,7 +288,8 @@ function collectModels(value: unknown, out: Set<string>, depth = 0): void {
   if (typeof node.tagName === "string" && node.tagName.toLowerCase() === "sonic-listen") {
     const attrs = (node.attributes as Record<string, unknown> | undefined) ?? {};
     const engine = typeof attrs.engine === "string" ? attrs.engine : "native";
-    if (engine === "whisper" || engine === "auto") out.add(typeof attrs.model === "string" && attrs.model ? attrs.model : "whisper-tiny");
+    // moteur écrit en dur, ou choisi en direct par une liaison (`::engine`) : le modèle doit être prêt dans les deux cas
+    if (engine === "whisper" || engine === "auto" || "::engine" in attrs) out.add(typeof attrs.model === "string" && attrs.model ? attrs.model : "whisper-tiny");
   }
   for (const v of Object.values(node)) collectModels(v, out, depth + 1);
 }

@@ -49,6 +49,12 @@ const DEEP = `const deep = (r, s, a = []) => { r.querySelectorAll("*").forEach((
 const st = () =>
   page.evaluate(`(() => { ${DEEP} const s = deep(document, "sonic-listen")[0].getState(); return {status: s.status, error: s.error, engine: s.engine, listening: s.listening, modelPhase: s.modelPhase, loading: s.loading, modelReady: s.modelReady, transcribing: s.transcribing, interim: s.interim, final: s.final, transcript: s.transcript}; })()`);
 console.log("départ", JSON.stringify(await st()));
+// Moteur : la démo démarre sur la reconnaissance du navigateur ; Whisper se choisit par le bouton radio.
+const pickWhisper = () => page.evaluate(`(() => { ${DEEP} const b = deep(document, "sonic-button[value=whisper]")[0]; (b?.shadowRoot?.querySelector("button") ?? b)?.click(); })()`);
+console.log("moteur par défaut", JSON.stringify((await st()).engine));
+await pickWhisper();
+await page.waitForTimeout(500);
+console.log("moteur choisi", JSON.stringify((await st()).engine));
 await page.evaluate(`(() => { ${DEEP} deep(document, "#dicter")[0].click(); })()`);
 for (let i = 0; i < 90; i++) {
   await page.waitForTimeout(1000);
@@ -66,6 +72,8 @@ for (let i = 0; i < 90; i++) {
 for (const round of [2, 3]) {
   await page.reload();
   await page.waitForTimeout(4000);
+  await pickWhisper();
+  await page.waitForTimeout(500);
   console.log("visite", round, JSON.stringify(await st()));
   await page.evaluate(`(() => { ${DEEP} deep(document, "#dicter")[0].click(); })()`);
   for (let i = 0; i < 60; i++) {
