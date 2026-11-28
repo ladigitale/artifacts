@@ -7,7 +7,7 @@ import {artStyles, ensureArtFonts} from "../css/art";
 import {landingStyles} from "../css/landing";
 import {loadArtifactsAccount} from "../cloud/account";
 import {cloudReturnUrl, tadaaaLoginUrl} from "../cloud/client";
-import {DEFAULT_SHOWCASE, iconUrl, loadShowcase, toFeatured, type FeaturedArtifact, type Showcase} from "../featured";
+import {DEFAULT_SHOWCASE, iconUrl, kindOf, loadCategories, loadShowcase, toFeatured, type FeaturedArtifact, type Showcase} from "../featured";
 import {LANDING_HERO_DOC} from "../landing-hero";
 import {LANDING_AQUARIUM_DOC} from "../landing-aquarium";
 import {navigate} from "../navigate";
@@ -44,6 +44,8 @@ export class ArtifactLanding extends LitElement {
   @state() private party = false;
   /** Sélection de la vitrine : celle par défaut, remplacée par celle publiée dès qu'elle est lue. */
   @state() private showcase: Showcase = DEFAULT_SHOWCASE;
+  /** Catégorie (première étiquette) des artefacts de la vitrine, pour les cartes sans genre écrit. */
+  @state() private categories: ReadonlyMap<string, string> = new Map();
 
   private typed = "";
   private partyTimer: ReturnType<typeof setTimeout> | undefined;
@@ -55,6 +57,11 @@ export class ArtifactLanding extends LitElement {
     window.addEventListener("keydown", this.onKey);
     void loadShowcase().then((sc) => {
       if (sc && this.isConnected) this.showcase = sc;
+      const slugs = this.showcase.items.filter((e) => !e.kind).map((e) => e.slug);
+      if (slugs.length)
+        void loadCategories(slugs).then((m) => {
+          if (this.isConnected) this.categories = m;
+        });
     });
   }
 
@@ -69,7 +76,7 @@ export class ArtifactLanding extends LitElement {
   private cards(): {f: FeaturedArtifact; une: boolean}[] {
     const {items, une} = this.showcase;
     const top = une ? items.filter((e) => e.slug === une) : [];
-    return [...top, ...items.filter((e) => e.slug !== une)].map((e) => ({f: toFeatured(e), une: e.slug === une}));
+    return [...top, ...items.filter((e) => e.slug !== une)].map((e) => ({f: toFeatured({...e, kind: kindOf(e, this.categories)}), une: e.slug === une}));
   }
 
   private io: IntersectionObserver | null = null;
@@ -410,7 +417,7 @@ export class ArtifactLanding extends LitElement {
                         ${une
                           ? html`<span class="une-badge">À la une</span>`
                           : html`<span class="num" aria-hidden="true">${String(i + (cards[0]?.une ? 0 : 1)).padStart(2, "0")}</span>`}
-                        <span class="kind">${f.kind}</span>
+                        ${f.kind ? html`<span class="kind">${f.kind}</span>` : nothing}
                         <strong>${f.title}</strong>
                         <span class="blurb">${f.blurb}</span>
                         <span class="go" aria-hidden="true">Ouvrir →</span>

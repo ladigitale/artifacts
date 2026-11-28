@@ -105,6 +105,19 @@ const editStyles = css`
   }
 `;
 
+/** « Jeu, 3D » → ["Jeu", "3D"] (vides et doublons retirés, 6 au plus comme l'API). */
+export function splitTags(raw: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const part of raw.split(",")) {
+    const name = part.trim().replace(/\s+/g, " ").slice(0, 40);
+    if (!name || seen.has(name.toLowerCase())) continue;
+    seen.add(name.toLowerCase());
+    out.push(name);
+  }
+  return out.slice(0, 6);
+}
+
 @customElement("artifact-edit-page")
 export class ArtifactEditPage extends LitElement {
   static styles = [uiStyles, editStyles];
@@ -125,6 +138,11 @@ export class ArtifactEditPage extends LitElement {
   @handle(artifactEditFormKey.slug)
   onSlug(v: string | null | undefined): void {
     this.form = {...this.form, slug: v ?? ""};
+  }
+
+  @handle(artifactEditFormKey.tags)
+  onTags(v: string | null | undefined): void {
+    this.form = {...this.form, tags: v ?? ""};
   }
 
   @handle(artifactEditFormKey.visibility)
@@ -174,6 +192,7 @@ export class ArtifactEditPage extends LitElement {
         description: a.description ?? "",
         slug: a.slug ?? "",
         visibility: a.visibility ?? "private",
+        tags: (a.tags ?? []).map((t) => t.name).join(", "),
       };
       set(artifactEditFormKey, next);
       this.initial = JSON.stringify(next);
@@ -197,6 +216,7 @@ export class ArtifactEditPage extends LitElement {
         description: f.description ?? "",
         slug: f.slug ?? "",
         visibility: f.visibility ?? "",
+        tags: f.tags ?? "",
       }) !== this.initial
     );
   }
@@ -215,6 +235,7 @@ export class ArtifactEditPage extends LitElement {
         description: form.description || null,
         slug: form.slug,
         visibility: form.visibility,
+        tags: splitTags(form.tags ?? ""),
       });
       navigate(`/admin/${updated.slug}/edit`);
       this.slug = updated.slug;
@@ -382,6 +403,10 @@ export class ArtifactEditPage extends LitElement {
               <span class="label">Description</span>
               <sonic-input name="description" type="textarea" rows="3"></sonic-input>
               <span class="hint">Affichée dans la bibliothèque et à la recherche.</span>
+            </label>
+            <label class="field">
+              <span class="label">Catégories (la première s’affiche sur les cartes)</span>
+              <sonic-input name="tags" placeholder="Jeu, 3D"></sonic-input>
             </label>
             <label class="field">
               <span class="label">Slug</span>

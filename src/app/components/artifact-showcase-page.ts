@@ -448,7 +448,7 @@ export class ArtifactShowcasePage extends LitElement {
             <img src=${iconUrl(e.slug)} alt="" loading="lazy" />
             <div class="who">
               <strong>${e.title}</strong>
-              <small>${[e.kind, e.blurb].filter(Boolean).join(" · ") || e.slug}</small>
+              <small>${[e.kind || a?.tags?.[0]?.name, e.blurb].filter(Boolean).join(" · ") || e.slug}</small>
               ${a && a.visibility !== "public" ? this.pill(a.visibility) : nothing}
             </div>
             <div class="tools">
@@ -521,7 +521,7 @@ export class ArtifactShowcasePage extends LitElement {
             <sonic-legend label="Texte de la carte" description=${this.editing ? `/${this.editing}` : ""}></sonic-legend>
             <sonic-form-layout>
               <sonic-input name="title" label="Titre" maxlength="60" required></sonic-input>
-              <sonic-input name="kind" label="Genre (Jeu, Instrument…)" maxlength="24"></sonic-input>
+              <sonic-input name="kind" label="Genre (vide : catégorie de l’artefact)" maxlength="24"></sonic-input>
               <sonic-textarea name="blurb" label="Phrase d’accroche" rows="3" maxlength="160"></sonic-textarea>
             </sonic-form-layout>
           </sonic-fieldset>

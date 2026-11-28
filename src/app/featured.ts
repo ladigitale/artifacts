@@ -1,4 +1,4 @@
-import {fetchPublicCollection} from "./cloud/client";
+import {fetchPublicCards, fetchPublicCollection} from "./cloud/client";
 import {loadApiBaseUrl, normalizeApiBase} from "./cloud/api-base";
 
 /**
@@ -212,4 +212,22 @@ export async function loadShowcase(): Promise<Showcase | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * Catégorie de chaque carte quand l'admin n'a pas écrit de genre : première étiquette de l'artefact
+ * (catégories Tadaaa). Carte absente ou sans étiquette : pas d'entrée.
+ */
+export async function loadCategories(slugs: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  for (const c of await fetchPublicCards(slugs)) {
+    const name = c.tags?.[0]?.name?.trim();
+    if (name) out.set(c.slug, name.slice(0, 24));
+  }
+  return out;
+}
+
+/** Genre affiché : celui écrit pour la carte, sinon la catégorie de l'artefact, sinon rien. */
+export function kindOf(e: ShowcaseEntry, categories: ReadonlyMap<string, string>): string {
+  return e.kind || categories.get(e.slug) || "";
 }

@@ -497,16 +497,19 @@ export const landingStyles = css`
   .showcase li {
     position: relative;
   }
+  /* Carte : illustration de hauteur fixe, séparateur à cette hauteur, texte calé juste dessous (même
+     place pour le titre sur toutes les cartes, quelle que soit la longueur de l'accroche). */
   .showcase a {
+    --cover-h: 11.5rem;
     position: relative;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
+    justify-content: flex-start;
     gap: var(--ui-2);
     height: 100%;
     min-height: 20rem;
-    padding: var(--ui-6);
+    padding: calc(var(--cover-h) + var(--ui-6)) var(--ui-6) var(--ui-6);
     border: var(--art-edge);
     border-radius: calc(var(--art-round) * 1.4);
     background: var(--card-bg);
@@ -535,13 +538,15 @@ export const landingStyles = css`
     position: absolute;
     inset: 0 0 auto 0;
     width: 100%;
-    height: 56%;
+    height: var(--cover-h);
+    overflow: hidden;
   }
   .showcase a::before {
     /* Trame de points sur l'illustration. */
     content: "";
     position: absolute;
-    inset: 0 0 46% 0;
+    inset: 0 0 auto 0;
+    height: var(--cover-h);
     z-index: 1;
     background-image: radial-gradient(color-mix(in srgb, var(--card-ink) 26%, transparent) 1.2px, transparent 1.6px);
     background-size: 9px 9px;
@@ -551,7 +556,7 @@ export const landingStyles = css`
   .showcase a::after {
     content: "";
     position: absolute;
-    inset: 54% 0 0 0;
+    inset: var(--cover-h) 0 0 0;
     background: var(--card-bg);
     border-top: 2px solid var(--card-ink);
   }
@@ -597,13 +602,15 @@ export const landingStyles = css`
     grid-column: 1 / -1;
   }
   .showcase li.une a {
+    --cover-h: 14rem;
     min-height: 26rem;
   }
-  /* Grande carte : l'illustration à sa taille (pas agrandie au rognage), à droite du texte sur grand écran. */
-  .showcase li.une .cover {
-    height: 50%;
-  }
+  /* Grande carte, sur grand écran : l'illustration à droite, le texte centré à gauche du séparateur. */
   @media (min-width: 960px) {
+    .showcase li.une a {
+      justify-content: center;
+      padding: var(--ui-8) var(--ui-6);
+    }
     .showcase li.une .cover {
       inset: 0 0 0 auto;
       width: 56%;
@@ -611,6 +618,7 @@ export const landingStyles = css`
     }
     .showcase li.une a::before {
       inset: 0 0 0 44%;
+      height: auto;
     }
     .showcase li.une a::after {
       inset: 0 56% 0 0;
@@ -618,11 +626,21 @@ export const landingStyles = css`
       border-right: 2px solid var(--card-ink);
     }
     .showcase li.une a > span,
-    .showcase li.une a > strong {
-      max-width: 44%;
+    .showcase li.une a > strong,
+    .showcase li.une a > span.blurb {
+      max-width: calc(44% - var(--ui-8));
     }
     .showcase li.une .une-badge {
       max-width: none;
+    }
+    .showcase li.une a > .kind {
+      position: relative;
+      top: auto;
+      left: auto;
+      transform: rotate(-3deg);
+    }
+    .showcase li.une .go {
+      margin-top: var(--ui-2);
     }
   }
   .showcase li.une strong {
@@ -631,6 +649,13 @@ export const landingStyles = css`
   .showcase li.une .blurb {
     max-width: 40rem;
     font-size: 1.1em;
+  }
+  /* Catégorie : pastille posée sur le séparateur (hors du flux : le titre ne bouge pas avec ou sans). */
+  .showcase a > .kind {
+    position: absolute;
+    top: var(--cover-h);
+    left: var(--ui-6);
+    transform: translateY(-50%) rotate(-3deg);
   }
   .showcase .kind {
     align-self: flex-start;
@@ -643,7 +668,6 @@ export const landingStyles = css`
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    transform: rotate(-3deg);
   }
   .showcase strong {
     font-size: clamp(1.75rem, 3vw, 2.4rem);
@@ -660,6 +684,8 @@ export const landingStyles = css`
     color: color-mix(in srgb, var(--card-ink) 84%, transparent);
   }
   .showcase .go {
+    margin-top: auto;
+    padding-top: var(--ui-2);
     font-family: var(--art-serif);
     font-style: italic;
     font-size: var(--ui-fs-lg);
